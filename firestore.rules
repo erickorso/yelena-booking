@@ -1,0 +1,99 @@
+rules_version = '2';
+
+service cloud.firestore {
+  match /databases/{database}/documents {
+    function signedIn() {
+      return request.auth != null;
+    }
+
+    function role() {
+      return signedIn() && request.auth.token.role;
+    }
+
+    function isAdmin() {
+      return role() == 'admin';
+    }
+
+    function isPatient() {
+      return role() == 'paciente';
+    }
+
+    function isSpecialist() {
+      return role() == 'especialista';
+    }
+
+    function isOwner(uid) {
+      return signedIn() && request.auth.uid == uid;
+    }
+
+    // Deny by default
+    match /{document=**} {
+      allow read, write: if false;
+    }
+
+    match /users/{userId} {
+      allow read: if isOwner(userId) || isAdmin();
+      allow create: if isOwner(userId);
+      allow update: if isOwner(userId) || isAdmin();
+      allow delete: if isAdmin();
+    }
+
+    match /specialists/{specialistId} {
+      allow read: if resource.data.status == 'active' || isAdmin()
+        || (signedIn() && resource.data.userId == request.auth.uid);
+      allow create: if signedIn() && request.resource.data.userId == request.auth.uid
+        && request.resource.data.status == 'pending';
+      allow update: if isAdmin()
+        || (signedIn() && resource.data.userId == request.auth.uid);
+      allow delete: if isAdmin();
+    }
+
+    match /appointments/{appointmentId} {
+      allow read: if isAdmin()
+        || (signedIn() && (
+          resource.data.patientId == request.auth.uid
+          || resource.data.specialistId == request.auth.uid
+        ));
+      allow create: if isPatient()
+        && request.resource.data.patientId == request.auth.uid;
+      allow update: if isAdmin()
+        || (signedIn() && (
+          resource.data.patientId == request.auth.uid
+          || resource.data.specialistId == request.auth.uid
+        ));
+      allow delete: if isAdmin();
+    }
+
+    match /ehrNotes/{noteId} {
+      allow read: if isAdmin()
+        || (signedIn() && (
+          resource.data.patientId == request.auth.uid
+          || resource.data.specialistId == request.auth.uid
+        ));
+      allow create: if isSpecialist()
+        && request.resource.data.specialistId == request.auth.uid;
+      // Immutable: no update/delete for specialists or patients
+      allow update, delete: if isAdmin();
+    }
+
+    match /medicalFiles/{fileId} {
+      allow read: if isAdmin()
+        || (signedIn() && resource.data.patientId == request.auth.uid);
+      allow create: if signedIn()
+        && request.resource.data.patientId == request.auth.uid;
+      allow update, delete: if isAdmin();
+    }
+
+    match /availabilityRules/{ruleId} {
+      allow read: if signedIn();
+      allow write: if isAdmin()
+        || (isSpecialist() && request.resource.data.specialistId == request.auth.uid);
+    }
+
+    match /availabilityOverrides/{overrideId} {
+      allow read: if signedIn();
+      allow write: if isAdmin()
+        || (isSpecialist() && request.resource.data.specialistId == request.auth.uid);
+    }
+  }
+}

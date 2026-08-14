@@ -1,0 +1,15 @@
+{
+  "App": {
+    "name": "Yelena",
+    "tagline": "Medical appointments and clinical records",
+    "ctaDirectory": "Browse specialists",
+    "themeLight": "Light",
+    "themeDark": "Dark",
+    "themeSystem": "System",
+    "localeLabel": "Language"
+  },
+  "Home": {
+    "title": "Care, scheduled with clarity",
+    "description": "Book specialists, manage availability, and keep clinical history secure."
+  }
+}

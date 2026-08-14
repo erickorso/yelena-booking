@@ -1,0 +1,15 @@
+{
+  "App": {
+    "name": "Yelena",
+    "tagline": "Citas médicas e historias clínicas",
+    "ctaDirectory": "Ver especialistas",
+    "themeLight": "Claro",
+    "themeDark": "Oscuro",
+    "themeSystem": "Sistema",
+    "localeLabel": "Idioma"
+  },
+  "Home": {
+    "title": "Cuidado, con agenda clara",
+    "description": "Reserva especialistas, gestiona disponibilidad y protege el historial clínico."
+  }
+}
