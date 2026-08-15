@@ -7,6 +7,7 @@ import type {
   CreateUserProfileInput,
   IUserRepository,
 } from "../IUserRepository";
+import type { CreateSpecialistProfileInput } from "../specialistTypes";
 
 /**
  * In-memory stub for UI / tests until Firestore credentials are wired.
@@ -43,6 +44,26 @@ export class StubUserRepository implements IUserRepository {
     const updated: UserProfile = { ...existing, role, updatedAt: new Date() };
     this.users.set(id, updated);
     return updated;
+  }
+
+  async createSpecialist(
+    input: CreateSpecialistProfileInput,
+  ): Promise<SpecialistProfile> {
+    const now = new Date();
+    const profile: SpecialistProfile = {
+      id: input.id,
+      userId: input.userId,
+      specialty: input.specialty,
+      licenseNumber: input.licenseNumber,
+      bio: input.bio ?? "",
+      location: input.location ?? "",
+      rating: null,
+      status: input.status ?? "pending",
+      createdAt: now,
+      updatedAt: now,
+    };
+    this.specialists.set(profile.id, profile);
+    return profile;
   }
 
   async getSpecialistByUserId(

@@ -13,6 +13,8 @@ export interface MedicalFileDoc {
   patientId?: unknown;
   uploadedById?: unknown;
   storagePath?: unknown;
+  url?: unknown;
+  provider?: unknown;
   fileName?: unknown;
   contentType?: unknown;
   sizeBytes?: unknown;
@@ -46,6 +48,13 @@ export function adaptMedicalFile(id: string, data: MedicalFileDoc): MedicalFile 
     patientId: requireString(data.patientId, "patientId"),
     uploadedById: requireString(data.uploadedById, "uploadedById"),
     storagePath: requireString(data.storagePath, "storagePath"),
+    url: requireString(data.url, "url"),
+    provider:
+      data.provider === "vercel_blob"
+        ? "vercel_blob"
+        : (() => {
+            throw new Error(`Unsupported storage provider on medical file ${id}`);
+          })(),
     fileName: requireString(data.fileName, "fileName"),
     contentType: requireString(data.contentType, "contentType"),
     sizeBytes: data.sizeBytes,

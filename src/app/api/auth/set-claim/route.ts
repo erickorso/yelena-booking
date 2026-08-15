@@ -55,10 +55,11 @@ export async function POST(request: Request) {
     const callerRole =
       typeof decoded.role === "string" ? decoded.role : undefined;
     const isAdmin = callerRole === "admin";
-    const isSelfPatientBootstrap =
-      decoded.uid === targetUid && role === "paciente";
+    const isSelfBootstrap =
+      decoded.uid === targetUid &&
+      (role === "paciente" || role === "especialista");
 
-    if (!isAdmin && !isSelfPatientBootstrap) {
+    if (!isAdmin && !isSelfBootstrap) {
       return NextResponse.json({ error: "Forbidden" }, { status: 403 });
     }
 

@@ -1,36 +1,139 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+# Yelena Booking
 
-## Getting Started
+Plataforma de citas médicas e historias clínicas (EHR) — portfolio Next.js + Firebase.
 
-First, run the development server:
+Repo: [erickorso/yelena-booking](https://github.com/erickorso/yelena-booking)
+
+## Stack
+
+- **Next.js 16** (App Router) + React 19 + TypeScript strict
+- **Tailwind CSS v4** + Atomic Design (`atoms` / `molecules` / `organisms` / `templates`)
+- **Firebase Auth** (Email/Password + Google) + **Custom Claims** (`paciente` | `especialista` | `admin`)
+- **Cloud Firestore** (perfiles, especialistas, citas, EHR metadata)
+- **Vercel Blob** (PDFs/imágenes — alternativa free a Firebase Storage en Spark)
+- **next-intl** (ES/EN) + **next-themes** (claro/oscuro)
+- **Vitest** + Testing Library
+
+Arquitectura y reglas SOLID: ver [`PROJECT_CONTEXT.md`](./PROJECT_CONTEXT.md).
+
+## Roles
+
+| Claim | Quién |
+|---|---|
+| _(sin sesión)_ | Invitado — landing + directorio público |
+| `paciente` | Reserva / su historial |
+| `especialista` | Agenda + notas (alta inicia en `pending`) |
+| `admin` | Aprobaciones y governance (solo seed) |
+
+## Setup local
+
+### 1. Instalar
 
 ```bash
-npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
+npm install
+cp .env.example .env.local
 ```
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+### 2. Variables (`.env.local`)
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+```env
+NEXT_PUBLIC_FIREBASE_API_KEY=
+NEXT_PUBLIC_FIREBASE_AUTH_DOMAIN=
+NEXT_PUBLIC_FIREBASE_PROJECT_ID=
+NEXT_PUBLIC_FIREBASE_STORAGE_BUCKET=
+NEXT_PUBLIC_FIREBASE_MESSAGING_SENDER_ID=
+NEXT_PUBLIC_FIREBASE_APP_ID=
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
+FIREBASE_ADMIN_PROJECT_ID=
+FIREBASE_ADMIN_CLIENT_EMAIL=
+FIREBASE_ADMIN_PRIVATE_KEY="-----BEGIN PRIVATE KEY-----\n...\n-----END PRIVATE KEY-----\n"
 
-## Learn More
+BLOB_READ_WRITE_TOKEN=
+BLOB_STORE_ID=
+```
 
-To learn more about Next.js, take a look at the following resources:
+- Firebase web: Console → Project settings → Your apps  
+- Admin: Console → Service accounts → Generate new private key  
+- Blob: [Vercel](https://vercel.com/dashboard) → Storage → Blob → Read-Write token  
 
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
+### 3. Firebase Console
 
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
+1. Auth → Email/Password + Google  
+2. Firestore (Standard, native)  
+3. Pegar [`firestore.rules`](./firestore.rules) en Firestore → Rules  
+4. (Storage Firebase no hace falta en v1)
 
-## Deploy on Vercel
+### 4. Seed + dev
 
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
+```bash
+npm run seed
+npm run dev
+```
 
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+Abre [http://localhost:3000/es](http://localhost:3000/es)
+
+### Cuentas demo (seed)
+
+| Rol | Email | Password |
+|---|---|---|
+| Admin | `admin@yelena.app` | `YelenaAdmin123!` |
+| Paciente | `paciente@yelena.app` | `YelenaPatient123!` |
+| Especialista (activo) | `especialista@yelena.app` | `YelenaSpecialist123!` |
+| Especialista (pending) | `especialista.pending@yelena.app` | `YelenaSpecialist123!` |
+
+## Scripts
+
+| Comando | Descripción |
+|---|---|
+| `npm run dev` | Dev server |
+| `npm run build` | Build producción |
+| `npm run typecheck` | `tsc --noEmit` |
+| `npm run lint` | ESLint |
+| `npm test` | Vitest |
+| `npm run seed` | Usuarios + claims + docs Firestore |
+
+## Estructura
+
+```
+src/
+  app/[locale]/          # UI + i18n routes
+  app/api/               # BFF (claims, bootstrap, files, specialists)
+  components/            # Atomic Design
+  repositories/          # Interfaces + Admin Firestore + stubs
+  services/              # Casos de uso (auth, appointments, EHR, upload)
+  adapters/firestore/    # Docs crudos → domain
+  types/domain/          # Modelos tipados
+  lib/firebase/          # client (static NEXT_PUBLIC_*) + admin (server-only)
+  lib/storage/           # IFileStorage → Vercel Blob
+```
+
+## Deploy (Vercel)
+
+1. Importar el repo en Vercel  
+2. Env vars: las mismas que `.env.local` (Production + Preview; ideal también Development)  
+3. Secrets de GitHub Actions (opcional, workflows en `.github/workflows/`):
+   - `VERCEL_TOKEN`
+   - `VERCEL_ORG_ID`
+   - `VERCEL_PROJECT_ID`
+
+Tras el primer push a `main`, Vercel despliega automáticamente si el proyecto está linkeado al repo.
+
+## Rutas útiles
+
+| Ruta | Uso |
+|---|---|
+| `/es` `/en` | Landing |
+| `/es/login` `/es/register` | Auth |
+| `/es/specialists` | Directorio (activos) |
+| `/es/dashboard/*` | Paneles por rol |
+
+## Notas
+
+- **Spark:** Custom Claims vía Admin en BFF; sin Cloud Functions en v1.  
+- **Archivos:** Vercel Blob (`private`) + metadata en `medicalFiles`.  
+- **Tailwind v4 + next-themes:** `@custom-variant dark` en `globals.css` (clase `.dark` en `<html>`).  
+- No commitear `.env.local` ni JSON de service account.
+
+## Licencia
+
+Uso de portfolio / privado — ver visibilidad del repo en GitHub.

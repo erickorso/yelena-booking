@@ -15,7 +15,11 @@ export interface MedicalFile {
   id: string;
   patientId: string;
   uploadedById: string;
+  /** Object key in the storage provider. */
   storagePath: string;
+  /** Access URL from the storage provider. */
+  url: string;
+  provider: "vercel_blob";
   fileName: string;
   contentType: string;
   sizeBytes: number;

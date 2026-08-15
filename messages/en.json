@@ -3,6 +3,8 @@
     "name": "Yelena",
     "tagline": "Medical appointments and clinical records",
     "ctaDirectory": "Browse specialists",
+    "ctaLogin": "Sign in",
+    "ctaRegister": "Create account",
     "themeLight": "Light",
     "themeDark": "Dark",
     "themeSystem": "System",
@@ -11,5 +13,69 @@
   "Home": {
     "title": "Care, scheduled with clarity",
     "description": "Book specialists, manage availability, and keep clinical history secure."
+  },
+  "Directory": {
+    "title": "Specialists",
+    "subtitle": "Public directory of active specialists.",
+    "loading": "Loading specialists…",
+    "empty": "No active specialists yet.",
+    "error": "Could not load the directory.",
+    "rating": "Rating {value}",
+    "bookCta": "Book"
+  },
+  "Auth": {
+    "loginTitle": "Sign in",
+    "loginSubtitle": "Access as patient, specialist, or admin.",
+    "registerTitle": "Create account",
+    "registerSubtitle": "Pick your role. Specialists stay pending until an admin approves them.",
+    "email": "Email",
+    "password": "Password",
+    "displayName": "Full name",
+    "specialty": "Specialty",
+    "licenseNumber": "License number",
+    "roleLabel": "Account type",
+    "roles": {
+      "paciente": "Patient",
+      "especialista": "Specialist"
+    },
+    "loginCta": "Sign in",
+    "registerCta": "Register",
+    "googleCta": "Continue with Google",
+    "loading": "Loading…",
+    "logout": "Sign out",
+    "noAccount": "No account yet?",
+    "hasAccount": "Already have an account?",
+    "registerLink": "Register",
+    "loginLink": "Sign in",
+    "goDashboard": "Go to dashboard",
+    "errors": {
+      "generic": "Something went wrong.",
+      "forbidden": "You do not have access to this dashboard.",
+      "specialistFields": "Fill specialty and license before using Google."
+    }
+  },
+  "Dashboard": {
+    "patientTitle": "Patient dashboard",
+    "patientBody": "Book appointments and view your records here. Coming next.",
+    "specialistTitle": "Specialist dashboard",
+    "specialistBody": "Complete your specialist profile to operate on the platform.",
+    "loadingStatus": "Checking approval status…",
+    "pendingTitle": "Pending approval",
+    "pendingBody": "An admin must verify your credentials before you appear in the directory and manage appointments.",
+    "rejectedTitle": "Application rejected",
+    "rejectedBody": "Your specialist application was rejected. Contact an admin if you think this is a mistake.",
+    "activeBody": "Account active · {specialty}. Schedule and clinical notes come next.",
+    "adminTitle": "Admin dashboard",
+    "adminBody": "Approve or reject specialist applications. Only active specialists appear in the public directory."
+  },
+  "Admin": {
+    "queueTitle": "Pending specialists",
+    "loading": "Loading queue…",
+    "empty": "No pending applications.",
+    "refresh": "Refresh",
+    "approve": "Approve",
+    "reject": "Reject",
+    "loadError": "Could not load the queue.",
+    "actionError": "Could not update status."
   }
 }

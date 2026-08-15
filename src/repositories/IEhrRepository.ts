@@ -11,6 +11,8 @@ export interface CreateMedicalFileInput {
   patientId: string;
   uploadedById: string;
   storagePath: string;
+  url: string;
+  provider: "vercel_blob";
   fileName: string;
   contentType: string;
   sizeBytes: number;

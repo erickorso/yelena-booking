@@ -51,6 +51,8 @@ export class StubEhrRepository implements IEhrRepository {
       patientId: input.patientId,
       uploadedById: input.uploadedById,
       storagePath: input.storagePath,
+      url: input.url,
+      provider: input.provider,
       fileName: input.fileName,
       contentType: input.contentType,
       sizeBytes: input.sizeBytes,

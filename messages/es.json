@@ -3,6 +3,8 @@
     "name": "Yelena",
     "tagline": "Citas médicas e historias clínicas",
     "ctaDirectory": "Ver especialistas",
+    "ctaLogin": "Entrar",
+    "ctaRegister": "Crear cuenta",
     "themeLight": "Claro",
     "themeDark": "Oscuro",
     "themeSystem": "Sistema",
@@ -11,5 +13,69 @@
   "Home": {
     "title": "Cuidado, con agenda clara",
     "description": "Reserva especialistas, gestiona disponibilidad y protege el historial clínico."
+  },
+  "Directory": {
+    "title": "Especialistas",
+    "subtitle": "Directorio público de especialistas activos.",
+    "loading": "Cargando especialistas…",
+    "empty": "No hay especialistas activos todavía.",
+    "error": "No se pudo cargar el directorio.",
+    "rating": "Valoración {value}",
+    "bookCta": "Reservar"
+  },
+  "Auth": {
+    "loginTitle": "Iniciar sesión",
+    "loginSubtitle": "Accede como paciente, especialista o admin.",
+    "registerTitle": "Crear cuenta",
+    "registerSubtitle": "Elige tu rol. Los especialistas quedan pendientes hasta que un admin los apruebe.",
+    "email": "Correo",
+    "password": "Contraseña",
+    "displayName": "Nombre",
+    "specialty": "Especialidad",
+    "licenseNumber": "Nº de colegiado / licencia",
+    "roleLabel": "Tipo de cuenta",
+    "roles": {
+      "paciente": "Paciente",
+      "especialista": "Especialista"
+    },
+    "loginCta": "Entrar",
+    "registerCta": "Registrarme",
+    "googleCta": "Continuar con Google",
+    "loading": "Cargando…",
+    "logout": "Cerrar sesión",
+    "noAccount": "¿No tienes cuenta?",
+    "hasAccount": "¿Ya tienes cuenta?",
+    "registerLink": "Regístrate",
+    "loginLink": "Inicia sesión",
+    "goDashboard": "Ir al panel",
+    "errors": {
+      "generic": "No se pudo completar la operación.",
+      "forbidden": "No tienes permiso para ver este panel.",
+      "specialistFields": "Completa especialidad y licencia antes de usar Google."
+    }
+  },
+  "Dashboard": {
+    "patientTitle": "Panel del paciente",
+    "patientBody": "Desde aquí reservarás citas y verás tu historial. Próximamente.",
+    "specialistTitle": "Panel del especialista",
+    "specialistBody": "Completa tu perfil de especialista para operar en la plataforma.",
+    "loadingStatus": "Comprobando estado de aprobación…",
+    "pendingTitle": "Pendiente de aprobación",
+    "pendingBody": "Un administrador debe verificar tus credenciales antes de aparecer en el directorio y gestionar citas.",
+    "rejectedTitle": "Solicitud rechazada",
+    "rejectedBody": "Tu alta como especialista fue rechazada. Contacta al administrador si crees que es un error.",
+    "activeBody": "Cuenta activa · {specialty}. Agenda y notas clínicas llegan en la siguiente fase.",
+    "adminTitle": "Panel de administración",
+    "adminBody": "Aprueba o rechaza altas de especialistas. Solo los activos aparecen en el directorio público."
+  },
+  "Admin": {
+    "queueTitle": "Especialistas pendientes",
+    "loading": "Cargando cola…",
+    "empty": "No hay solicitudes pendientes.",
+    "refresh": "Actualizar",
+    "approve": "Aprobar",
+    "reject": "Rechazar",
+    "loadError": "No se pudo cargar la cola.",
+    "actionError": "No se pudo actualizar el estado."
   }
 }

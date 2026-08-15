@@ -7,44 +7,57 @@ service cloud.firestore {
     }
 
     function role() {
-      return signedIn() && request.auth.token.role;
+      return request.auth.token.role;
     }
 
     function isAdmin() {
-      return role() == 'admin';
+      return signedIn() && role() == 'admin';
     }
 
     function isPatient() {
-      return role() == 'paciente';
+      return signedIn() && role() == 'paciente';
     }
 
     function isSpecialist() {
-      return role() == 'especialista';
+      return signedIn() && role() == 'especialista';
     }
 
     function isOwner(uid) {
       return signedIn() && request.auth.uid == uid;
     }
 
-    // Deny by default
-    match /{document=**} {
-      allow read, write: if false;
+    match /_meta/{docId} {
+      allow read: if signedIn();
+      allow write: if isAdmin();
+    }
+
+    match /_health/{docId} {
+      allow read, write: if isAdmin();
     }
 
     match /users/{userId} {
       allow read: if isOwner(userId) || isAdmin();
-      allow create: if isOwner(userId);
-      allow update: if isOwner(userId) || isAdmin();
+      allow create: if isOwner(userId)
+        && request.resource.data.role in ['paciente', 'especialista']
+        && request.resource.data.keys().hasAll(['email', 'displayName', 'role', 'locale']);
+      allow update: if isAdmin()
+        || (isOwner(userId)
+          && request.resource.data.role == resource.data.role);
       allow delete: if isAdmin();
     }
 
     match /specialists/{specialistId} {
-      allow read: if resource.data.status == 'active' || isAdmin()
+      allow read: if resource.data.status == 'active'
+        || isAdmin()
         || (signedIn() && resource.data.userId == request.auth.uid);
-      allow create: if signedIn() && request.resource.data.userId == request.auth.uid
+      allow create: if signedIn()
+        && request.resource.data.userId == request.auth.uid
         && request.resource.data.status == 'pending';
       allow update: if isAdmin()
-        || (signedIn() && resource.data.userId == request.auth.uid);
+        || (signedIn()
+          && resource.data.userId == request.auth.uid
+          && request.resource.data.status == resource.data.status
+          && request.resource.data.userId == resource.data.userId);
       allow delete: if isAdmin();
     }
 
@@ -72,13 +85,13 @@ service cloud.firestore {
         ));
       allow create: if isSpecialist()
         && request.resource.data.specialistId == request.auth.uid;
-      // Immutable: no update/delete for specialists or patients
       allow update, delete: if isAdmin();
     }
 
     match /medicalFiles/{fileId} {
       allow read: if isAdmin()
-        || (signedIn() && resource.data.patientId == request.auth.uid);
+        || (signedIn() && resource.data.patientId == request.auth.uid)
+        || (isSpecialist());
       allow create: if signedIn()
         && request.resource.data.patientId == request.auth.uid;
       allow update, delete: if isAdmin();

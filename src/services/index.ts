@@ -1,3 +1,5 @@
 export { AppointmentService } from "./appointmentService";
 export { EhrService } from "./ehrService";
 export { UserService } from "./userService";
+export { FileUploadService } from "./fileUploadService";
+export * as authService from "./authService";

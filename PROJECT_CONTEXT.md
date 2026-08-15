@@ -11,7 +11,7 @@ Yelena App is a production-ready web application for medical/specialist appointm
 - **Backend / Firebase (Spark / Free tier focused):**
   - **Firebase Auth:** Email/Password + Google OAuth (Custom Claims for roles)
   - **Cloud Firestore:** Database
-  - **Cloud Storage:** Medical files, profile pictures, attachments
+  - **File storage (v1):** **Vercel Blob** for PDFs/images (Firebase Storage requires Blaze). Firestore stores `MedicalFile` metadata only. Swappable via `IFileStorage`.
   - **Firebase Admin SDK:** Server-only (BFF Route Handlers). Never on the client.
 - **Testing & Quality:** Vitest + React Testing Library + ESLint + Prettier + Strict `tsc`
 - **i18n & Theme:** EN/ES (`next-intl`) + light/dark (`next-themes`) from day 1
@@ -20,7 +20,8 @@ Yelena App is a production-ready web application for medical/specialist appointm
 
 - Custom Claims only via Admin SDK in Next.js BFF (`app/api/*`). OK on free tier.
 - No Cloud Functions in v1; privileged logic lives in Route Handlers.
-- EHR “encryption” in v1 = Storage rules + path scoping + claim gates. Client-side encryption is phase 2.
+- No Firebase Storage on Spark — use Vercel Blob (`BLOB_READ_WRITE_TOKEN`) + private access + path scoping (`patients/{uid}/...`).
+- EHR “encryption” phase 2; v1 = private blobs + claim gates + metadata in Firestore.
 
 ## 3. Architecture, Patterns & SOLID (Mandatory)
 
@@ -70,9 +71,19 @@ Claims store: `paciente` | `especialista` | `admin` only. Guest = unauthenticate
 2. **Specialist Onboarding:** `pending` → Admin verify → `active`. Filters: specialty, availability, location/rating.
 3. **Availability Engine:** Weekly recurring slots + date overrides (blocks/vacations).
 4. **Appointments:** `pending` | `confirmed` | `completed` | `cancelled` | `no_show`.
-5. **EHR:** Immutable notes per appointment; patient file uploads (PDF/labs) under strict Storage rules.
+5. **EHR:** Immutable notes per appointment; patient file uploads via **Vercel Blob**; metadata in Firestore.
 6. **Admin Dashboard:** Pending specialist queue, platform stats, user management.
 7. **i18n & Theme:** System-wide dark/light + EN/ES.
+
+### Collections (Firestore)
+
+- `users/{uid}` — profile + role
+- `specialists/{uid}` — onboarding (`pending`|`active`|`rejected`)
+- `appointments/{id}`, `ehrNotes/{id}`, `medicalFiles/{id}`
+- `availabilityRules/{id}`, `availabilityOverrides/{id}`
+- `_meta/seed` — seed marker
+
+Seed: `npm run seed` (demo users in script output).
 
 ## 6. Security Principles
 

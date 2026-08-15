@@ -16,21 +16,26 @@ export function Input({
   const inputId = id ?? props.name;
 
   return (
-    <label className="flex flex-col gap-1.5 text-sm text-zinc-800 dark:text-zinc-100">
+    <label className="flex flex-col gap-1.5 text-sm text-stone-800 dark:text-slate-100">
       <span className="font-medium">{label}</span>
       <input
         id={inputId}
         aria-invalid={error ? true : undefined}
         aria-describedby={error && inputId ? `${inputId}-error` : undefined}
         className={clsx(
-          "h-10 rounded-md border border-zinc-300 bg-white px-3 text-zinc-900 outline-none focus-visible:border-teal-700 focus-visible:ring-2 focus-visible:ring-teal-700/30 dark:border-zinc-600 dark:bg-zinc-950 dark:text-zinc-50",
-          error && "border-red-600 focus-visible:border-red-600 focus-visible:ring-red-600/30",
+          "h-10 rounded-md border border-stone-300 bg-white px-3 text-stone-900 outline-none focus-visible:border-teal-700 focus-visible:ring-2 focus-visible:ring-teal-700/30 dark:border-slate-600 dark:bg-slate-900 dark:text-slate-50 dark:placeholder:text-slate-400",
+          error &&
+            "border-red-600 focus-visible:border-red-600 focus-visible:ring-red-600/30 dark:border-red-400",
           className,
         )}
         {...props}
       />
       {error ? (
-        <span id={inputId ? `${inputId}-error` : undefined} role="alert" className="text-xs text-red-600">
+        <span
+          id={inputId ? `${inputId}-error` : undefined}
+          role="alert"
+          className="text-xs text-red-600 dark:text-red-400"
+        >
           {error}
         </span>
       ) : null}

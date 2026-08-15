@@ -1,4 +1,5 @@
 import type { UserProfile, AuthRole, SpecialistProfile } from "@/types/domain";
+import type { CreateSpecialistProfileInput } from "./specialistTypes";
 
 export interface CreateUserProfileInput {
   id: string;
@@ -16,6 +17,9 @@ export interface IUserRepository {
   getById(id: string): Promise<UserProfile | null>;
   create(input: CreateUserProfileInput): Promise<UserProfile>;
   updateRole(id: string, role: AuthRole): Promise<UserProfile>;
+  createSpecialist(
+    input: CreateSpecialistProfileInput,
+  ): Promise<SpecialistProfile>;
   getSpecialistByUserId(userId: string): Promise<SpecialistProfile | null>;
   listPendingSpecialists(): Promise<SpecialistProfile[]>;
   setSpecialistStatus(
