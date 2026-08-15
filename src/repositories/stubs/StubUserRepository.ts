@@ -29,6 +29,7 @@ export class StubUserRepository implements IUserRepository {
       photoUrl: input.photoUrl ?? null,
       role: input.role,
       locale: input.locale ?? "es",
+      timezone: null,
       createdAt: now,
       updatedAt: now,
     };
@@ -59,6 +60,7 @@ export class StubUserRepository implements IUserRepository {
       location: input.location ?? "",
       rating: null,
       status: input.status ?? "pending",
+      timezone: null,
       createdAt: now,
       updatedAt: now,
     };

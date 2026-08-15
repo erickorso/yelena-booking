@@ -2,12 +2,11 @@ import { NextResponse } from "next/server";
 import { isErrorResponse, requireAdmin } from "@/lib/auth/requireAdmin";
 import { AdminUserRepository } from "@/repositories/firestore/AdminUserRepository";
 import type { SpecialistStatus } from "@/types/domain";
+import { isSpecialistStatus } from "@/types/domain";
 
 interface StatusBody {
   status?: unknown;
 }
-
-const ALLOWED: readonly SpecialistStatus[] = ["active", "rejected", "pending"];
 
 /**
  * PATCH /api/admin/specialists/[id]
@@ -32,17 +31,14 @@ export async function PATCH(
     return NextResponse.json({ error: "Invalid JSON body" }, { status: 400 });
   }
 
-  if (
-    typeof body.status !== "string" ||
-    !ALLOWED.includes(body.status as SpecialistStatus)
-  ) {
+  if (!isSpecialistStatus(body.status)) {
     return NextResponse.json(
       { error: "status must be active | rejected | pending" },
       { status: 400 },
     );
   }
 
-  const status = body.status as SpecialistStatus;
+  const status: SpecialistStatus = body.status;
 
   try {
     const users = new AdminUserRepository();

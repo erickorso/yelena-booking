@@ -43,3 +43,46 @@ export interface MedicalFile {
   sizeBytes: number;
   createdAt: Date;
 }
+
+export function isMedicalFileScope(value: unknown): value is MedicalFileScope {
+  return (
+    typeof value === "string" &&
+    (MEDICAL_FILE_SCOPES as readonly string[]).includes(value)
+  );
+}
+
+/**
+ * Scope ↔ ownership invariants for medical files.
+ */
+export function assertMedicalFileOwnership(input: {
+  scope: MedicalFileScope;
+  patientId: string | null;
+  specialistProfileId: string | null;
+  appointmentId: string | null;
+}): void {
+  if (input.scope === "specialist_profile") {
+    if (!input.specialistProfileId) {
+      throw new Error("specialistProfileId is required for specialist_profile");
+    }
+    if (input.patientId) {
+      throw new Error("patientId must be null for specialist_profile");
+    }
+    if (input.appointmentId) {
+      throw new Error("appointmentId must be null for specialist_profile");
+    }
+    return;
+  }
+
+  if (!input.patientId) {
+    throw new Error("patientId is required for patient scopes");
+  }
+  if (input.specialistProfileId) {
+    throw new Error("specialistProfileId must be null for patient scopes");
+  }
+  if (input.scope === "appointment" && !input.appointmentId) {
+    throw new Error("appointmentId is required for appointment scope");
+  }
+  if (input.scope === "patient_general" && input.appointmentId) {
+    throw new Error("appointmentId must be null for patient_general");
+  }
+}

@@ -35,6 +35,7 @@ export class AdminUserRepository implements IUserRepository {
       photoUrl: input.photoUrl ?? null,
       role: input.role,
       locale: input.locale ?? "es",
+      timezone: null,
       createdAt: FieldValue.serverTimestamp(),
       updatedAt: FieldValue.serverTimestamp(),
     };
@@ -69,6 +70,7 @@ export class AdminUserRepository implements IUserRepository {
         location: input.location ?? "",
         rating: null,
         status: input.status ?? "pending",
+        timezone: null,
         createdAt: FieldValue.serverTimestamp(),
         updatedAt: FieldValue.serverTimestamp(),
       },

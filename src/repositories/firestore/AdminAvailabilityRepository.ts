@@ -3,6 +3,7 @@ import "server-only";
 import { FieldValue } from "firebase-admin/firestore";
 import { getAdminFirestore } from "@/lib/firebase/admin";
 import type { TimeRange, Weekday } from "@/types/domain";
+import { assertValidSchedule } from "@/types/domain";
 import {
   DEFAULT_SCHEDULE,
   type ScheduleConfig,
@@ -84,7 +85,11 @@ export class AdminAvailabilityRepository {
     if (!saved || saved.workdays.length === 0 || saved.ranges.length === 0) {
       return DEFAULT_SCHEDULE;
     }
-    return { workdays: saved.workdays, ranges: saved.ranges };
+    return {
+      workdays: saved.workdays,
+      ranges: saved.ranges,
+      timezone: saved.timezone,
+    };
   }
 
   async upsert(input: {
@@ -93,6 +98,11 @@ export class AdminAvailabilityRepository {
     workdays: Weekday[];
     ranges: TimeRange[];
   }): Promise<SpecialistScheduleDoc> {
+    assertValidSchedule({
+      workdays: input.workdays,
+      ranges: input.ranges,
+      timezone: input.timezone,
+    });
     const ref = (await this.db()).collection(COLLECTION).doc(input.specialistId);
     const existing = await ref.get();
     await ref.set(

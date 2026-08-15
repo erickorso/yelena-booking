@@ -1,5 +1,9 @@
 import type { MedicalFile, MedicalFileScope } from "@/types/domain";
-import type { CreateMedicalFileInput, IEhrRepository } from "@/repositories/IEhrRepository";
+import { assertMedicalFileOwnership } from "@/types/domain";
+import type {
+  CreateMedicalFileInput,
+  IEhrRepository,
+} from "@/repositories/IEhrRepository";
 import type { IFileStorage } from "@/lib/storage";
 import {
   assertValidMedicalUpload,
@@ -29,18 +33,12 @@ export class FileUploadService {
 
   async uploadMedicalFile(input: UploadMedicalFileInput): Promise<MedicalFile> {
     assertValidMedicalUpload(input.file);
-
-    if (input.scope === "specialist_profile") {
-      if (!input.specialistProfileId) {
-        throw new Error("specialistProfileId is required");
-      }
-    } else if (!input.patientId) {
-      throw new Error("patientId is required");
-    }
-
-    if (input.scope === "appointment" && !input.appointmentId) {
-      throw new Error("appointmentId is required for appointment scope");
-    }
+    assertMedicalFileOwnership({
+      scope: input.scope,
+      patientId: input.patientId,
+      specialistProfileId: input.specialistProfileId,
+      appointmentId: input.appointmentId,
+    });
 
     const path =
       input.scope === "specialist_profile"

@@ -51,4 +51,19 @@ describe("AppointmentService", () => {
     expect(updated.status).toBe("confirmed");
     expect((await service.getById(appt.id))?.status).toBe("confirmed");
   });
+
+  it("rejects illegal status transitions", async () => {
+    const repo = new StubAppointmentRepository();
+    const service = new AppointmentService(repo);
+    const appt = await service.book({
+      patientId: "p1",
+      specialistId: "s1",
+      startsAt: new Date("2026-09-01T10:00:00.000Z"),
+      endsAt: new Date("2026-09-01T10:30:00.000Z"),
+    });
+    await service.transitionStatus(appt.id, "cancelled");
+    await expect(service.transitionStatus(appt.id, "confirmed")).rejects.toThrow(
+      /Cannot transition/,
+    );
+  });
 });

@@ -67,11 +67,13 @@ Claims store: `paciente` | `especialista` | `admin` only. Guest = unauthenticate
 
 ## 5. Key Modules & Domain Model
 
-1. **Auth & Identity:** Claims via BFF (`/api/auth/set-claim`). Firestore user profile on signup.
-2. **Specialist Onboarding:** `pending` → Admin verify → `active`. Filters: specialty, availability, location/rating.
-3. **Availability Engine:** Weekly recurring slots + date overrides (blocks/vacations).
-4. **Appointments:** `pending` | `confirmed` | `completed` | `cancelled` | `no_show`.
-5. **EHR:** Immutable notes per appointment; patient file uploads via **Vercel Blob**; metadata in Firestore.
+Domain lives in `src/types/domain/` with **invariants as pure functions** (guards + asserts). Services call asserts before persistence.
+
+1. **Auth & Identity:** Claims via BFF (`/api/auth/set-claim`). Firestore user profile on signup. `locale` + optional `timezone` (IANA).
+2. **Specialist Onboarding:** `pending` → Admin verify → `active` (`isActiveSpecialist`). Filters: specialty, availability, location/rating.
+3. **Availability Engine:** `SpecialistSchedule` (workdays + ranges + timezone) + date overrides.
+4. **Appointments:** FSM `APPOINTMENT_TRANSITIONS`; transfers via `canRequestTransfer`.
+5. **EHR:** Immutable notes; medical files append-only with `assertMedicalFileOwnership` by scope.
 6. **Admin Dashboard:** Pending specialist queue, platform stats, user management.
 7. **i18n & Theme:** System-wide dark/light + EN/ES.
 

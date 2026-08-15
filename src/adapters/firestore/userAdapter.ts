@@ -8,6 +8,7 @@ export interface UserProfileDoc {
   photoUrl?: unknown;
   role?: unknown;
   locale?: unknown;
+  timezone?: unknown;
   createdAt?: unknown;
   updatedAt?: unknown;
 }
@@ -33,6 +34,7 @@ export function adaptUserProfile(
     photoUrl: optionalString(data.photoUrl),
     role: role as AuthRole,
     locale,
+    timezone: optionalString(data.timezone ?? null),
     createdAt: toDate(data.createdAt),
     updatedAt: toDate(data.updatedAt),
   };

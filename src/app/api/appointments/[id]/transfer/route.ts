@@ -5,6 +5,7 @@ import { AdminAppointmentRepository } from "@/repositories/firestore/AdminAppoin
 import { AdminNotificationRepository } from "@/repositories/firestore/AdminNotificationRepository";
 import { AdminUserRepository } from "@/repositories/firestore/AdminUserRepository";
 import { enqueueMail, MailService } from "@/services/mailService";
+import { assertCanRequestTransfer } from "@/types/domain";
 
 /**
  * POST /api/appointments/[id]/transfer
@@ -56,6 +57,14 @@ export async function POST(
     if (appt.transfer.status === "pending") {
       return NextResponse.json(
         { error: "Transfer already pending" },
+        { status: 409 },
+      );
+    }
+    try {
+      assertCanRequestTransfer(appt);
+    } catch (err) {
+      return NextResponse.json(
+        { error: err instanceof Error ? err.message : "Transfer not allowed" },
         { status: 409 },
       );
     }

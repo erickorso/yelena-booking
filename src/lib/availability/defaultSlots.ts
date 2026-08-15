@@ -1,4 +1,4 @@
-import type { TimeRange, Weekday } from "@/types/domain";
+import type { TimeRange, Weekday, SpecialistSchedule } from "@/types/domain";
 import type { AppointmentStatus } from "@/types/domain";
 
 export type BusyInterval = {
@@ -12,11 +12,8 @@ export type FreeSlot = {
   endsAt: Date;
 };
 
-/** Schedule used to generate bookable slots. */
-export type ScheduleConfig = {
-  workdays: readonly Weekday[];
-  ranges: readonly TimeRange[];
-};
+/** @deprecated Prefer SpecialistSchedule from domain; alias kept for call sites. */
+export type ScheduleConfig = SpecialistSchedule;
 
 export const SLOT_MINUTES = 30;
 
@@ -27,6 +24,7 @@ export const DEFAULT_SCHEDULE: ScheduleConfig = {
     { start: "09:00", end: "13:00" },
     { start: "15:00", end: "18:00" },
   ],
+  timezone: "Europe/Madrid",
 };
 
 const BLOCKING: ReadonlySet<string> = new Set([

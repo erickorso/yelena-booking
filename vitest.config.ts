@@ -20,6 +20,11 @@ export default defineConfig({
         "src/adapters/firestore/appointmentAdapter.ts",
         "src/repositories/stubs/StubAppointmentRepository.ts",
         "src/repositories/stubs/StubEhrRepository.ts",
+        "src/types/domain/appointment.ts",
+        "src/types/domain/availability.ts",
+        "src/types/domain/ehr.ts",
+        "src/types/domain/user.ts",
+        "src/types/domain/roles.ts",
       ],
       thresholds: {
         lines: 80,

@@ -1,11 +1,6 @@
-import type { SpecialistProfile, SpecialistStatus } from "@/types/domain";
-import { requireString, toDate } from "./helpers";
-
-const STATUSES: readonly SpecialistStatus[] = [
-  "pending",
-  "active",
-  "rejected",
-];
+import type { SpecialistProfile } from "@/types/domain";
+import { isSpecialistStatus } from "@/types/domain";
+import { optionalString, requireString, toDate } from "./helpers";
 
 export interface SpecialistProfileDoc {
   userId?: unknown;
@@ -15,15 +10,9 @@ export interface SpecialistProfileDoc {
   rating?: unknown;
   status?: unknown;
   licenseNumber?: unknown;
+  timezone?: unknown;
   createdAt?: unknown;
   updatedAt?: unknown;
-}
-
-function isSpecialistStatus(value: unknown): value is SpecialistStatus {
-  return (
-    typeof value === "string" &&
-    (STATUSES as readonly string[]).includes(value)
-  );
 }
 
 /**
@@ -55,6 +44,7 @@ export function adaptSpecialistProfile(
     rating,
     status: data.status,
     licenseNumber: requireString(data.licenseNumber, "licenseNumber"),
+    timezone: optionalString(data.timezone ?? null),
     createdAt: toDate(data.createdAt),
     updatedAt: toDate(data.updatedAt),
   };

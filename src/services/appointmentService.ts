@@ -1,4 +1,8 @@
 import type { Appointment, AppointmentStatus } from "@/types/domain";
+import {
+  assertCanTransitionAppointment,
+  assertValidAppointmentInterval,
+} from "@/types/domain";
 import type {
   AppointmentFilters,
   CreateAppointmentInput,
@@ -20,16 +24,19 @@ export class AppointmentService {
   }
 
   book(input: CreateAppointmentInput): Promise<Appointment> {
-    if (input.endsAt <= input.startsAt) {
-      throw new Error("Appointment end must be after start");
-    }
+    assertValidAppointmentInterval(input.startsAt, input.endsAt);
     return this.appointments.create(input);
   }
 
-  transitionStatus(
+  async transitionStatus(
     id: string,
     status: AppointmentStatus,
   ): Promise<Appointment> {
+    const current = await this.appointments.getById(id);
+    if (!current) {
+      throw new Error("Appointment not found");
+    }
+    assertCanTransitionAppointment(current.status, status);
     return this.appointments.updateStatus(id, status);
   }
 }
