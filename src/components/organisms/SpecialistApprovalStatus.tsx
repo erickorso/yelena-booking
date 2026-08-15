@@ -5,6 +5,7 @@ import { useTranslations } from "next-intl";
 import { useAuth } from "@/components/providers/AuthProvider";
 import { getIdToken } from "@/services/authService";
 import type { SpecialistStatus } from "@/types/domain";
+import { SpecialistClinicPanel } from "@/components/organisms/SpecialistClinicPanel";
 
 export function SpecialistApprovalStatus() {
   const t = useTranslations("Dashboard");
@@ -71,10 +72,11 @@ export function SpecialistApprovalStatus() {
 
   if (status === "active") {
     return (
-      <div className="space-y-2">
+      <div className="space-y-6">
         <p className="text-sm text-stone-600 dark:text-slate-300">
           {t("activeBody", { specialty })}
         </p>
+        <SpecialistClinicPanel />
       </div>
     );
   }

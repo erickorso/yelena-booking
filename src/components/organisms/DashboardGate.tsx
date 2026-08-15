@@ -24,6 +24,10 @@ export function DashboardGate({ allowed, title, children }: DashboardGateProps) 
       router.replace("/login");
       return;
     }
+    if (status === "unverified") {
+      router.replace("/verify-email");
+      return;
+    }
     if (status === "authenticated" && !role) {
       router.replace("/register");
     }

@@ -17,6 +17,10 @@ export default function DashboardIndexPage() {
       router.replace("/login");
       return;
     }
+    if (status === "unverified") {
+      router.replace("/verify-email");
+      return;
+    }
     if (role === "admin") router.replace("/dashboard/admin");
     else if (role === "especialista") router.replace("/dashboard/specialist");
     else if (role === "paciente") router.replace("/dashboard/patient");

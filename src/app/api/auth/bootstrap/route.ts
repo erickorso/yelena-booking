@@ -80,6 +80,15 @@ export async function POST(request: Request) {
   try {
     const auth = await getAdminAuth();
     const decoded = await auth.verifyIdToken(idToken);
+
+    // Password accounts must verify email first; Google is already verified.
+    if (!decoded.email_verified) {
+      return NextResponse.json(
+        { error: "Email not verified" },
+        { status: 403 },
+      );
+    }
+
     const existingClaim =
       typeof decoded.role === "string" ? decoded.role : undefined;
 

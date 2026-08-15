@@ -51,12 +51,26 @@
     "errors": {
       "generic": "No se pudo completar la operación.",
       "forbidden": "No tienes permiso para ver este panel.",
-      "specialistFields": "Completa especialidad y licencia antes de usar Google."
+      "specialistFields": "Completa especialidad y licencia antes de usar Google.",
+      "emailNotVerified": "Debes activar tu cuenta desde el correo de verificación."
     }
+  },
+  "VerifyEmail": {
+    "title": "Activa tu cuenta",
+    "subtitle": "Te enviamos un enlace a {email}. Ábrelo y luego pulsa «Ya verifiqué».",
+    "checkCta": "Ya verifiqué",
+    "resendCta": "Reenviar correo",
+    "logout": "Cerrar sesión",
+    "backLogin": "Volver al login",
+    "loading": "Cargando…",
+    "resent": "Correo reenviado.",
+    "activated": "Cuenta activada. Redirigiendo…",
+    "stillPending": "Aún no está verificada. Revisa tu bandeja (y spam).",
+    "error": "No se pudo completar la acción."
   },
   "Dashboard": {
     "patientTitle": "Panel del paciente",
-    "patientBody": "Desde aquí reservarás citas y verás tu historial. Próximamente.",
+    "patientBody": "Reserva citas como paciente. Los especialistas también pueden usar este panel.",
     "specialistTitle": "Panel del especialista",
     "specialistBody": "Completa tu perfil de especialista para operar en la plataforma.",
     "loadingStatus": "Comprobando estado de aprobación…",
@@ -64,9 +78,59 @@
     "pendingBody": "Un administrador debe verificar tus credenciales antes de aparecer en el directorio y gestionar citas.",
     "rejectedTitle": "Solicitud rechazada",
     "rejectedBody": "Tu alta como especialista fue rechazada. Contacta al administrador si crees que es un error.",
-    "activeBody": "Cuenta activa · {specialty}. Agenda y notas clínicas llegan en la siguiente fase.",
+    "activeBody": "Cuenta activa · {specialty}. Puedes registrar pacientes y citar en su nombre.",
     "adminTitle": "Panel de administración",
-    "adminBody": "Aprueba o rechaza altas de especialistas. Solo los activos aparecen en el directorio público."
+    "adminBody": "Aprueba o rechaza altas de especialistas. Solo los activos aparecen en el directorio público.",
+    "goPatient": "Ir a panel paciente (mis citas)",
+    "goSpecialist": "Ir a panel especialista"
+  },
+  "Promote": {
+    "title": "Pasar a especialista",
+    "subtitle": "Solicita verificación. Quedarás pendiente hasta que un admin apruebe.",
+    "specialty": "Especialidad",
+    "licenseNumber": "Nº de colegiado / licencia",
+    "submit": "Solicitar alta",
+    "submitting": "Enviando…",
+    "success": "Solicitud enviada. Revisa el panel de especialista.",
+    "error": "No se pudo enviar la solicitud."
+  },
+  "Clinic": {
+    "registerTitle": "Registrar paciente",
+    "registerSubtitle": "Crea una cuenta paciente. Guarda la contraseña temporal para entregársela.",
+    "displayName": "Nombre",
+    "email": "Correo",
+    "registerCta": "Crear paciente",
+    "registering": "Creando…",
+    "registerSuccess": "Paciente creado.",
+    "registerError": "No se pudo crear el paciente.",
+    "tempPassword": "Contraseña temporal: {password}",
+    "bookTitle": "Citar a un paciente",
+    "bookSubtitle": "Agenda una cita contigo como especialista.",
+    "patient": "Paciente",
+    "patientPlaceholder": "Selecciona paciente",
+    "startsAt": "Inicio",
+    "endsAt": "Fin (opcional, +30 min)",
+    "bookCta": "Crear cita",
+    "booking": "Creando…",
+    "bookSuccess": "Cita creada.",
+    "bookError": "No se pudo crear la cita.",
+    "scheduleTitle": "Tu agenda",
+    "scheduleEmpty": "Sin citas todavía.",
+    "loadError": "No se pudieron cargar los pacientes."
+  },
+  "PatientBooking": {
+    "title": "Reservar cita",
+    "subtitle": "Elige especialista y horario.",
+    "specialist": "Especialista",
+    "specialistPlaceholder": "Selecciona especialista",
+    "startsAt": "Inicio",
+    "bookCta": "Reservar",
+    "booking": "Reservando…",
+    "bookSuccess": "Cita reservada.",
+    "bookError": "No se pudo reservar.",
+    "myAppointments": "Mis citas",
+    "empty": "Aún no tienes citas.",
+    "loadError": "No se pudo cargar el directorio."
   },
   "Admin": {
     "queueTitle": "Especialistas pendientes",

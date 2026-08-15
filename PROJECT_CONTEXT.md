@@ -59,9 +59,9 @@ messages/              # i18n catalogs (en.json, es.json)
 | Role | Key | Access |
 |---|---|---|
 | Guest | `invitado` | No auth / no claim. Landing, public directory. |
-| Patient | `paciente` | Search, book/cancel, own EHR/files, profile. |
-| Specialist | `especialista` | Schedule, appointments, notes for assigned patients. Admin approval required. |
-| Admin | `admin` | Approvals, audit, full governance. |
+| Patient | `paciente` | Search, book/cancel, own EHR/files, profile. Can request elevation to specialist. |
+| Specialist | `especialista` | Also acts as patient (book for self). Schedule, register patients, book on their behalf, notes. Admin approval required. |
+| Admin | `admin` | Approvals, audit, full governance. Also patient-capable. |
 
 Claims store: `paciente` | `especialista` | `admin` only. Guest = unauthenticated.
 

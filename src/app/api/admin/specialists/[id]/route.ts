@@ -48,6 +48,20 @@ export async function PATCH(
     const users = new AdminUserRepository();
     const updated = await users.setSpecialistStatus(id, status);
 
+    if (status === "rejected" || status === "active") {
+      const { getAdminAuth } = await import("@/lib/firebase/admin");
+      const adminAuth = await getAdminAuth();
+      if (status === "rejected") {
+        await adminAuth.setCustomUserClaims(updated.userId, { role: "paciente" });
+        await users.updateRole(updated.userId, "paciente");
+      } else {
+        await adminAuth.setCustomUserClaims(updated.userId, {
+          role: "especialista",
+        });
+        await users.updateRole(updated.userId, "especialista");
+      }
+    }
+
     return NextResponse.json({
       ok: true,
       specialist: {

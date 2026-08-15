@@ -13,7 +13,13 @@ import type { User } from "firebase/auth";
 import type { AuthRole } from "@/types/domain";
 import {
   bootstrapSession,
+  clearPendingBootstrap,
   getRoleClaim,
+  readPendingBootstrap,
+  reloadUser,
+  requiresEmailVerification,
+  resendEmailVerification,
+  savePendingBootstrap,
   signInWithEmail,
   signInWithGoogle,
   signOut as authSignOut,
@@ -23,7 +29,11 @@ import {
 } from "@/services/authService";
 import { isFirebaseClientConfigured } from "@/lib/firebase/client";
 
-export type AuthStatus = "loading" | "authenticated" | "anonymous";
+export type AuthStatus =
+  | "loading"
+  | "authenticated"
+  | "anonymous"
+  | "unverified";
 
 type AuthContextValue = {
   status: AuthStatus;
@@ -36,6 +46,7 @@ type AuthContextValue = {
       email: string;
       password: string;
       displayName: string;
+      continueUrl: string;
     } & BootstrapPayload,
   ) => Promise<void>;
   loginWithEmail: (input: {
@@ -45,9 +56,33 @@ type AuthContextValue = {
   loginWithGoogle: (bootstrap?: BootstrapPayload) => Promise<AuthRole | null>;
   logout: () => Promise<void>;
   refreshRole: () => Promise<void>;
+  refreshEmailVerification: () => Promise<boolean>;
+  resendVerification: (continueUrl: string) => Promise<void>;
 };
 
 const AuthContext = createContext<AuthContextValue | null>(null);
+
+async function resolveAuthenticatedUser(nextUser: User): Promise<{
+  status: AuthStatus;
+  role: AuthRole | null;
+}> {
+  if (requiresEmailVerification(nextUser)) {
+    return { status: "unverified", role: null };
+  }
+
+  let nextRole = await getRoleClaim(nextUser);
+  if (!nextRole) {
+    const pending = readPendingBootstrap();
+    if (pending) {
+      await bootstrapSession(nextUser, pending);
+      nextRole = pending.role;
+    }
+  } else {
+    clearPendingBootstrap();
+  }
+
+  return { status: "authenticated", role: nextRole };
+}
 
 export function AuthProvider({ children }: { children: ReactNode }) {
   const firebaseReady = isFirebaseClientConfigured();
@@ -72,16 +107,26 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       return;
     }
 
-    return subscribeToAuth(async (nextUser) => {
-      setUser(nextUser);
-      if (!nextUser) {
-        setRole(null);
-        setStatus("anonymous");
-        return;
-      }
-      const nextRole = await getRoleClaim(nextUser);
-      setRole(nextRole);
-      setStatus("authenticated");
+    return subscribeToAuth((nextUser) => {
+      void (async () => {
+        setUser(nextUser);
+        if (!nextUser) {
+          setRole(null);
+          setStatus("anonymous");
+          return;
+        }
+        try {
+          const resolved = await resolveAuthenticatedUser(nextUser);
+          setRole(resolved.role);
+          setStatus(resolved.status);
+        } catch (err) {
+          setError(err instanceof Error ? err.message : "Auth error");
+          setRole(null);
+          setStatus(
+            requiresEmailVerification(nextUser) ? "unverified" : "authenticated",
+          );
+        }
+      })();
     });
   }, [firebaseReady]);
 
@@ -93,6 +138,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         email: string;
         password: string;
         displayName: string;
+        continueUrl: string;
       } & BootstrapPayload,
     ) => {
       setError(null);
@@ -100,8 +146,9 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         email: input.email,
         password: input.password,
         displayName: input.displayName,
+        continueUrl: input.continueUrl,
       });
-      await bootstrapSession(created, {
+      savePendingBootstrap({
         role: input.role,
         displayName: input.displayName,
         locale: input.locale,
@@ -110,7 +157,9 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         bio: input.bio,
         location: input.location,
       });
-      setRole(input.role);
+      setUser(created);
+      setRole(null);
+      setStatus("unverified");
     },
     [],
   );
@@ -119,9 +168,14 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     async (input: { email: string; password: string }) => {
       setError(null);
       const signedIn = await signInWithEmail(input);
-      const nextRole = await getRoleClaim(signedIn);
-      setRole(nextRole);
-      return nextRole;
+      const resolved = await resolveAuthenticatedUser(signedIn);
+      setUser(signedIn);
+      setRole(resolved.role);
+      setStatus(resolved.status);
+      if (resolved.status === "unverified") {
+        throw new Error("EMAIL_NOT_VERIFIED");
+      }
+      return resolved.role;
     },
     [],
   );
@@ -134,7 +188,9 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       await bootstrapSession(signedIn, bootstrap);
       nextRole = bootstrap.role;
     }
+    setUser(signedIn);
     setRole(nextRole);
+    setStatus("authenticated");
     return nextRole;
   }, []);
 
@@ -142,7 +198,32 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     setError(null);
     await authSignOut();
     setRole(null);
+    setUser(null);
+    setStatus("anonymous");
   }, []);
+
+  const refreshEmailVerification = useCallback(async () => {
+    if (!user) return false;
+    const refreshed = await reloadUser(user);
+    setUser(refreshed);
+    if (requiresEmailVerification(refreshed)) {
+      setStatus("unverified");
+      setRole(null);
+      return false;
+    }
+    const resolved = await resolveAuthenticatedUser(refreshed);
+    setRole(resolved.role);
+    setStatus(resolved.status);
+    return resolved.status === "authenticated";
+  }, [user]);
+
+  const resendVerification = useCallback(
+    async (continueUrl: string) => {
+      if (!user) throw new Error("Not signed in");
+      await resendEmailVerification(user, continueUrl);
+    },
+    [user],
+  );
 
   const value = useMemo<AuthContextValue>(
     () => ({
@@ -156,6 +237,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       loginWithGoogle,
       logout,
       refreshRole,
+      refreshEmailVerification,
+      resendVerification,
     }),
     [
       status,
@@ -168,6 +251,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       loginWithGoogle,
       logout,
       refreshRole,
+      refreshEmailVerification,
+      resendVerification,
     ],
   );
 

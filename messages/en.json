@@ -51,12 +51,26 @@
     "errors": {
       "generic": "Something went wrong.",
       "forbidden": "You do not have access to this dashboard.",
-      "specialistFields": "Fill specialty and license before using Google."
+      "specialistFields": "Fill specialty and license before using Google.",
+      "emailNotVerified": "Activate your account from the verification email first."
     }
+  },
+  "VerifyEmail": {
+    "title": "Activate your account",
+    "subtitle": "We sent a link to {email}. Open it, then tap “I’ve verified”.",
+    "checkCta": "I’ve verified",
+    "resendCta": "Resend email",
+    "logout": "Sign out",
+    "backLogin": "Back to sign in",
+    "loading": "Loading…",
+    "resent": "Email resent.",
+    "activated": "Account activated. Redirecting…",
+    "stillPending": "Still pending. Check inbox (and spam).",
+    "error": "Could not complete the action."
   },
   "Dashboard": {
     "patientTitle": "Patient dashboard",
-    "patientBody": "Book appointments and view your records here. Coming next.",
+    "patientBody": "Book appointments as a patient. Specialists can use this panel too.",
     "specialistTitle": "Specialist dashboard",
     "specialistBody": "Complete your specialist profile to operate on the platform.",
     "loadingStatus": "Checking approval status…",
@@ -64,9 +78,59 @@
     "pendingBody": "An admin must verify your credentials before you appear in the directory and manage appointments.",
     "rejectedTitle": "Application rejected",
     "rejectedBody": "Your specialist application was rejected. Contact an admin if you think this is a mistake.",
-    "activeBody": "Account active · {specialty}. Schedule and clinical notes come next.",
+    "activeBody": "Account active · {specialty}. You can register patients and book on their behalf.",
     "adminTitle": "Admin dashboard",
-    "adminBody": "Approve or reject specialist applications. Only active specialists appear in the public directory."
+    "adminBody": "Approve or reject specialist applications. Only active specialists appear in the public directory.",
+    "goPatient": "Go to patient panel (my appointments)",
+    "goSpecialist": "Go to specialist panel"
+  },
+  "Promote": {
+    "title": "Become a specialist",
+    "subtitle": "Request verification. You stay pending until an admin approves.",
+    "specialty": "Specialty",
+    "licenseNumber": "License number",
+    "submit": "Submit application",
+    "submitting": "Submitting…",
+    "success": "Application sent. Check the specialist panel.",
+    "error": "Could not submit the application."
+  },
+  "Clinic": {
+    "registerTitle": "Register patient",
+    "registerSubtitle": "Create a patient account. Save the temporary password to share with them.",
+    "displayName": "Full name",
+    "email": "Email",
+    "registerCta": "Create patient",
+    "registering": "Creating…",
+    "registerSuccess": "Patient created.",
+    "registerError": "Could not create patient.",
+    "tempPassword": "Temporary password: {password}",
+    "bookTitle": "Book for a patient",
+    "bookSubtitle": "Schedule an appointment with you as the specialist.",
+    "patient": "Patient",
+    "patientPlaceholder": "Select patient",
+    "startsAt": "Starts",
+    "endsAt": "Ends (optional, +30 min)",
+    "bookCta": "Create appointment",
+    "booking": "Creating…",
+    "bookSuccess": "Appointment created.",
+    "bookError": "Could not create appointment.",
+    "scheduleTitle": "Your schedule",
+    "scheduleEmpty": "No appointments yet.",
+    "loadError": "Could not load patients."
+  },
+  "PatientBooking": {
+    "title": "Book appointment",
+    "subtitle": "Pick a specialist and time.",
+    "specialist": "Specialist",
+    "specialistPlaceholder": "Select specialist",
+    "startsAt": "Starts",
+    "bookCta": "Book",
+    "booking": "Booking…",
+    "bookSuccess": "Appointment booked.",
+    "bookError": "Could not book.",
+    "myAppointments": "My appointments",
+    "empty": "No appointments yet.",
+    "loadError": "Could not load directory."
   },
   "Admin": {
     "queueTitle": "Pending specialists",

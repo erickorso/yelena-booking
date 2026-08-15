@@ -30,7 +30,7 @@ export class AdminUserRepository implements IUserRepository {
   async create(input: CreateUserProfileInput): Promise<UserProfile> {
     const ref = (await this.db()).collection(USERS).doc(input.id);
     const payload = {
-      email: input.email,
+      email: input.email.trim().toLowerCase(),
       displayName: input.displayName,
       photoUrl: input.photoUrl ?? null,
       role: input.role,
@@ -105,6 +105,37 @@ export class AdminUserRepository implements IUserRepository {
       .where("status", "==", "active")
       .get();
     return query.docs.map((doc) => adaptSpecialistProfile(doc.id, doc.data()));
+  }
+
+  /** Users that can be booked as patients (paciente + especialista). */
+  async listBookablePatients(limit = 100): Promise<UserProfile[]> {
+    const db = await this.db();
+    const [pacientes, especialistas] = await Promise.all([
+      db.collection(USERS).where("role", "==", "paciente").limit(limit).get(),
+      db
+        .collection(USERS)
+        .where("role", "==", "especialista")
+        .limit(limit)
+        .get(),
+    ]);
+    const byId = new Map<string, UserProfile>();
+    for (const doc of [...pacientes.docs, ...especialistas.docs]) {
+      byId.set(doc.id, adaptUserProfile(doc.id, doc.data()));
+    }
+    return [...byId.values()].sort((a, b) =>
+      a.displayName.localeCompare(b.displayName, "es"),
+    );
+  }
+
+  async findByEmail(email: string): Promise<UserProfile | null> {
+    const query = await (await this.db())
+      .collection(USERS)
+      .where("email", "==", email.trim().toLowerCase())
+      .limit(1)
+      .get();
+    if (query.empty) return null;
+    const doc = query.docs[0]!;
+    return adaptUserProfile(doc.id, doc.data());
   }
 
   async setSpecialistStatus(

@@ -33,6 +33,7 @@ export class StubAppointmentRepository implements IAppointmentRepository {
       id: `appt_${this.seq}`,
       patientId: input.patientId,
       specialistId: input.specialistId,
+      bookedById: input.bookedById ?? null,
       startsAt: input.startsAt,
       endsAt: input.endsAt,
       status: "pending",

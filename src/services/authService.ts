@@ -6,12 +6,15 @@ import {
   GoogleAuthProvider,
   createUserWithEmailAndPassword,
   onAuthStateChanged,
+  reload,
+  sendEmailVerification,
   signInWithEmailAndPassword,
   signInWithPopup,
   signOut as firebaseSignOut,
   updateProfile,
   type User,
   type Unsubscribe,
+  type ActionCodeSettings,
 } from "firebase/auth";
 import { getClientAuth } from "@/lib/firebase/client";
 import type { AuthRole } from "@/types/domain";
@@ -26,10 +29,50 @@ export type BootstrapPayload = {
   location?: string;
 };
 
+const PENDING_BOOTSTRAP_KEY = "yelena.pendingBootstrap";
+
+export function isPasswordProvider(user: User): boolean {
+  return user.providerData.some((p) => p.providerId === "password");
+}
+
+/** Email/password users must verify; Google (and others) are already trusted. */
+export function requiresEmailVerification(user: User): boolean {
+  return isPasswordProvider(user) && !user.emailVerified;
+}
+
+export function savePendingBootstrap(payload: BootstrapPayload): void {
+  if (typeof window === "undefined") return;
+  sessionStorage.setItem(PENDING_BOOTSTRAP_KEY, JSON.stringify(payload));
+}
+
+export function readPendingBootstrap(): BootstrapPayload | null {
+  if (typeof window === "undefined") return null;
+  const raw = sessionStorage.getItem(PENDING_BOOTSTRAP_KEY);
+  if (!raw) return null;
+  try {
+    return JSON.parse(raw) as BootstrapPayload;
+  } catch {
+    return null;
+  }
+}
+
+export function clearPendingBootstrap(): void {
+  if (typeof window === "undefined") return;
+  sessionStorage.removeItem(PENDING_BOOTSTRAP_KEY);
+}
+
+function verificationSettings(continueUrl: string): ActionCodeSettings {
+  return {
+    url: continueUrl,
+    handleCodeInApp: false,
+  };
+}
+
 export async function signUpWithEmail(input: {
   email: string;
   password: string;
   displayName: string;
+  continueUrl: string;
 }): Promise<User> {
   const credential = await createUserWithEmailAndPassword(
     getClientAuth(),
@@ -37,7 +80,25 @@ export async function signUpWithEmail(input: {
     input.password,
   );
   await updateProfile(credential.user, { displayName: input.displayName });
+  await sendEmailVerification(
+    credential.user,
+    verificationSettings(input.continueUrl),
+  );
   return credential.user;
+}
+
+export async function resendEmailVerification(
+  user: User,
+  continueUrl: string,
+): Promise<void> {
+  await sendEmailVerification(user, verificationSettings(continueUrl));
+}
+
+export async function reloadUser(user: User): Promise<User> {
+  await reload(user);
+  const current = getClientAuth().currentUser ?? user;
+  await current.getIdToken(true);
+  return current;
 }
 
 export async function signInWithEmail(input: {
@@ -105,4 +166,5 @@ export async function bootstrapSession(
   }
 
   await getIdToken(user, true);
+  clearPendingBootstrap();
 }

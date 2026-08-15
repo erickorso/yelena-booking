@@ -12,6 +12,8 @@ export interface Appointment {
   id: string;
   patientId: string;
   specialistId: string;
+  /** Who created the booking (patient self-serve or specialist/admin on behalf). */
+  bookedById: string | null;
   startsAt: Date;
   endsAt: Date;
   status: AppointmentStatus;

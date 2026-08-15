@@ -17,6 +17,8 @@ export function AppHeader() {
 
   const nextLocale: AppLocale = locale === "es" ? "en" : "es";
   const isAuthenticated = status === "authenticated";
+  const isUnverified = status === "unverified";
+  const showSession = isAuthenticated || isUnverified;
 
   return (
     <header className="flex items-center justify-between gap-4 border-b border-zinc-200 px-4 py-3 dark:border-slate-700">
@@ -42,13 +44,13 @@ export function AppHeader() {
           {nextLocale.toUpperCase()}
         </Link>
         <ThemeToggle />
-        {isAuthenticated ? (
+        {showSession ? (
           <>
             <Link
-              href="/dashboard"
+              href={isUnverified ? "/verify-email" : "/dashboard"}
               className={clsx(buttonVariants({ variant: "secondary", size: "sm" }))}
             >
-              {role ?? "…"}
+              {isUnverified ? "…" : (role ?? "…")}
             </Link>
             <Button type="button" variant="ghost" size="sm" onClick={() => void logout()}>
               {tAuth("logout")}

@@ -1,19 +1,21 @@
 import "server-only";
 
 import { getAdminAuth, isFirebaseAdminConfigured } from "@/lib/firebase/admin";
-import type { AuthRole } from "@/types/domain";
+import { isAuthRole, type AuthRole } from "@/types/domain";
 
-export type AuthedAdmin = {
+export type AuthedUser = {
   uid: string;
   role: AuthRole;
+  email: string | null;
 };
 
 /**
- * Verifies Bearer ID token and ensures caller has admin claim.
+ * Verifies Bearer ID token. Optionally restricts to `allowed` roles.
  */
-export async function requireAdmin(
+export async function requireAuth(
   request: Request,
-): Promise<AuthedAdmin | Response> {
+  allowed?: readonly AuthRole[],
+): Promise<AuthedUser | Response> {
   if (!isFirebaseAdminConfigured()) {
     return Response.json(
       { error: "Firebase Admin is not configured" },
@@ -33,13 +35,21 @@ export async function requireAdmin(
 
   try {
     const decoded = await (await getAdminAuth()).verifyIdToken(idToken);
-    if (decoded.email_verified === false) {
+    if (!decoded.email_verified) {
       return Response.json({ error: "Email not verified" }, { status: 403 });
     }
-    if (decoded.role !== "admin") {
+    if (!isAuthRole(decoded.role)) {
+      return Response.json({ error: "Missing role claim" }, { status: 403 });
+    }
+    const role = decoded.role;
+    if (allowed && !allowed.includes(role)) {
       return Response.json({ error: "Forbidden" }, { status: 403 });
     }
-    return { uid: decoded.uid, role: "admin" };
+    return {
+      uid: decoded.uid,
+      role,
+      email: typeof decoded.email === "string" ? decoded.email : null,
+    };
   } catch (error) {
     const message =
       error instanceof Error ? error.message : "Invalid Firebase ID token";
@@ -47,8 +57,8 @@ export async function requireAdmin(
   }
 }
 
-export function isErrorResponse(
-  value: AuthedAdmin | Response,
+export function isAuthError(
+  value: AuthedUser | Response,
 ): value is Response {
   return value instanceof Response;
 }

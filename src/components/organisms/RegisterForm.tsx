@@ -34,16 +34,18 @@ export function RegisterForm() {
     setPending(true);
     setError(null);
     try {
+      const continueUrl = `${window.location.origin}/${locale}/login`;
       await registerWithEmail({
         email,
         password,
         displayName,
         role,
         locale,
+        continueUrl,
         specialty: role === "especialista" ? specialty : undefined,
         licenseNumber: role === "especialista" ? licenseNumber : undefined,
       });
-      router.push(dashboardPath(role));
+      router.push("/verify-email");
     } catch (err) {
       setError(err instanceof Error ? err.message : t("errors.generic"));
     } finally {

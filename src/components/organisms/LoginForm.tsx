@@ -31,7 +31,12 @@ export function LoginForm() {
       const nextRole = await loginWithEmail({ email, password });
       router.push(dashboardPath(nextRole));
     } catch (err) {
-      setError(err instanceof Error ? err.message : t("errors.generic"));
+      const message = err instanceof Error ? err.message : t("errors.generic");
+      if (message === "EMAIL_NOT_VERIFIED") {
+        router.push("/verify-email");
+        return;
+      }
+      setError(message);
     } finally {
       setPending(false);
     }

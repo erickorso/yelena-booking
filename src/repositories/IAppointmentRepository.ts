@@ -6,6 +6,7 @@ export interface CreateAppointmentInput {
   startsAt: Date;
   endsAt: Date;
   notes?: string | null;
+  bookedById?: string | null;
 }
 
 export interface AppointmentFilters {
