@@ -12,7 +12,7 @@ concurrency:
 
 jobs:
   quality:
-    name: Lint · Types · Tests
+    name: Lint · Types · Coverage
     runs-on: ubuntu-latest
     timeout-minutes: 15
 
@@ -35,5 +35,32 @@ jobs:
       - name: Lint
         run: npm run lint
 
-      - name: Test
-        run: npm test
+      - name: Unit tests + coverage thresholds
+        run: npm run test:coverage
+
+  e2e:
+    name: Playwright smoke
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    needs: quality
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+          cache: npm
+
+      - name: Install
+        run: npm ci
+
+      - name: Install Playwright Chromium
+        run: npx playwright install --with-deps chromium
+
+      - name: Smoke against production
+        env:
+          E2E_BASE_URL: https://yelena-booking.vercel.app
+        run: npm run test:e2e

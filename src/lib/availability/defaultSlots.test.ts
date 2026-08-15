@@ -1,5 +1,11 @@
 import { describe, expect, it } from "vitest";
-import { computeFreeSlots } from "@/lib/availability/defaultSlots";
+import {
+  computeFreeSlots,
+  isWithinSchedule,
+  parseDateInput,
+  toDateInputValue,
+  hmToMinutes,
+} from "@/lib/availability/defaultSlots";
 
 describe("computeFreeSlots", () => {
   it("returns empty on Sunday", () => {
@@ -41,5 +47,47 @@ describe("computeFreeSlots", () => {
       ranges: [{ start: "09:00", end: "12:00" }],
     });
     expect(slots).toHaveLength(0);
+  });
+
+  it("returns empty when ranges are invalid", () => {
+    const monday = new Date(2026, 7, 17, 12, 0, 0);
+    const slots = computeFreeSlots(monday, [], new Date(2026, 7, 1), {
+      workdays: [1],
+      ranges: [{ start: "18:00", end: "09:00" }],
+    });
+    expect(slots).toHaveLength(0);
+  });
+});
+
+describe("isWithinSchedule", () => {
+  it("accepts Monday morning slot", () => {
+    const starts = new Date(2026, 7, 17, 10, 0, 0);
+    const ends = new Date(2026, 7, 17, 10, 30, 0);
+    expect(isWithinSchedule(starts, ends)).toBe(true);
+  });
+
+  it("rejects weekend", () => {
+    const starts = new Date(2026, 7, 16, 10, 0, 0);
+    const ends = new Date(2026, 7, 16, 10, 30, 0);
+    expect(isWithinSchedule(starts, ends)).toBe(false);
+  });
+
+  it("rejects lunch gap", () => {
+    const starts = new Date(2026, 7, 17, 13, 30, 0);
+    const ends = new Date(2026, 7, 17, 14, 0, 0);
+    expect(isWithinSchedule(starts, ends)).toBe(false);
+  });
+});
+
+describe("date helpers", () => {
+  it("parses and formats date input", () => {
+    expect(parseDateInput("bad")).toBeNull();
+    const d = parseDateInput("2026-08-17");
+    expect(d).not.toBeNull();
+    expect(toDateInputValue(d!)).toBe("2026-08-17");
+  });
+
+  it("converts hh:mm to minutes", () => {
+    expect(hmToMinutes("09:30")).toBe(9 * 60 + 30);
   });
 });
