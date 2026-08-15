@@ -50,7 +50,7 @@ export async function POST(request: Request) {
   const role = body.role as AuthRole;
 
   try {
-    const auth = getAdminAuth();
+    const auth = await getAdminAuth();
     const decoded = await auth.verifyIdToken(idToken);
     const callerRole =
       typeof decoded.role === "string" ? decoded.role : undefined;

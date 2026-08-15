@@ -40,7 +40,7 @@ export async function POST(request: Request) {
         { status: 503 },
       );
     }
-    const decoded = await getAdminAuth().verifyIdToken(idToken);
+    const decoded = await (await getAdminAuth()).verifyIdToken(idToken);
     uid = decoded.uid;
   } catch (error) {
     const message =

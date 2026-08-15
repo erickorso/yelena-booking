@@ -32,7 +32,7 @@ export async function requireAdmin(
   }
 
   try {
-    const decoded = await getAdminAuth().verifyIdToken(idToken);
+    const decoded = await (await getAdminAuth()).verifyIdToken(idToken);
     if (decoded.role !== "admin") {
       return Response.json({ error: "Forbidden" }, { status: 403 });
     }

@@ -2,6 +2,8 @@ import { NextResponse } from "next/server";
 import { isFirebaseAdminConfigured } from "@/lib/firebase/admin";
 import { AdminUserRepository } from "@/repositories/firestore/AdminUserRepository";
 
+export const runtime = "nodejs";
+
 /**
  * GET /api/specialists — public directory of active specialists.
  */

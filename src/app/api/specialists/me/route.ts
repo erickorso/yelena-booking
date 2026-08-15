@@ -21,7 +21,7 @@ export async function GET(request: Request) {
   const idToken = authorization.slice("Bearer ".length).trim();
 
   try {
-    const decoded = await getAdminAuth().verifyIdToken(idToken);
+    const decoded = await (await getAdminAuth()).verifyIdToken(idToken);
     if (decoded.role !== "especialista" && decoded.role !== "admin") {
       return NextResponse.json({ error: "Forbidden" }, { status: 403 });
     }

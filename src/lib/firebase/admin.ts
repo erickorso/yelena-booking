@@ -7,9 +7,6 @@ import {
   type App,
   type ServiceAccount,
 } from "firebase-admin/app";
-import { getAuth, type Auth } from "firebase-admin/auth";
-import { getFirestore, type Firestore } from "firebase-admin/firestore";
-import { getStorage, type Storage } from "firebase-admin/storage";
 
 function requireAdminEnv(name: string): string {
   const value = process.env[name];
@@ -48,15 +45,19 @@ export function getAdminApp(): App {
   });
 }
 
-export function getAdminAuth(): Auth {
+/** Lazy import avoids jose/jwks-rsa ESM require() crash on Vercel. */
+export async function getAdminAuth() {
+  const { getAuth } = await import("firebase-admin/auth");
   return getAuth(getAdminApp());
 }
 
-export function getAdminFirestore(): Firestore {
+export async function getAdminFirestore() {
+  const { getFirestore } = await import("firebase-admin/firestore");
   return getFirestore(getAdminApp());
 }
 
-export function getAdminStorage(): Storage {
+export async function getAdminStorage() {
+  const { getStorage } = await import("firebase-admin/storage");
   return getStorage(getAdminApp());
 }
 

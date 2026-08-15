@@ -26,10 +26,16 @@ export function SpecialistDirectory() {
     (async () => {
       try {
         const response = await fetch("/api/specialists");
-        const data = (await response.json()) as {
-          specialists?: DirectorySpecialist[];
-          error?: string;
-        };
+        const text = await response.text();
+        const data = (
+          text
+            ? (JSON.parse(text) as {
+                specialists?: DirectorySpecialist[];
+                error?: string;
+              })
+            : {}
+        ) as { specialists?: DirectorySpecialist[]; error?: string };
+
         if (!response.ok) {
           throw new Error(data.error ?? t("error"));
         }

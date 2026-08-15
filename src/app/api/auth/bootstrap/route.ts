@@ -78,7 +78,7 @@ export async function POST(request: Request) {
   }
 
   try {
-    const auth = getAdminAuth();
+    const auth = await getAdminAuth();
     const decoded = await auth.verifyIdToken(idToken);
     const existingClaim =
       typeof decoded.role === "string" ? decoded.role : undefined;

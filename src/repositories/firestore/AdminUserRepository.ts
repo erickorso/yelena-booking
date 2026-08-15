@@ -17,18 +17,18 @@ const SPECIALISTS = "specialists";
  * Server-side Firestore user repository (Admin SDK — bypasses client rules).
  */
 export class AdminUserRepository implements IUserRepository {
-  private db() {
+  private async db() {
     return getAdminFirestore();
   }
 
   async getById(id: string): Promise<UserProfile | null> {
-    const snap = await this.db().collection(USERS).doc(id).get();
+    const snap = await (await this.db()).collection(USERS).doc(id).get();
     if (!snap.exists) return null;
     return adaptUserProfile(snap.id, snap.data() ?? {});
   }
 
   async create(input: CreateUserProfileInput): Promise<UserProfile> {
-    const ref = this.db().collection(USERS).doc(input.id);
+    const ref = (await this.db()).collection(USERS).doc(input.id);
     const payload = {
       email: input.email,
       displayName: input.displayName,
@@ -44,7 +44,7 @@ export class AdminUserRepository implements IUserRepository {
   }
 
   async updateRole(id: string, role: AuthRole): Promise<UserProfile> {
-    const ref = this.db().collection(USERS).doc(id);
+    const ref = (await this.db()).collection(USERS).doc(id);
     await ref.update({
       role,
       updatedAt: FieldValue.serverTimestamp(),
@@ -59,7 +59,7 @@ export class AdminUserRepository implements IUserRepository {
   async createSpecialist(
     input: CreateSpecialistProfileInput,
   ): Promise<SpecialistProfile> {
-    const ref = this.db().collection(SPECIALISTS).doc(input.id);
+    const ref = (await this.db()).collection(SPECIALISTS).doc(input.id);
     await ref.set(
       {
         userId: input.userId,
@@ -81,7 +81,7 @@ export class AdminUserRepository implements IUserRepository {
   async getSpecialistByUserId(
     userId: string,
   ): Promise<SpecialistProfile | null> {
-    const query = await this.db()
+    const query = await (await this.db())
       .collection(SPECIALISTS)
       .where("userId", "==", userId)
       .limit(1)
@@ -92,7 +92,7 @@ export class AdminUserRepository implements IUserRepository {
   }
 
   async listPendingSpecialists(): Promise<SpecialistProfile[]> {
-    const query = await this.db()
+    const query = await (await this.db())
       .collection(SPECIALISTS)
       .where("status", "==", "pending")
       .get();
@@ -100,7 +100,7 @@ export class AdminUserRepository implements IUserRepository {
   }
 
   async listActiveSpecialists(): Promise<SpecialistProfile[]> {
-    const query = await this.db()
+    const query = await (await this.db())
       .collection(SPECIALISTS)
       .where("status", "==", "active")
       .get();
@@ -111,7 +111,7 @@ export class AdminUserRepository implements IUserRepository {
     specialistId: string,
     status: SpecialistProfile["status"],
   ): Promise<SpecialistProfile> {
-    const ref = this.db().collection(SPECIALISTS).doc(specialistId);
+    const ref = (await this.db()).collection(SPECIALISTS).doc(specialistId);
     await ref.update({
       status,
       updatedAt: FieldValue.serverTimestamp(),
