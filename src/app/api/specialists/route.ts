@@ -1,11 +1,11 @@
 import { NextResponse } from "next/server";
-import { isFirebaseAdminConfigured } from "@/lib/firebase/admin";
-import { AdminUserRepository } from "@/repositories/firestore/AdminUserRepository";
+import { isFirebaseAdminConfigured, getAdminApp } from "@/lib/firebase/admin";
 
 export const runtime = "nodejs";
 
 /**
  * GET /api/specialists — public directory of active specialists.
+ * Uses dynamic firebase-admin/firestore import (avoids Auth/jose ESM crash).
  */
 export async function GET() {
   if (!isFirebaseAdminConfigured()) {
@@ -16,19 +16,31 @@ export async function GET() {
   }
 
   try {
-    const users = new AdminUserRepository();
-    const active = await users.listActiveSpecialists();
+    getAdminApp();
+    const { getFirestore } = await import("firebase-admin/firestore");
+    const db = getFirestore();
+
+    const snap = await db
+      .collection("specialists")
+      .where("status", "==", "active")
+      .get();
 
     const specialists = await Promise.all(
-      active.map(async (specialist) => {
-        const profile = await users.getById(specialist.userId);
+      snap.docs.map(async (doc) => {
+        const data = doc.data();
+        const userId = String(data.userId ?? doc.id);
+        const userSnap = await db.collection("users").doc(userId).get();
+        const user = userSnap.data() ?? {};
         return {
-          id: specialist.id,
-          specialty: specialist.specialty,
-          location: specialist.location,
-          bio: specialist.bio,
-          rating: specialist.rating,
-          displayName: profile?.displayName ?? "Especialista",
+          id: doc.id,
+          specialty: typeof data.specialty === "string" ? data.specialty : "",
+          location: typeof data.location === "string" ? data.location : "",
+          bio: typeof data.bio === "string" ? data.bio : "",
+          rating: typeof data.rating === "number" ? data.rating : null,
+          displayName:
+            typeof user.displayName === "string"
+              ? user.displayName
+              : "Especialista",
         };
       }),
     );
@@ -37,6 +49,7 @@ export async function GET() {
   } catch (error) {
     const message =
       error instanceof Error ? error.message : "Failed to list specialists";
+    console.error("[GET /api/specialists]", message);
     return NextResponse.json({ error: message }, { status: 500 });
   }
 }
