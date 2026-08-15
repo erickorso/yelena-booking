@@ -132,7 +132,7 @@
     "bookError": "Could not create appointment.",
     "loadError": "Could not load patients.",
     "transferTitle": "Transfer appointment",
-    "transferSubtitle": "The other specialist must confirm via the bell (email later).",
+    "transferSubtitle": "The other specialist confirms via the bell and gets email if Resend is configured.",
     "transferAppointment": "Appointment",
     "transferApptPlaceholder": "Select appointment",
     "transferApptSearch": "Search appointment…",
@@ -211,6 +211,24 @@
     "reject": "Reject",
     "loadError": "Could not load the queue.",
     "actionError": "Could not update status."
+  },
+  "AdminMail": {
+    "title": "Test emails",
+    "subtitle": "Fire Resend templates (smoke, appointment, transfer) against real bookings.",
+    "configured": "Resend OK · from: {from}",
+    "missingKey": "RESEND_API_KEY is missing in the environment.",
+    "template": "Template",
+    "tplSmoke": "Smoke",
+    "tplAppointment": "Appointment confirmed",
+    "tplTransfer": "Transfer",
+    "to": "Recipient (optional)",
+    "toPlaceholder": "empty = your admin email / patient by template",
+    "appointmentId": "Appointment ID (optional)",
+    "appointmentPlaceholder": "empty = latest non-cancelled appointment",
+    "sendCta": "Send test email",
+    "sending": "Sending…",
+    "sendSuccess": "Sent to {to} · id {id}",
+    "sendError": "Could not send the email."
   },
   "MedicalFiles": {
     "chartTitle": "Clinical documents",

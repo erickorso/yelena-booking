@@ -132,7 +132,7 @@
     "bookError": "No se pudo crear la cita.",
     "loadError": "No se pudieron cargar los pacientes.",
     "transferTitle": "Transferir cita",
-    "transferSubtitle": "El otro especialista debe confirmarlo en la campanita (o email más adelante).",
+    "transferSubtitle": "El otro especialista confirma en la campanita y recibe email si Resend está configurado.",
     "transferAppointment": "Cita",
     "transferApptPlaceholder": "Selecciona cita",
     "transferApptSearch": "Buscar cita…",
@@ -211,6 +211,24 @@
     "reject": "Rechazar",
     "loadError": "No se pudo cargar la cola.",
     "actionError": "No se pudo actualizar el estado."
+  },
+  "AdminMail": {
+    "title": "Probar correos",
+    "subtitle": "Dispara plantillas Resend (smoke, cita o transferencia) contra citas reales.",
+    "configured": "Resend OK · from: {from}",
+    "missingKey": "Falta RESEND_API_KEY en el entorno.",
+    "template": "Plantilla",
+    "tplSmoke": "Smoke",
+    "tplAppointment": "Cita confirmada",
+    "tplTransfer": "Transferencia",
+    "to": "Destinatario (opcional)",
+    "toPlaceholder": "deja vacío = tu email admin / paciente según plantilla",
+    "appointmentId": "ID de cita (opcional)",
+    "appointmentPlaceholder": "vacío = última cita no cancelada",
+    "sendCta": "Enviar correo de prueba",
+    "sending": "Enviando…",
+    "sendSuccess": "Enviado a {to} · id {id}",
+    "sendError": "No se pudo enviar el correo."
   },
   "MedicalFiles": {
     "chartTitle": "Documentos clínicos",

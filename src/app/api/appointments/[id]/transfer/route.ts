@@ -4,6 +4,7 @@ import { isAuthError, requireAuth } from "@/lib/auth/requireAuth";
 import { AdminAppointmentRepository } from "@/repositories/firestore/AdminAppointmentRepository";
 import { AdminNotificationRepository } from "@/repositories/firestore/AdminNotificationRepository";
 import { AdminUserRepository } from "@/repositories/firestore/AdminUserRepository";
+import { enqueueMail, MailService } from "@/services/mailService";
 
 /**
  * POST /api/appointments/[id]/transfer
@@ -104,6 +105,20 @@ export async function POST(
         fromSpecialistId: appt.specialistId,
       },
     });
+
+    const targetUser = await users.getById(toSpecialistId);
+    const patient = await users.getById(appt.patientId);
+    if (targetUser?.email) {
+      enqueueMail(() =>
+        new MailService().sendTransferRequest({
+          to: targetUser.email,
+          toName: targetUser.displayName,
+          fromName: fromProfile?.displayName ?? "Especialista",
+          patientName: patient?.displayName ?? "Paciente",
+          startsAt: appt.startsAt,
+        }),
+      );
+    }
 
     return NextResponse.json({ ok: true, status: "pending" });
   } catch (error) {

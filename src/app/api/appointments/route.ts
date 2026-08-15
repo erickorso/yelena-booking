@@ -4,6 +4,7 @@ import { AdminAvailabilityRepository } from "@/repositories/firestore/AdminAvail
 import { AdminAppointmentRepository } from "@/repositories/firestore/AdminAppointmentRepository";
 import { AdminUserRepository } from "@/repositories/firestore/AdminUserRepository";
 import { AppointmentService } from "@/services/appointmentService";
+import { enqueueMail, MailService } from "@/services/mailService";
 import { canActAsPatient } from "@/types/domain";
 import { isWithinSchedule } from "@/lib/availability/defaultSlots";
 
@@ -187,6 +188,18 @@ export async function POST(request: Request) {
       notes,
       bookedById: auth.uid,
     });
+
+    const specialistUser = await users.getById(specialistId);
+    enqueueMail(() =>
+      new MailService().sendAppointmentBooked({
+        to: patient.email,
+        patientName: patient.displayName,
+        specialistName: specialistUser?.displayName ?? specialist.specialty,
+        startsAt: appointment.startsAt,
+        endsAt: appointment.endsAt,
+        locale: patient.locale === "en" ? "en" : "es",
+      }),
+    );
 
     return NextResponse.json({ ok: true, appointment: serialize(appointment) });
   } catch (error) {
