@@ -32,4 +32,14 @@ describe("computeFreeSlots", () => {
       ),
     ).toBe(true);
   });
+
+  it("respects custom workdays only", () => {
+    const wednesday = new Date(2026, 7, 19, 12, 0, 0); // Wed
+    const now = new Date(2026, 7, 1);
+    const slots = computeFreeSlots(wednesday, [], now, {
+      workdays: [1, 2],
+      ranges: [{ start: "09:00", end: "12:00" }],
+    });
+    expect(slots).toHaveLength(0);
+  });
 });

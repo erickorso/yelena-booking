@@ -1,19 +1,25 @@
-import type { MedicalFile } from "@/types/domain";
-import type { CreateMedicalFileInput, IEhrRepository } from "@/repositories";
+import type { MedicalFile, MedicalFileScope } from "@/types/domain";
+import type { CreateMedicalFileInput, IEhrRepository } from "@/repositories/IEhrRepository";
 import type { IFileStorage } from "@/lib/storage";
 import {
   assertValidMedicalUpload,
   buildPatientFilePath,
+  buildSpecialistFilePath,
 } from "@/lib/storage/medicalUploadPolicy";
 
 export type UploadMedicalFileInput = {
-  patientId: string;
+  scope: MedicalFileScope;
+  patientId: string | null;
+  specialistProfileId: string | null;
+  appointmentId: string | null;
   uploadedById: string;
   file: File;
+  label?: string | null;
 };
 
 /**
  * Orchestrates binary upload (IFileStorage) + Firestore metadata (IEhrRepository).
+ * Append-only: never deletes files.
  */
 export class FileUploadService {
   constructor(
@@ -24,12 +30,23 @@ export class FileUploadService {
   async uploadMedicalFile(input: UploadMedicalFileInput): Promise<MedicalFile> {
     assertValidMedicalUpload(input.file);
 
-    if (input.uploadedById !== input.patientId) {
-      // v1: only the patient uploads their own labs; specialists write notes, not files.
-      throw new Error("Only the patient may upload their medical files");
+    if (input.scope === "specialist_profile") {
+      if (!input.specialistProfileId) {
+        throw new Error("specialistProfileId is required");
+      }
+    } else if (!input.patientId) {
+      throw new Error("patientId is required");
     }
 
-    const path = buildPatientFilePath(input.patientId, input.file.name);
+    if (input.scope === "appointment" && !input.appointmentId) {
+      throw new Error("appointmentId is required for appointment scope");
+    }
+
+    const path =
+      input.scope === "specialist_profile"
+        ? buildSpecialistFilePath(input.specialistProfileId!, input.file.name)
+        : buildPatientFilePath(input.patientId!, input.file.name);
+
     const stored = await this.storage.upload({
       path,
       data: input.file,
@@ -38,8 +55,12 @@ export class FileUploadService {
     });
 
     const metadata: CreateMedicalFileInput = {
+      scope: input.scope,
       patientId: input.patientId,
+      specialistProfileId: input.specialistProfileId,
+      appointmentId: input.appointmentId,
       uploadedById: input.uploadedById,
+      label: input.label?.trim() || null,
       storagePath: stored.path,
       url: stored.url,
       provider: "vercel_blob",
@@ -49,5 +70,13 @@ export class FileUploadService {
     };
 
     return this.ehr.createFileMetadata(metadata);
+  }
+
+  listFilesByPatient(patientId: string): Promise<MedicalFile[]> {
+    return this.ehr.listFilesByPatient(patientId);
+  }
+
+  listFilesBySpecialistProfile(specialistId: string): Promise<MedicalFile[]> {
+    return this.ehr.listFilesBySpecialistProfile(specialistId);
   }
 }

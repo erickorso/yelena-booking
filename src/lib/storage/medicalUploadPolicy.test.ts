@@ -44,12 +44,16 @@ describe("FileUploadService", () => {
 
     const file = new File(["hello"], "lab.pdf", { type: "application/pdf" });
     const result = await service.uploadMedicalFile({
+      scope: "patient_general",
       patientId: "u1",
+      specialistProfileId: null,
+      appointmentId: null,
       uploadedById: "u1",
       file,
     });
 
     expect(result.provider).toBe("vercel_blob");
+    expect(result.scope).toBe("patient_general");
     expect(result.url).toContain("patients/u1/");
     expect(result.fileName).toBe("lab.pdf");
   });

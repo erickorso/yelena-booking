@@ -1,4 +1,4 @@
-import type { EhrNote, MedicalFile } from "@/types/domain";
+import type { EhrNote, MedicalFile, MedicalFileScope } from "@/types/domain";
 
 export interface CreateEhrNoteInput {
   appointmentId: string;
@@ -8,8 +8,12 @@ export interface CreateEhrNoteInput {
 }
 
 export interface CreateMedicalFileInput {
-  patientId: string;
+  scope: MedicalFileScope;
+  patientId: string | null;
+  specialistProfileId: string | null;
+  appointmentId: string | null;
   uploadedById: string;
+  label: string | null;
   storagePath: string;
   url: string;
   provider: "vercel_blob";
@@ -19,7 +23,7 @@ export interface CreateMedicalFileInput {
 }
 
 /**
- * Abstraction over EHR notes and medical file metadata.
+ * Abstraction over EHR notes and medical file metadata (append-only files).
  */
 export interface IEhrRepository {
   listNotesByPatient(patientId: string): Promise<EhrNote[]>;
@@ -27,5 +31,7 @@ export interface IEhrRepository {
   /** Append-only: never mutate existing notes. */
   createNote(input: CreateEhrNoteInput): Promise<EhrNote>;
   listFilesByPatient(patientId: string): Promise<MedicalFile[]>;
+  listFilesBySpecialistProfile(specialistId: string): Promise<MedicalFile[]>;
+  /** Append-only: never delete medical files. */
   createFileMetadata(input: CreateMedicalFileInput): Promise<MedicalFile>;
 }

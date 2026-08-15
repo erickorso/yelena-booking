@@ -6,9 +6,14 @@ import { Button } from "@/components/atoms/Button";
 import { Input } from "@/components/atoms/Input";
 import { SearchableSelect } from "@/components/molecules/SearchableSelect";
 import { WeekCalendar, type CalendarSlot } from "@/components/molecules/WeekCalendar";
+import { PanelTabs } from "@/components/molecules/PanelTabs";
+import { SpecialistScheduleForm } from "@/components/organisms/SpecialistScheduleForm";
+import { MedicalFilesPanel } from "@/components/organisms/MedicalFilesPanel";
 import { useAuth } from "@/components/providers/AuthProvider";
 import { useToast } from "@/components/providers/ToastProvider";
 import { getIdToken } from "@/services/authService";
+import { DEFAULT_SCHEDULE, type ScheduleConfig } from "@/lib/availability/defaultSlots";
+import type { Weekday } from "@/types/domain";
 
 type PatientOption = {
   id: string;
@@ -56,6 +61,39 @@ export function SpecialistClinicPanel() {
   const [transferApptId, setTransferApptId] = useState("");
   const [transferToId, setTransferToId] = useState("");
   const [transferPending, setTransferPending] = useState(false);
+  const [schedule, setSchedule] = useState<ScheduleConfig>(DEFAULT_SCHEDULE);
+  const [tab, setTab] = useState("agenda");
+
+  const tabs = [
+    { id: "agenda", label: t("tabAgenda") },
+    { id: "patients", label: t("tabPatients") },
+    { id: "schedule", label: t("tabSchedule") },
+    { id: "transfer", label: t("tabTransfer") },
+    { id: "files", label: t("tabFiles") },
+  ];
+
+  useEffect(() => {
+    if (!user) return;
+    let cancelled = false;
+    void (async () => {
+      const token = await getIdToken(user);
+      const res = await fetch("/api/specialists/me/schedule", {
+        headers: { Authorization: `Bearer ${token}` },
+      });
+      const data = (await res.json()) as {
+        schedule?: { workdays: Weekday[]; ranges: ScheduleConfig["ranges"] };
+      };
+      if (!cancelled && res.ok && data.schedule) {
+        setSchedule({
+          workdays: data.schedule.workdays,
+          ranges: data.schedule.ranges,
+        });
+      }
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, [user, reloadKey]);
 
   useEffect(() => {
     if (!user) return;
@@ -210,157 +248,193 @@ export function SpecialistClinicPanel() {
   }
 
   return (
-    <div className="space-y-8">
+    <div className="space-y-4">
       {error ? (
         <p role="alert" className="text-sm text-red-600 dark:text-red-400">
           {error}
         </p>
       ) : null}
 
-      <form
-        onSubmit={(e) => void registerPatient(e)}
-        className="space-y-4 rounded-md border border-stone-200 p-4 dark:border-slate-700"
-      >
-        <h2 className="font-serif text-xl text-teal-800 dark:text-teal-300">
-          {t("registerTitle")}
-        </h2>
-        <p className="text-sm text-stone-600 dark:text-slate-300">
-          {t("registerSubtitle")}
-        </p>
-        <Input
-          label={t("displayName")}
-          name="patientName"
-          value={regName}
-          onChange={(e) => setRegName(e.target.value)}
-          required
-        />
-        <Input
-          label={t("email")}
-          name="patientEmail"
-          type="email"
-          value={regEmail}
-          onChange={(e) => setRegEmail(e.target.value)}
-          required
-        />
-        {tempPassword ? (
-          <p
-            role="status"
-            className="rounded-md bg-amber-50 px-3 py-2 text-sm text-amber-950 dark:bg-amber-950/40 dark:text-amber-100"
+      <PanelTabs tabs={tabs} activeId={tab} onChange={setTab}>
+        {tab === "agenda" ? (
+          <form
+            onSubmit={(e) => void bookAppointment(e)}
+            className="space-y-4 rounded-md border border-stone-200 p-4 dark:border-slate-700"
           >
-            {t("tempPassword", { password: tempPassword })}
-          </p>
+            <h2 className="font-serif text-xl text-teal-800 dark:text-teal-300">
+              {t("bookTitle")}
+            </h2>
+            <p className="text-sm text-stone-600 dark:text-slate-300">
+              {t("bookSubtitle")}
+            </p>
+            <SearchableSelect
+              label={t("patient")}
+              placeholder={t("patientPlaceholder")}
+              searchPlaceholder={t("patientSearch")}
+              emptyLabel={t("patientEmpty")}
+              name="patientId"
+              required
+              value={patientId}
+              onChange={setPatientId}
+              options={patients
+                .filter((p) => p.id !== user?.uid)
+                .map((p) => ({
+                  id: p.id,
+                  label: `${p.displayName} · ${p.email}`,
+                  searchText: `${p.displayName} ${p.email}`,
+                }))}
+            />
+            <WeekCalendar
+              events={appointments
+                .filter((a) => a.status !== "cancelled")
+                .map((a) => {
+                  const patient = patients.find((p) => p.id === a.patientId);
+                  return {
+                    id: a.id,
+                    startsAt: new Date(a.startsAt),
+                    endsAt: new Date(a.endsAt),
+                    title: patient?.displayName ?? a.patientId.slice(0, 8),
+                    status: a.status,
+                  };
+                })}
+              selectedSlot={selectedSlot}
+              onSelectSlot={setSelectedSlot}
+              schedule={schedule}
+              labels={{
+                today: t("calToday"),
+                weekOf: t("calWeek"),
+                hint: t("calHint"),
+                selected: t("calSelected"),
+                pastSlot: t("calPast"),
+                outsideHours: t("calOutside"),
+                busySlot: t("calBusy"),
+              }}
+            />
+            <Button
+              type="submit"
+              disabled={bookPending || !patientId || !selectedSlot}
+            >
+              {bookPending ? t("booking") : t("bookCta")}
+            </Button>
+          </form>
         ) : null}
-        <Button type="submit" disabled={regPending}>
-          {regPending ? t("registering") : t("registerCta")}
-        </Button>
-      </form>
 
-      <form
-        onSubmit={(e) => void bookAppointment(e)}
-        className="space-y-4 rounded-md border border-stone-200 p-4 dark:border-slate-700"
-      >
-        <h2 className="font-serif text-xl text-teal-800 dark:text-teal-300">
-          {t("bookTitle")}
-        </h2>
-        <p className="text-sm text-stone-600 dark:text-slate-300">
-          {t("bookSubtitle")}
-        </p>
-        <SearchableSelect
-          label={t("patient")}
-          placeholder={t("patientPlaceholder")}
-          searchPlaceholder={t("patientSearch")}
-          emptyLabel={t("patientEmpty")}
-          name="patientId"
-          required
-          value={patientId}
-          onChange={setPatientId}
-          options={patients
-            .filter((p) => p.id !== user?.uid)
-            .map((p) => ({
-              id: p.id,
-              label: `${p.displayName} · ${p.email}`,
-              searchText: `${p.displayName} ${p.email}`,
-            }))}
-        />
-        <WeekCalendar
-          events={appointments
-            .filter((a) => a.status !== "cancelled")
-            .map((a) => {
-              const patient = patients.find((p) => p.id === a.patientId);
-              return {
-                id: a.id,
-                startsAt: new Date(a.startsAt),
-                endsAt: new Date(a.endsAt),
-                title: patient?.displayName ?? a.patientId.slice(0, 8),
-                status: a.status,
-              };
-            })}
-          selectedSlot={selectedSlot}
-          onSelectSlot={setSelectedSlot}
-          labels={{
-            today: t("calToday"),
-            weekOf: t("calWeek"),
-            hint: t("calHint"),
-            selected: t("calSelected"),
-          }}
-        />
-        <Button type="submit" disabled={bookPending || !patientId || !selectedSlot}>
-          {bookPending ? t("booking") : t("bookCta")}
-        </Button>
-      </form>
+        {tab === "patients" ? (
+          <form
+            onSubmit={(e) => void registerPatient(e)}
+            className="space-y-4 rounded-md border border-stone-200 p-4 dark:border-slate-700"
+          >
+            <h2 className="font-serif text-xl text-teal-800 dark:text-teal-300">
+              {t("registerTitle")}
+            </h2>
+            <p className="text-sm text-stone-600 dark:text-slate-300">
+              {t("registerSubtitle")}
+            </p>
+            <Input
+              label={t("displayName")}
+              name="patientName"
+              value={regName}
+              onChange={(e) => setRegName(e.target.value)}
+              required
+            />
+            <Input
+              label={t("email")}
+              name="patientEmail"
+              type="email"
+              value={regEmail}
+              onChange={(e) => setRegEmail(e.target.value)}
+              required
+            />
+            {tempPassword ? (
+              <p
+                role="status"
+                className="rounded-md bg-amber-50 px-3 py-2 text-sm text-amber-950 dark:bg-amber-950/40 dark:text-amber-100"
+              >
+                {t("tempPassword", { password: tempPassword })}
+              </p>
+            ) : null}
+            <Button type="submit" disabled={regPending}>
+              {regPending ? t("registering") : t("registerCta")}
+            </Button>
+          </form>
+        ) : null}
 
-      <form
-        onSubmit={(e) => void requestTransfer(e)}
-        className="space-y-4 rounded-md border border-stone-200 p-4 dark:border-slate-700"
-      >
-        <h2 className="font-serif text-xl text-teal-800 dark:text-teal-300">
-          {t("transferTitle")}
-        </h2>
-        <p className="text-sm text-stone-600 dark:text-slate-300">
-          {t("transferSubtitle")}
-        </p>
-        <SearchableSelect
-          label={t("transferAppointment")}
-          placeholder={t("transferApptPlaceholder")}
-          searchPlaceholder={t("transferApptSearch")}
-          emptyLabel={t("patientEmpty")}
-          value={transferApptId}
-          onChange={setTransferApptId}
-          options={appointments
-            .filter(
-              (a) =>
-                a.status !== "cancelled" &&
-                a.transfer?.status !== "pending",
-            )
-            .map((a) => {
-              const patient = patients.find((p) => p.id === a.patientId);
-              return {
-                id: a.id,
-                label: `${patient?.displayName ?? a.patientId.slice(0, 6)} · ${new Date(a.startsAt).toLocaleString()}`,
-                searchText: `${patient?.displayName ?? ""} ${a.startsAt}`,
-              };
-            })}
-        />
-        <SearchableSelect
-          label={t("transferTo")}
-          placeholder={t("transferToPlaceholder")}
-          searchPlaceholder={t("patientSearch")}
-          emptyLabel={t("patientEmpty")}
-          value={transferToId}
-          onChange={setTransferToId}
-          options={peers.map((p) => ({
-            id: p.id,
-            label: `${p.displayName} · ${p.specialty}`,
-            searchText: `${p.displayName} ${p.specialty}`,
-          }))}
-        />
-        <Button
-          type="submit"
-          disabled={transferPending || !transferApptId || !transferToId}
-        >
-          {transferPending ? t("transferSending") : t("transferCta")}
-        </Button>
-      </form>
+        {tab === "schedule" ? (
+          <SpecialistScheduleForm
+            onSaved={(next) => {
+              setSchedule({ workdays: next.workdays, ranges: next.ranges });
+            }}
+          />
+        ) : null}
+
+        {tab === "transfer" ? (
+          <form
+            onSubmit={(e) => void requestTransfer(e)}
+            className="space-y-4 rounded-md border border-stone-200 p-4 dark:border-slate-700"
+          >
+            <h2 className="font-serif text-xl text-teal-800 dark:text-teal-300">
+              {t("transferTitle")}
+            </h2>
+            <p className="text-sm text-stone-600 dark:text-slate-300">
+              {t("transferSubtitle")}
+            </p>
+            <SearchableSelect
+              label={t("transferAppointment")}
+              placeholder={t("transferApptPlaceholder")}
+              searchPlaceholder={t("transferApptSearch")}
+              emptyLabel={t("patientEmpty")}
+              value={transferApptId}
+              onChange={setTransferApptId}
+              options={appointments
+                .filter(
+                  (a) =>
+                    a.status !== "cancelled" &&
+                    a.transfer?.status !== "pending",
+                )
+                .map((a) => {
+                  const patient = patients.find((p) => p.id === a.patientId);
+                  return {
+                    id: a.id,
+                    label: `${patient?.displayName ?? a.patientId.slice(0, 6)} · ${new Date(a.startsAt).toLocaleString()}`,
+                    searchText: `${patient?.displayName ?? ""} ${a.startsAt}`,
+                  };
+                })}
+            />
+            <SearchableSelect
+              label={t("transferTo")}
+              placeholder={t("transferToPlaceholder")}
+              searchPlaceholder={t("patientSearch")}
+              emptyLabel={t("patientEmpty")}
+              value={transferToId}
+              onChange={setTransferToId}
+              options={peers.map((p) => ({
+                id: p.id,
+                label: `${p.displayName} · ${p.specialty}`,
+                searchText: `${p.displayName} ${p.specialty}`,
+              }))}
+            />
+            <Button
+              type="submit"
+              disabled={transferPending || !transferApptId || !transferToId}
+            >
+              {transferPending ? t("transferSending") : t("transferCta")}
+            </Button>
+          </form>
+        ) : null}
+
+        {tab === "files" ? (
+          <div className="space-y-6">
+            <MedicalFilesPanel mode="specialist_library" />
+            {patientId ? (
+              <MedicalFilesPanel mode="patient_chart" patientId={patientId} />
+            ) : (
+              <p className="text-sm text-stone-600 dark:text-slate-300">
+                {t("filesPickPatient")}
+              </p>
+            )}
+          </div>
+        ) : null}
+      </PanelTabs>
     </div>
   );
 }

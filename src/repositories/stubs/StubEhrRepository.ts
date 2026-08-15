@@ -39,7 +39,21 @@ export class StubEhrRepository implements IEhrRepository {
   }
 
   async listFilesByPatient(patientId: string): Promise<MedicalFile[]> {
-    return [...this.files.values()].filter((f) => f.patientId === patientId);
+    return [...this.files.values()]
+      .filter((f) => f.patientId === patientId)
+      .sort((a, b) => b.createdAt.getTime() - a.createdAt.getTime());
+  }
+
+  async listFilesBySpecialistProfile(
+    specialistId: string,
+  ): Promise<MedicalFile[]> {
+    return [...this.files.values()]
+      .filter(
+        (f) =>
+          f.scope === "specialist_profile" &&
+          f.specialistProfileId === specialistId,
+      )
+      .sort((a, b) => b.createdAt.getTime() - a.createdAt.getTime());
   }
 
   async createFileMetadata(
@@ -48,8 +62,12 @@ export class StubEhrRepository implements IEhrRepository {
     this.fileSeq += 1;
     const file: MedicalFile = {
       id: `file_${this.fileSeq}`,
+      scope: input.scope,
       patientId: input.patientId,
+      specialistProfileId: input.specialistProfileId,
+      appointmentId: input.appointmentId,
       uploadedById: input.uploadedById,
+      label: input.label,
       storagePath: input.storagePath,
       url: input.url,
       provider: input.provider,

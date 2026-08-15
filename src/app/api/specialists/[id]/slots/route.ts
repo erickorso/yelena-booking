@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { isAuthError, requireAuth } from "@/lib/auth/requireAuth";
 import { AdminAppointmentRepository } from "@/repositories/firestore/AdminAppointmentRepository";
+import { AdminAvailabilityRepository } from "@/repositories/firestore/AdminAvailabilityRepository";
 import { AdminUserRepository } from "@/repositories/firestore/AdminUserRepository";
 import {
   computeFreeSlots,
@@ -9,7 +10,7 @@ import {
 
 /**
  * GET /api/specialists/[id]/slots?date=YYYY-MM-DD
- * Free slots for an active specialist (no patient PII).
+ * Free slots for an active specialist (uses their saved schedule).
  */
 export async function GET(
   request: Request,
@@ -42,6 +43,10 @@ export async function GET(
       );
     }
 
+    const schedule = await new AdminAvailabilityRepository().getConfigOrDefault(
+      id,
+    );
+
     const appointments = await new AdminAppointmentRepository().list({
       specialistId: id,
     });
@@ -55,15 +60,18 @@ export async function GET(
         status: a.status,
       }));
 
-    const slots = computeFreeSlots(day, busy).map((s) => ({
-      startsAt: s.startsAt.toISOString(),
-      endsAt: s.endsAt.toISOString(),
-    }));
+    const slots = computeFreeSlots(day, busy, new Date(), schedule).map(
+      (s) => ({
+        startsAt: s.startsAt.toISOString(),
+        endsAt: s.endsAt.toISOString(),
+      }),
+    );
 
     return NextResponse.json({
       specialistId: id,
       date: dateParam,
       slotMinutes: 30,
+      schedule,
       slots,
     });
   } catch (error) {

@@ -11,10 +11,28 @@ export interface EhrNote {
   createdAt: Date;
 }
 
+export const MEDICAL_FILE_SCOPES = [
+  "patient_general",
+  "appointment",
+  "specialist_profile",
+] as const;
+
+export type MedicalFileScope = (typeof MEDICAL_FILE_SCOPES)[number];
+
+/**
+ * Append-only medical document. Never deleted in domain ops.
+ */
 export interface MedicalFile {
   id: string;
-  patientId: string;
+  scope: MedicalFileScope;
+  /** Chart owner when scope is patient_general | appointment. */
+  patientId: string | null;
+  /** Specialist library when scope is specialist_profile. */
+  specialistProfileId: string | null;
+  /** Optional link to a consultation. */
+  appointmentId: string | null;
   uploadedById: string;
+  label: string | null;
   /** Object key in the storage provider. */
   storagePath: string;
   /** Access URL from the storage provider. */

@@ -1,9 +1,11 @@
 import { NextResponse } from "next/server";
 import { isAuthError, requireAuth } from "@/lib/auth/requireAuth";
+import { AdminAvailabilityRepository } from "@/repositories/firestore/AdminAvailabilityRepository";
 import { AdminAppointmentRepository } from "@/repositories/firestore/AdminAppointmentRepository";
 import { AdminUserRepository } from "@/repositories/firestore/AdminUserRepository";
 import { AppointmentService } from "@/services/appointmentService";
 import { canActAsPatient } from "@/types/domain";
+import { isWithinSchedule } from "@/lib/availability/defaultSlots";
 
 interface CreateBody {
   patientId?: unknown;
@@ -151,6 +153,16 @@ export async function POST(request: Request) {
     const patient = await users.getById(patientId);
     if (!patient || !canActAsPatient(patient.role)) {
       return NextResponse.json({ error: "Patient not found" }, { status: 404 });
+    }
+
+    const schedule = await new AdminAvailabilityRepository().getConfigOrDefault(
+      specialistId,
+    );
+    if (!isWithinSchedule(startsAt, endsAt, schedule)) {
+      return NextResponse.json(
+        { error: "Outside specialist working hours" },
+        { status: 400 },
+      );
     }
 
     const repo = new AdminAppointmentRepository();

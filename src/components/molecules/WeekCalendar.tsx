@@ -2,7 +2,13 @@
 
 import { useMemo, useState } from "react";
 import { clsx } from "clsx";
-import { SLOT_MINUTES } from "@/lib/availability/defaultSlots";
+import {
+  SLOT_MINUTES,
+  isWithinSchedule,
+  type ScheduleConfig,
+  DEFAULT_SCHEDULE,
+} from "@/lib/availability/defaultSlots";
+import { useToast } from "@/components/providers/ToastProvider";
 
 export type CalendarEvent = {
   id: string;
@@ -21,11 +27,15 @@ type WeekCalendarProps = {
   events: CalendarEvent[];
   selectedSlot: CalendarSlot | null;
   onSelectSlot: (slot: CalendarSlot | null) => void;
+  schedule?: ScheduleConfig;
   labels: {
     today: string;
     weekOf: string;
     hint: string;
     selected: string;
+    pastSlot: string;
+    outsideHours: string;
+    busySlot: string;
   };
 };
 
@@ -86,8 +96,10 @@ export function WeekCalendar({
   events,
   selectedSlot,
   onSelectSlot,
+  schedule = DEFAULT_SCHEDULE,
   labels,
 }: WeekCalendarProps) {
+  const { error: toastError } = useToast();
   const [anchor, setAnchor] = useState(() => startOfWeek(new Date()));
   const locale =
     typeof navigator !== "undefined" ? navigator.language : "es-ES";
@@ -116,12 +128,18 @@ export function WeekCalendar({
   }
 
   function handleColumnClick(day: Date, event: React.MouseEvent<HTMLDivElement>) {
+    const dayStart = new Date(day);
+    dayStart.setHours(0, 0, 0, 0);
+    if (dayStart < today) {
+      toastError(labels.pastSlot);
+      return;
+    }
+
     const rect = event.currentTarget.getBoundingClientRect();
     const y = event.clientY - rect.top;
     const minutesFromStart = (y / HOUR_HEIGHT) * 60;
     const raw = DAY_START_HOUR * 60 + minutesFromStart;
-    const slotted =
-      Math.floor(raw / SLOT_MINUTES) * SLOT_MINUTES;
+    const slotted = Math.floor(raw / SLOT_MINUTES) * SLOT_MINUTES;
     const h = Math.floor(slotted / 60);
     const m = slotted % 60;
     if (h < DAY_START_HOUR || h >= DAY_END_HOUR) return;
@@ -129,17 +147,31 @@ export function WeekCalendar({
     const startsAt = new Date(day);
     startsAt.setHours(h, m, 0, 0);
     const endsAt = new Date(startsAt.getTime() + SLOT_MINUTES * 60_000);
-    if (endsAt.getHours() > DAY_END_HOUR || (endsAt.getHours() === DAY_END_HOUR && endsAt.getMinutes() > 0)) {
+    if (
+      endsAt.getHours() > DAY_END_HOUR ||
+      (endsAt.getHours() === DAY_END_HOUR && endsAt.getMinutes() > 0)
+    ) {
       return;
     }
-    if (startsAt <= new Date()) return;
+    if (startsAt <= new Date()) {
+      toastError(labels.pastSlot);
+      return;
+    }
+
+    if (!isWithinSchedule(startsAt, endsAt, schedule)) {
+      toastError(labels.outsideHours);
+      return;
+    }
 
     const busy = events.some(
       (e) =>
         e.status !== "cancelled" &&
         overlaps(startsAt, endsAt, e.startsAt, e.endsAt),
     );
-    if (busy) return;
+    if (busy) {
+      toastError(labels.busySlot);
+      return;
+    }
 
     onSelectSlot({
       startsAt: startsAt.toISOString(),
@@ -209,10 +241,14 @@ export function WeekCalendar({
           <div className="border-b border-stone-200 bg-stone-50 dark:border-slate-700 dark:bg-slate-900" />
           {days.map((day) => {
             const isToday = sameDay(day, today);
+            const isPast = day < today;
             return (
               <div
                 key={day.toISOString()}
-                className="border-b border-l border-stone-200 px-1 py-2 text-center dark:border-slate-700"
+                className={clsx(
+                  "border-b border-l border-stone-200 px-1 py-2 text-center dark:border-slate-700",
+                  isPast && "opacity-45",
+                )}
               >
                 <p className="text-[11px] uppercase tracking-wide text-stone-500 dark:text-slate-400">
                   {weekdayShort(day, locale)}
@@ -249,6 +285,7 @@ export function WeekCalendar({
 
           {days.map((day) => {
             const dayEvents = events.filter((e) => sameDay(e.startsAt, day));
+            const isPastDay = day < today;
             const selectedOnDay =
               selectedSlot &&
               sameDay(new Date(selectedSlot.startsAt), day)
@@ -259,7 +296,12 @@ export function WeekCalendar({
               <div
                 key={`col-${day.toISOString()}`}
                 role="presentation"
-                className="relative cursor-crosshair border-l border-stone-200 dark:border-slate-700"
+                className={clsx(
+                  "relative border-l border-stone-200 dark:border-slate-700",
+                  isPastDay
+                    ? "cursor-not-allowed bg-stone-50/80 dark:bg-slate-950/40"
+                    : "cursor-crosshair",
+                )}
                 style={{ height: GRID_HEIGHT }}
                 onClick={(e) => handleColumnClick(day, e)}
               >

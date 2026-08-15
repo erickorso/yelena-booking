@@ -1,5 +1,6 @@
-import type { EhrNote, MedicalFile } from "@/types/domain";
-import { requireString, toDate } from "./helpers";
+import type { EhrNote, MedicalFile, MedicalFileScope } from "@/types/domain";
+import { MEDICAL_FILE_SCOPES } from "@/types/domain";
+import { optionalString, requireString, toDate } from "./helpers";
 
 export interface EhrNoteDoc {
   appointmentId?: unknown;
@@ -10,8 +11,12 @@ export interface EhrNoteDoc {
 }
 
 export interface MedicalFileDoc {
+  scope?: unknown;
   patientId?: unknown;
+  specialistProfileId?: unknown;
+  appointmentId?: unknown;
   uploadedById?: unknown;
+  label?: unknown;
   storagePath?: unknown;
   url?: unknown;
   provider?: unknown;
@@ -19,6 +24,13 @@ export interface MedicalFileDoc {
   contentType?: unknown;
   sizeBytes?: unknown;
   createdAt?: unknown;
+}
+
+function isScope(value: unknown): value is MedicalFileScope {
+  return (
+    typeof value === "string" &&
+    (MEDICAL_FILE_SCOPES as readonly string[]).includes(value)
+  );
 }
 
 /**
@@ -43,10 +55,19 @@ export function adaptMedicalFile(id: string, data: MedicalFileDoc): MedicalFile 
     throw new Error(`Invalid sizeBytes on medical file ${id}`);
   }
 
+  // Backward compat: old docs without scope → patient_general
+  const scope: MedicalFileScope = isScope(data.scope)
+    ? data.scope
+    : "patient_general";
+
   return {
     id,
-    patientId: requireString(data.patientId, "patientId"),
+    scope,
+    patientId: optionalString(data.patientId ?? null),
+    specialistProfileId: optionalString(data.specialistProfileId ?? null),
+    appointmentId: optionalString(data.appointmentId ?? null),
     uploadedById: requireString(data.uploadedById, "uploadedById"),
+    label: optionalString(data.label ?? null),
     storagePath: requireString(data.storagePath, "storagePath"),
     url: requireString(data.url, "url"),
     provider:

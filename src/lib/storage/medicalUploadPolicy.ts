@@ -1,9 +1,11 @@
-/** Allowed medical upload MIME types (PDF + images). */
+/** Allowed medical upload MIME types (PDF, images, Word). */
 export const ALLOWED_MEDICAL_CONTENT_TYPES = [
   "application/pdf",
   "image/jpeg",
   "image/png",
   "image/webp",
+  "application/msword",
+  "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
 ] as const;
 
 export type AllowedMedicalContentType =
@@ -27,12 +29,16 @@ export function assertValidMedicalUpload(file: {
   }
   if (!isAllowedMedicalContentType(file.type)) {
     throw new Error(
-      `Unsupported content type: ${file.type}. Allowed: PDF, JPEG, PNG, WEBP.`,
+      `Unsupported content type: ${file.type}. Allowed: PDF, JPEG, PNG, WEBP, DOC, DOCX.`,
     );
   }
   if (file.size <= 0 || file.size > MAX_MEDICAL_FILE_BYTES) {
     throw new Error(`File must be between 1 byte and ${MAX_MEDICAL_FILE_BYTES} bytes`);
   }
+}
+
+function safeName(fileName: string): string {
+  return fileName.replace(/[^a-zA-Z0-9._-]/g, "_");
 }
 
 /** Builds a scoped object path: patients/{patientId}/{timestamp}-{safeName} */
@@ -41,6 +47,13 @@ export function buildPatientFilePath(
   fileName: string,
   now = Date.now(),
 ): string {
-  const safe = fileName.replace(/[^a-zA-Z0-9._-]/g, "_");
-  return `patients/${patientId}/${now}-${safe}`;
+  return `patients/${patientId}/${now}-${safeName(fileName)}`;
+}
+
+export function buildSpecialistFilePath(
+  specialistId: string,
+  fileName: string,
+  now = Date.now(),
+): string {
+  return `specialists/${specialistId}/${now}-${safeName(fileName)}`;
 }

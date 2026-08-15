@@ -1,3 +1,4 @@
+import type { TimeRange, Weekday } from "@/types/domain";
 import type { AppointmentStatus } from "@/types/domain";
 
 export type BusyInterval = {
@@ -11,13 +12,22 @@ export type FreeSlot = {
   endsAt: Date;
 };
 
-const SLOT_MINUTES = 30;
-/** Mon–Fri */
-const WORKDAYS = new Set([1, 2, 3, 4, 5]);
-const RANGES: ReadonlyArray<{ start: string; end: string }> = [
-  { start: "09:00", end: "13:00" },
-  { start: "15:00", end: "18:00" },
-];
+/** Schedule used to generate bookable slots. */
+export type ScheduleConfig = {
+  workdays: readonly Weekday[];
+  ranges: readonly TimeRange[];
+};
+
+export const SLOT_MINUTES = 30;
+
+/** Fallback until the specialist saves their own hours. */
+export const DEFAULT_SCHEDULE: ScheduleConfig = {
+  workdays: [1, 2, 3, 4, 5],
+  ranges: [
+    { start: "09:00", end: "13:00" },
+    { start: "15:00", end: "18:00" },
+  ],
+};
 
 const BLOCKING: ReadonlySet<string> = new Set([
   "pending",
@@ -55,19 +65,29 @@ function ymd(d: Date): string {
   return `${y}-${m}-${day}`;
 }
 
+function isValidRange(r: TimeRange): boolean {
+  const a = parseHm(r.start);
+  const b = parseHm(r.end);
+  return a.h * 60 + a.m < b.h * 60 + b.m;
+}
+
 /**
- * Default clinic hours (local TZ of the runtime): Mon–Fri morning + afternoon, 30 min.
- * Excludes blocking appointments and past start times.
+ * Free 30-min slots for a day from specialist schedule − busy appointments.
  */
 export function computeFreeSlots(
   day: Date,
   busy: BusyInterval[],
   now: Date = new Date(),
+  schedule: ScheduleConfig = DEFAULT_SCHEDULE,
 ): FreeSlot[] {
-  if (!WORKDAYS.has(day.getDay())) return [];
+  const weekday = day.getDay() as Weekday;
+  if (!schedule.workdays.includes(weekday)) return [];
+
+  const ranges = schedule.ranges.filter(isValidRange);
+  if (ranges.length === 0) return [];
 
   const candidates: FreeSlot[] = [];
-  for (const range of RANGES) {
+  for (const range of ranges) {
     let cursor = atLocal(day, range.start);
     const end = atLocal(day, range.end);
     while (cursor.getTime() + SLOT_MINUTES * 60_000 <= end.getTime()) {
@@ -87,6 +107,27 @@ export function computeFreeSlots(
   });
 }
 
+/** Whether a proposed slot start falls inside the schedule (ignoring busy). */
+export function isWithinSchedule(
+  startsAt: Date,
+  endsAt: Date,
+  schedule: ScheduleConfig = DEFAULT_SCHEDULE,
+): boolean {
+  const weekday = startsAt.getDay() as Weekday;
+  if (!schedule.workdays.includes(weekday)) return false;
+  return schedule.ranges.some((range) => {
+    if (!isValidRange(range)) return false;
+    const day = new Date(
+      startsAt.getFullYear(),
+      startsAt.getMonth(),
+      startsAt.getDate(),
+    );
+    const r0 = atLocal(day, range.start);
+    const r1 = atLocal(day, range.end);
+    return startsAt >= r0 && endsAt <= r1;
+  });
+}
+
 export function parseDateInput(value: string): Date | null {
   if (!/^\d{4}-\d{2}-\d{2}$/.test(value)) return null;
   const [y, m, d] = value.split("-").map(Number);
@@ -97,4 +138,7 @@ export function toDateInputValue(d: Date): string {
   return ymd(d);
 }
 
-export { SLOT_MINUTES };
+export function hmToMinutes(hm: string): number {
+  const { h, m } = parseHm(hm);
+  return h * 60 + m;
+}

@@ -8,6 +8,7 @@ import {
   toDateInputValue,
   type BusyInterval,
 } from "@/lib/availability/defaultSlots";
+import { useToast } from "@/components/providers/ToastProvider";
 
 export type SlotIso = {
   startsAt: string;
@@ -19,6 +20,7 @@ type SlotPickerProps = {
   labelSlots: string;
   emptyLabel: string;
   weekendLabel: string;
+  pastLabel?: string;
   busy: BusyInterval[];
   /** Controlled selected slot ISO start */
   value: string | null;
@@ -44,6 +46,7 @@ export function SlotPicker({
   labelSlots,
   emptyLabel,
   weekendLabel,
+  pastLabel,
   busy,
   value,
   onChange,
@@ -51,7 +54,9 @@ export function SlotPicker({
   remoteLoading,
   onDateChange,
 }: SlotPickerProps) {
+  const { error: toastError } = useToast();
   const [dateYmd, setDateYmd] = useState(() => toDateInputValue(new Date()));
+  const todayYmd = toDateInputValue(new Date());
 
   const day = useMemo(() => parseDateInput(dateYmd), [dateYmd]);
   const isWeekend = day ? day.getDay() === 0 || day.getDay() === 6 : false;
@@ -67,6 +72,15 @@ export function SlotPicker({
   const slots = remoteSlots ?? localSlots;
 
   function handleDate(next: string) {
+    if (next < todayYmd) {
+      toastError(
+        pastLabel ?? "No puedes citar en un día que ya pasó.",
+      );
+      setDateYmd(todayYmd);
+      onChange(null);
+      onDateChange?.(todayYmd);
+      return;
+    }
     setDateYmd(next);
     onChange(null);
     onDateChange?.(next);

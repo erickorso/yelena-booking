@@ -179,6 +179,7 @@ export function BookSelfAppointmentForm() {
             labelSlots={t("pickSlot")}
             emptyLabel={t("noSlots")}
             weekendLabel={t("weekend")}
+            pastLabel={t("pastDay")}
             busy={[]}
             remoteSlots={remoteSlots}
             remoteLoading={slotsLoading}
