@@ -5,6 +5,7 @@ import { getMessages, setRequestLocale } from "next-intl/server";
 import type { ReactNode } from "react";
 import { ThemeProvider } from "@/components/providers/ThemeProvider";
 import { AuthProvider } from "@/components/providers/AuthProvider";
+import { ToastProvider } from "@/components/providers/ToastProvider";
 import { routing } from "@/i18n/routing";
 import "../globals.css";
 
@@ -43,7 +44,9 @@ export default async function LocaleLayout({
       <body className="min-h-full font-sans antialiased">
         <ThemeProvider>
           <NextIntlClientProvider messages={messages}>
-            <AuthProvider>{children}</AuthProvider>
+            <AuthProvider>
+              <ToastProvider>{children}</ToastProvider>
+            </AuthProvider>
           </NextIntlClientProvider>
         </ThemeProvider>
       </body>

@@ -8,6 +8,24 @@ export const APPOINTMENT_STATUSES = [
 
 export type AppointmentStatus = (typeof APPOINTMENT_STATUSES)[number];
 
+export const TRANSFER_STATUSES = [
+  "none",
+  "pending",
+  "accepted",
+  "rejected",
+] as const;
+
+export type TransferStatus = (typeof TRANSFER_STATUSES)[number];
+
+export interface AppointmentTransfer {
+  status: TransferStatus;
+  toSpecialistId: string | null;
+  fromSpecialistId: string | null;
+  requestedBy: string | null;
+  requestedAt: Date | null;
+  respondedAt: Date | null;
+}
+
 export interface Appointment {
   id: string;
   patientId: string;
@@ -18,6 +36,8 @@ export interface Appointment {
   endsAt: Date;
   status: AppointmentStatus;
   notes: string | null;
+  transfer: AppointmentTransfer;
   createdAt: Date;
   updatedAt: Date;
 }
+

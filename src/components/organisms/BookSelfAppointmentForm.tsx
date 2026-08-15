@@ -6,6 +6,7 @@ import { Button } from "@/components/atoms/Button";
 import { SearchableSelect } from "@/components/molecules/SearchableSelect";
 import { SlotPicker, type SlotIso } from "@/components/molecules/SlotPicker";
 import { useAuth } from "@/components/providers/AuthProvider";
+import { useToast } from "@/components/providers/ToastProvider";
 import { getIdToken } from "@/services/authService";
 import { toDateInputValue } from "@/lib/availability/defaultSlots";
 
@@ -28,6 +29,7 @@ type AppointmentRow = {
 export function BookSelfAppointmentForm() {
   const t = useTranslations("PatientBooking");
   const { user } = useAuth();
+  const { success, error: toastError } = useToast();
   const [specialists, setSpecialists] = useState<SpecialistOption[]>([]);
   const [appointments, setAppointments] = useState<AppointmentRow[]>([]);
   const [specialistId, setSpecialistId] = useState("");
@@ -127,13 +129,16 @@ export function BookSelfAppointmentForm() {
         throw new Error(data.error ?? t("bookError"));
       }
       setInfo(t("bookSuccess"));
+      success(t("bookSuccess"));
       setSelectedSlot(null);
       if (data.appointment) {
         setAppointments((prev) => [...prev, data.appointment!]);
       }
       setDateYmd((d) => d);
     } catch (err) {
-      setError(err instanceof Error ? err.message : t("bookError"));
+      const msg = err instanceof Error ? err.message : t("bookError");
+      setError(msg);
+      toastError(msg);
     } finally {
       setPending(false);
     }

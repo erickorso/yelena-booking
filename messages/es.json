@@ -118,7 +118,30 @@
     "booking": "Creando…",
     "bookSuccess": "Cita creada.",
     "bookError": "No se pudo crear la cita.",
-    "loadError": "No se pudieron cargar los pacientes."
+    "loadError": "No se pudieron cargar los pacientes.",
+    "transferTitle": "Transferir cita",
+    "transferSubtitle": "El otro especialista debe confirmarlo en la campanita (o email más adelante).",
+    "transferAppointment": "Cita",
+    "transferApptPlaceholder": "Selecciona cita",
+    "transferApptSearch": "Buscar cita…",
+    "transferTo": "Transferir a",
+    "transferToPlaceholder": "Selecciona especialista",
+    "transferCta": "Enviar solicitud",
+    "transferSending": "Enviando…",
+    "transferSent": "Solicitud enviada. Pendiente de confirmación.",
+    "transferError": "No se pudo solicitar la transferencia."
+  },
+  "Notifications": {
+    "title": "Notificaciones",
+    "empty": "Sin notificaciones.",
+    "new": "nueva",
+    "accept": "Aceptar",
+    "reject": "Rechazar",
+    "open": "Abrir",
+    "markRead": "Marcar leída",
+    "accepted": "Transferencia aceptada.",
+    "rejected": "Transferencia rechazada.",
+    "actionError": "No se pudo completar la acción."
   },
   "PatientBooking": {
     "title": "Reservar cita",

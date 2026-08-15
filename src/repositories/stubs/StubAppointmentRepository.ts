@@ -38,6 +38,14 @@ export class StubAppointmentRepository implements IAppointmentRepository {
       endsAt: input.endsAt,
       status: "pending",
       notes: input.notes ?? null,
+      transfer: {
+        status: "none",
+        toSpecialistId: null,
+        fromSpecialistId: null,
+        requestedBy: null,
+        requestedAt: null,
+        respondedAt: null,
+      },
       createdAt: now,
       updatedAt: now,
     };

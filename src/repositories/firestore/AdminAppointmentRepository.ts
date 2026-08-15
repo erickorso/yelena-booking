@@ -60,6 +60,14 @@ export class AdminAppointmentRepository implements IAppointmentRepository {
       endsAt: input.endsAt,
       status: "pending",
       notes: input.notes ?? null,
+      transfer: {
+        status: "none",
+        toSpecialistId: null,
+        fromSpecialistId: null,
+        requestedBy: null,
+        requestedAt: null,
+        respondedAt: null,
+      },
       createdAt: FieldValue.serverTimestamp(),
       updatedAt: FieldValue.serverTimestamp(),
     });
@@ -74,6 +82,22 @@ export class AdminAppointmentRepository implements IAppointmentRepository {
     const ref = (await this.db()).collection(COLLECTION).doc(id);
     await ref.update({
       status,
+      updatedAt: FieldValue.serverTimestamp(),
+    });
+    const snap = await ref.get();
+    if (!snap.exists) {
+      throw new Error(`Appointment not found: ${id}`);
+    }
+    return adaptAppointment(snap.id, snap.data() ?? {});
+  }
+
+  async updateFields(
+    id: string,
+    fields: Record<string, unknown>,
+  ): Promise<Appointment> {
+    const ref = (await this.db()).collection(COLLECTION).doc(id);
+    await ref.update({
+      ...fields,
       updatedAt: FieldValue.serverTimestamp(),
     });
     const snap = await ref.get();

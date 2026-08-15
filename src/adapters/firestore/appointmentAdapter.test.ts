@@ -17,6 +17,7 @@ describe("adaptAppointment", () => {
     expect(appointment.id).toBe("a1");
     expect(appointment.status).toBe("pending");
     expect(appointment.bookedById).toBeNull();
+    expect(appointment.transfer.status).toBe("none");
     expect(appointment.startsAt.toISOString()).toBe("2026-08-15T10:00:00.000Z");
   });
 });

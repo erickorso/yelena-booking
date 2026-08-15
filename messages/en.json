@@ -118,7 +118,30 @@
     "booking": "Creating…",
     "bookSuccess": "Appointment created.",
     "bookError": "Could not create appointment.",
-    "loadError": "Could not load patients."
+    "loadError": "Could not load patients.",
+    "transferTitle": "Transfer appointment",
+    "transferSubtitle": "The other specialist must confirm via the bell (email later).",
+    "transferAppointment": "Appointment",
+    "transferApptPlaceholder": "Select appointment",
+    "transferApptSearch": "Search appointment…",
+    "transferTo": "Transfer to",
+    "transferToPlaceholder": "Select specialist",
+    "transferCta": "Send request",
+    "transferSending": "Sending…",
+    "transferSent": "Request sent. Waiting for confirmation.",
+    "transferError": "Could not request transfer."
+  },
+  "Notifications": {
+    "title": "Notifications",
+    "empty": "No notifications.",
+    "new": "new",
+    "accept": "Accept",
+    "reject": "Reject",
+    "open": "Open",
+    "markRead": "Mark read",
+    "accepted": "Transfer accepted.",
+    "rejected": "Transfer rejected.",
+    "actionError": "Could not complete the action."
   },
   "PatientBooking": {
     "title": "Book appointment",

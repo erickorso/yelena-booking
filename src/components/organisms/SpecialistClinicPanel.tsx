@@ -7,6 +7,7 @@ import { Input } from "@/components/atoms/Input";
 import { SearchableSelect } from "@/components/molecules/SearchableSelect";
 import { WeekCalendar, type CalendarSlot } from "@/components/molecules/WeekCalendar";
 import { useAuth } from "@/components/providers/AuthProvider";
+import { useToast } from "@/components/providers/ToastProvider";
 import { getIdToken } from "@/services/authService";
 
 type PatientOption = {
@@ -15,12 +16,19 @@ type PatientOption = {
   displayName: string;
 };
 
+type PeerOption = {
+  id: string;
+  displayName: string;
+  specialty: string;
+};
+
 type AppointmentRow = {
   id: string;
   patientId: string;
   startsAt: string;
   endsAt: string;
   status: string;
+  transfer?: { status: string; toSpecialistId: string | null };
 };
 
 /**
@@ -29,10 +37,11 @@ type AppointmentRow = {
 export function SpecialistClinicPanel() {
   const t = useTranslations("Clinic");
   const { user } = useAuth();
+  const { success, error: toastError } = useToast();
   const [patients, setPatients] = useState<PatientOption[]>([]);
+  const [peers, setPeers] = useState<PeerOption[]>([]);
   const [appointments, setAppointments] = useState<AppointmentRow[]>([]);
   const [error, setError] = useState<string | null>(null);
-  const [info, setInfo] = useState<string | null>(null);
 
   const [regName, setRegName] = useState("");
   const [regEmail, setRegEmail] = useState("");
@@ -44,19 +53,24 @@ export function SpecialistClinicPanel() {
   const [bookPending, setBookPending] = useState(false);
   const [reloadKey, setReloadKey] = useState(0);
 
+  const [transferApptId, setTransferApptId] = useState("");
+  const [transferToId, setTransferToId] = useState("");
+  const [transferPending, setTransferPending] = useState(false);
+
   useEffect(() => {
     if (!user) return;
     let cancelled = false;
     void (async () => {
       setError(null);
       const token = await getIdToken(user);
-      const [patientsRes, apptsRes] = await Promise.all([
+      const [patientsRes, apptsRes, peersRes] = await Promise.all([
         fetch("/api/specialists/patients", {
           headers: { Authorization: `Bearer ${token}` },
         }),
         fetch("/api/appointments?as=specialist", {
           headers: { Authorization: `Bearer ${token}` },
         }),
+        fetch("/api/specialists"),
       ]);
       const patientsData = (await patientsRes.json()) as {
         patients?: PatientOption[];
@@ -65,6 +79,9 @@ export function SpecialistClinicPanel() {
       const apptsData = (await apptsRes.json()) as {
         appointments?: AppointmentRow[];
         error?: string;
+      };
+      const peersData = (await peersRes.json()) as {
+        specialists?: PeerOption[];
       };
       if (cancelled) return;
       if (!patientsRes.ok) {
@@ -75,6 +92,9 @@ export function SpecialistClinicPanel() {
       if (apptsRes.ok) {
         setAppointments(apptsData.appointments ?? []);
       }
+      setPeers(
+        (peersData.specialists ?? []).filter((s) => s.id !== user.uid),
+      );
     })();
     return () => {
       cancelled = true;
@@ -87,7 +107,6 @@ export function SpecialistClinicPanel() {
     setRegPending(true);
     setError(null);
     setTempPassword(null);
-    setInfo(null);
     try {
       const token = await getIdToken(user);
       const response = await fetch("/api/specialists/patients", {
@@ -110,13 +129,15 @@ export function SpecialistClinicPanel() {
         throw new Error(data.error ?? t("registerError"));
       }
       setTempPassword(data.temporaryPassword ?? null);
-      setInfo(t("registerSuccess"));
+      success(t("registerSuccess"));
       setRegName("");
       setRegEmail("");
       setReloadKey((k) => k + 1);
       if (data.patient) setPatientId(data.patient.id);
     } catch (err) {
-      setError(err instanceof Error ? err.message : t("registerError"));
+      const msg = err instanceof Error ? err.message : t("registerError");
+      setError(msg);
+      toastError(msg);
     } finally {
       setRegPending(false);
     }
@@ -127,7 +148,6 @@ export function SpecialistClinicPanel() {
     if (!user || !selectedSlot) return;
     setBookPending(true);
     setError(null);
-    setInfo(null);
     try {
       const token = await getIdToken(user);
       const response = await fetch("/api/appointments", {
@@ -147,13 +167,45 @@ export function SpecialistClinicPanel() {
       if (!response.ok) {
         throw new Error(data.error ?? t("bookError"));
       }
-      setInfo(t("bookSuccess"));
+      success(t("bookSuccess"));
       setSelectedSlot(null);
       setReloadKey((k) => k + 1);
     } catch (err) {
-      setError(err instanceof Error ? err.message : t("bookError"));
+      const msg = err instanceof Error ? err.message : t("bookError");
+      setError(msg);
+      toastError(msg);
     } finally {
       setBookPending(false);
+    }
+  }
+
+  async function requestTransfer(event: React.FormEvent) {
+    event.preventDefault();
+    if (!user || !transferApptId || !transferToId) return;
+    setTransferPending(true);
+    setError(null);
+    try {
+      const token = await getIdToken(user);
+      const res = await fetch(`/api/appointments/${transferApptId}/transfer`, {
+        method: "POST",
+        headers: {
+          Authorization: `Bearer ${token}`,
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({ toSpecialistId: transferToId }),
+      });
+      const data = (await res.json()) as { error?: string };
+      if (!res.ok) throw new Error(data.error ?? t("transferError"));
+      success(t("transferSent"));
+      setTransferApptId("");
+      setTransferToId("");
+      setReloadKey((k) => k + 1);
+    } catch (err) {
+      const msg = err instanceof Error ? err.message : t("transferError");
+      setError(msg);
+      toastError(msg);
+    } finally {
+      setTransferPending(false);
     }
   }
 
@@ -162,11 +214,6 @@ export function SpecialistClinicPanel() {
       {error ? (
         <p role="alert" className="text-sm text-red-600 dark:text-red-400">
           {error}
-        </p>
-      ) : null}
-      {info ? (
-        <p role="status" className="text-sm text-teal-800 dark:text-teal-300">
-          {info}
         </p>
       ) : null}
 
@@ -259,6 +306,59 @@ export function SpecialistClinicPanel() {
         />
         <Button type="submit" disabled={bookPending || !patientId || !selectedSlot}>
           {bookPending ? t("booking") : t("bookCta")}
+        </Button>
+      </form>
+
+      <form
+        onSubmit={(e) => void requestTransfer(e)}
+        className="space-y-4 rounded-md border border-stone-200 p-4 dark:border-slate-700"
+      >
+        <h2 className="font-serif text-xl text-teal-800 dark:text-teal-300">
+          {t("transferTitle")}
+        </h2>
+        <p className="text-sm text-stone-600 dark:text-slate-300">
+          {t("transferSubtitle")}
+        </p>
+        <SearchableSelect
+          label={t("transferAppointment")}
+          placeholder={t("transferApptPlaceholder")}
+          searchPlaceholder={t("transferApptSearch")}
+          emptyLabel={t("patientEmpty")}
+          value={transferApptId}
+          onChange={setTransferApptId}
+          options={appointments
+            .filter(
+              (a) =>
+                a.status !== "cancelled" &&
+                a.transfer?.status !== "pending",
+            )
+            .map((a) => {
+              const patient = patients.find((p) => p.id === a.patientId);
+              return {
+                id: a.id,
+                label: `${patient?.displayName ?? a.patientId.slice(0, 6)} · ${new Date(a.startsAt).toLocaleString()}`,
+                searchText: `${patient?.displayName ?? ""} ${a.startsAt}`,
+              };
+            })}
+        />
+        <SearchableSelect
+          label={t("transferTo")}
+          placeholder={t("transferToPlaceholder")}
+          searchPlaceholder={t("patientSearch")}
+          emptyLabel={t("patientEmpty")}
+          value={transferToId}
+          onChange={setTransferToId}
+          options={peers.map((p) => ({
+            id: p.id,
+            label: `${p.displayName} · ${p.specialty}`,
+            searchText: `${p.displayName} ${p.specialty}`,
+          }))}
+        />
+        <Button
+          type="submit"
+          disabled={transferPending || !transferApptId || !transferToId}
+        >
+          {transferPending ? t("transferSending") : t("transferCta")}
         </Button>
       </form>
     </div>

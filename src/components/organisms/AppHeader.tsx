@@ -4,6 +4,7 @@ import { useLocale, useTranslations } from "next-intl";
 import { clsx } from "clsx";
 import { Button, buttonVariants } from "@/components/atoms/Button";
 import { ThemeToggle } from "@/components/molecules/ThemeToggle";
+import { NotificationBell } from "@/components/organisms/NotificationBell";
 import { useAuth } from "@/components/providers/AuthProvider";
 import { Link, usePathname } from "@/i18n/navigation";
 import type { AppLocale } from "@/i18n/routing";
@@ -44,6 +45,7 @@ export function AppHeader() {
           {nextLocale.toUpperCase()}
         </Link>
         <ThemeToggle />
+        {showSession ? <NotificationBell /> : null}
         {showSession ? (
           <>
             <Link

@@ -22,6 +22,11 @@ function serialize(appointment: {
   endsAt: Date;
   status: string;
   notes: string | null;
+  transfer: {
+    status: string;
+    toSpecialistId: string | null;
+    fromSpecialistId: string | null;
+  };
 }) {
   return {
     id: appointment.id,
@@ -32,6 +37,11 @@ function serialize(appointment: {
     endsAt: appointment.endsAt.toISOString(),
     status: appointment.status,
     notes: appointment.notes,
+    transfer: {
+      status: appointment.transfer.status,
+      toSpecialistId: appointment.transfer.toSpecialistId,
+      fromSpecialistId: appointment.transfer.fromSpecialistId,
+    },
   };
 }
 
