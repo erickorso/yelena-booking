@@ -3,9 +3,11 @@
 import { useEffect, useState } from "react";
 import { useTranslations } from "next-intl";
 import { Button } from "@/components/atoms/Button";
-import { Input } from "@/components/atoms/Input";
+import { SearchableSelect } from "@/components/molecules/SearchableSelect";
+import { SlotPicker, type SlotIso } from "@/components/molecules/SlotPicker";
 import { useAuth } from "@/components/providers/AuthProvider";
 import { getIdToken } from "@/services/authService";
+import { toDateInputValue } from "@/lib/availability/defaultSlots";
 
 type SpecialistOption = {
   id: string;
@@ -29,7 +31,10 @@ export function BookSelfAppointmentForm() {
   const [specialists, setSpecialists] = useState<SpecialistOption[]>([]);
   const [appointments, setAppointments] = useState<AppointmentRow[]>([]);
   const [specialistId, setSpecialistId] = useState("");
-  const [startsAt, setStartsAt] = useState("");
+  const [selectedSlot, setSelectedSlot] = useState<SlotIso | null>(null);
+  const [remoteSlots, setRemoteSlots] = useState<SlotIso[] | null>(null);
+  const [slotsLoading, setSlotsLoading] = useState(false);
+  const [dateYmd, setDateYmd] = useState(() => toDateInputValue(new Date()));
   const [pending, setPending] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [info, setInfo] = useState<string | null>(null);
@@ -65,16 +70,42 @@ export function BookSelfAppointmentForm() {
     };
   }, [user, t]);
 
+  useEffect(() => {
+    if (!user || !specialistId) {
+      return;
+    }
+    let cancelled = false;
+    void (async () => {
+      setSlotsLoading(true);
+      try {
+        const token = await getIdToken(user);
+        const res = await fetch(
+          `/api/specialists/${specialistId}/slots?date=${dateYmd}`,
+          { headers: { Authorization: `Bearer ${token}` } },
+        );
+        const data = (await res.json()) as { slots?: SlotIso[]; error?: string };
+        if (!cancelled) {
+          setRemoteSlots(res.ok ? (data.slots ?? []) : []);
+        }
+      } catch {
+        if (!cancelled) setRemoteSlots([]);
+      } finally {
+        if (!cancelled) setSlotsLoading(false);
+      }
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, [user, specialistId, dateYmd]);
+
   async function onSubmit(event: React.FormEvent) {
     event.preventDefault();
-    if (!user) return;
+    if (!user || !selectedSlot) return;
     setPending(true);
     setError(null);
     setInfo(null);
     try {
       const token = await getIdToken(user);
-      const start = new Date(startsAt);
-      const end = new Date(start.getTime() + 30 * 60 * 1000);
       const response = await fetch("/api/appointments", {
         method: "POST",
         headers: {
@@ -84,8 +115,8 @@ export function BookSelfAppointmentForm() {
         body: JSON.stringify({
           patientId: user.uid,
           specialistId,
-          startsAt: start.toISOString(),
-          endsAt: end.toISOString(),
+          startsAt: selectedSlot.startsAt,
+          endsAt: selectedSlot.endsAt,
         }),
       });
       const data = (await response.json()) as {
@@ -96,10 +127,11 @@ export function BookSelfAppointmentForm() {
         throw new Error(data.error ?? t("bookError"));
       }
       setInfo(t("bookSuccess"));
-      setStartsAt("");
+      setSelectedSlot(null);
       if (data.appointment) {
         setAppointments((prev) => [...prev, data.appointment!]);
       }
+      setDateYmd((d) => d);
     } catch (err) {
       setError(err instanceof Error ? err.message : t("bookError"));
     } finally {
@@ -117,32 +149,43 @@ export function BookSelfAppointmentForm() {
           {t("title")}
         </h2>
         <p className="text-sm text-stone-600 dark:text-slate-300">{t("subtitle")}</p>
-        <label className="flex flex-col gap-1.5 text-sm text-stone-800 dark:text-slate-100">
-          <span className="font-medium">{t("specialist")}</span>
-          <select
-            className="h-10 rounded-md border border-stone-300 bg-white px-3 dark:border-slate-600 dark:bg-slate-900"
-            value={specialistId}
-            onChange={(e) => setSpecialistId(e.target.value)}
-            required
-          >
-            <option value="">{t("specialistPlaceholder")}</option>
-            {specialists
-              .filter((s) => s.id !== user?.uid)
-              .map((s) => (
-                <option key={s.id} value={s.id}>
-                  {s.displayName} · {s.specialty}
-                </option>
-              ))}
-          </select>
-        </label>
-        <Input
-          label={t("startsAt")}
-          name="startsAt"
-          type="datetime-local"
-          value={startsAt}
-          onChange={(e) => setStartsAt(e.target.value)}
-          required
+        <SearchableSelect
+          label={t("specialist")}
+          placeholder={t("specialistPlaceholder")}
+          searchPlaceholder={t("specialistSearch")}
+          emptyLabel={t("specialistEmpty")}
+          value={specialistId}
+          onChange={(id) => {
+            setSpecialistId(id);
+            setSelectedSlot(null);
+            setRemoteSlots(null);
+          }}
+          options={specialists
+            .filter((s) => s.id !== user?.uid)
+            .map((s) => ({
+              id: s.id,
+              label: `${s.displayName} · ${s.specialty}`,
+              searchText: `${s.displayName} ${s.specialty}`,
+            }))}
         />
+        {specialistId ? (
+          <SlotPicker
+            labelDate={t("pickDate")}
+            labelSlots={t("pickSlot")}
+            emptyLabel={t("noSlots")}
+            weekendLabel={t("weekend")}
+            busy={[]}
+            remoteSlots={remoteSlots}
+            remoteLoading={slotsLoading}
+            value={selectedSlot?.startsAt ?? null}
+            onChange={setSelectedSlot}
+            onDateChange={(d) => {
+              setDateYmd(d);
+              setSelectedSlot(null);
+            }}
+          />
+        ) : null}
+        <p className="text-xs text-stone-500 dark:text-slate-400">{t("hoursHint")}</p>
         {error ? (
           <p role="alert" className="text-sm text-red-600 dark:text-red-400">
             {error}
@@ -153,7 +196,7 @@ export function BookSelfAppointmentForm() {
             {info}
           </p>
         ) : null}
-        <Button type="submit" disabled={pending || !specialistId}>
+        <Button type="submit" disabled={pending || !specialistId || !selectedSlot}>
           {pending ? t("booking") : t("bookCta")}
         </Button>
       </form>

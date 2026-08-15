@@ -143,7 +143,20 @@ export async function POST(request: Request) {
       return NextResponse.json({ error: "Patient not found" }, { status: 404 });
     }
 
-    const service = new AppointmentService(new AdminAppointmentRepository());
+    const repo = new AdminAppointmentRepository();
+    const existing = await repo.list({ specialistId });
+    const conflict = existing.some((a) => {
+      if (a.status === "cancelled") return false;
+      return startsAt < a.endsAt && a.startsAt < endsAt;
+    });
+    if (conflict) {
+      return NextResponse.json(
+        { error: "Slot already booked" },
+        { status: 409 },
+      );
+    }
+
+    const service = new AppointmentService(repo);
     const appointment = await service.book({
       patientId,
       specialistId,

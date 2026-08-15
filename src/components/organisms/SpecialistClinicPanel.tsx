@@ -4,6 +4,8 @@ import { useEffect, useState } from "react";
 import { useTranslations } from "next-intl";
 import { Button } from "@/components/atoms/Button";
 import { Input } from "@/components/atoms/Input";
+import { SearchableSelect } from "@/components/molecules/SearchableSelect";
+import { WeekCalendar, type CalendarSlot } from "@/components/molecules/WeekCalendar";
 import { useAuth } from "@/components/providers/AuthProvider";
 import { getIdToken } from "@/services/authService";
 
@@ -38,8 +40,7 @@ export function SpecialistClinicPanel() {
   const [tempPassword, setTempPassword] = useState<string | null>(null);
 
   const [patientId, setPatientId] = useState("");
-  const [startsAt, setStartsAt] = useState("");
-  const [endsAt, setEndsAt] = useState("");
+  const [selectedSlot, setSelectedSlot] = useState<CalendarSlot | null>(null);
   const [bookPending, setBookPending] = useState(false);
   const [reloadKey, setReloadKey] = useState(0);
 
@@ -123,16 +124,12 @@ export function SpecialistClinicPanel() {
 
   async function bookAppointment(event: React.FormEvent) {
     event.preventDefault();
-    if (!user) return;
+    if (!user || !selectedSlot) return;
     setBookPending(true);
     setError(null);
     setInfo(null);
     try {
       const token = await getIdToken(user);
-      const start = new Date(startsAt);
-      const end = endsAt
-        ? new Date(endsAt)
-        : new Date(start.getTime() + 30 * 60 * 1000);
       const response = await fetch("/api/appointments", {
         method: "POST",
         headers: {
@@ -142,8 +139,8 @@ export function SpecialistClinicPanel() {
         body: JSON.stringify({
           patientId,
           specialistId: user.uid,
-          startsAt: start.toISOString(),
-          endsAt: end.toISOString(),
+          startsAt: selectedSlot.startsAt,
+          endsAt: selectedSlot.endsAt,
         }),
       });
       const data = (await response.json()) as { error?: string };
@@ -151,8 +148,7 @@ export function SpecialistClinicPanel() {
         throw new Error(data.error ?? t("bookError"));
       }
       setInfo(t("bookSuccess"));
-      setStartsAt("");
-      setEndsAt("");
+      setSelectedSlot(null);
       setReloadKey((k) => k + 1);
     } catch (err) {
       setError(err instanceof Error ? err.message : t("bookError"));
@@ -222,74 +218,49 @@ export function SpecialistClinicPanel() {
         <p className="text-sm text-stone-600 dark:text-slate-300">
           {t("bookSubtitle")}
         </p>
-        <label className="flex flex-col gap-1.5 text-sm text-stone-800 dark:text-slate-100">
-          <span className="font-medium">{t("patient")}</span>
-          <select
-            className="h-10 rounded-md border border-stone-300 bg-white px-3 dark:border-slate-600 dark:bg-slate-900"
-            value={patientId}
-            onChange={(e) => setPatientId(e.target.value)}
-            required
-          >
-            <option value="">{t("patientPlaceholder")}</option>
-            {patients
-              .filter((p) => p.id !== user?.uid)
-              .map((p) => (
-                <option key={p.id} value={p.id}>
-                  {p.displayName} · {p.email}
-                </option>
-              ))}
-          </select>
-        </label>
-        <Input
-          label={t("startsAt")}
-          name="startsAt"
-          type="datetime-local"
-          value={startsAt}
-          onChange={(e) => setStartsAt(e.target.value)}
+        <SearchableSelect
+          label={t("patient")}
+          placeholder={t("patientPlaceholder")}
+          searchPlaceholder={t("patientSearch")}
+          emptyLabel={t("patientEmpty")}
+          name="patientId"
           required
+          value={patientId}
+          onChange={setPatientId}
+          options={patients
+            .filter((p) => p.id !== user?.uid)
+            .map((p) => ({
+              id: p.id,
+              label: `${p.displayName} · ${p.email}`,
+              searchText: `${p.displayName} ${p.email}`,
+            }))}
         />
-        <Input
-          label={t("endsAt")}
-          name="endsAt"
-          type="datetime-local"
-          value={endsAt}
-          onChange={(e) => setEndsAt(e.target.value)}
+        <WeekCalendar
+          events={appointments
+            .filter((a) => a.status !== "cancelled")
+            .map((a) => {
+              const patient = patients.find((p) => p.id === a.patientId);
+              return {
+                id: a.id,
+                startsAt: new Date(a.startsAt),
+                endsAt: new Date(a.endsAt),
+                title: patient?.displayName ?? a.patientId.slice(0, 8),
+                status: a.status,
+              };
+            })}
+          selectedSlot={selectedSlot}
+          onSelectSlot={setSelectedSlot}
+          labels={{
+            today: t("calToday"),
+            weekOf: t("calWeek"),
+            hint: t("calHint"),
+            selected: t("calSelected"),
+          }}
         />
-        <Button type="submit" disabled={bookPending || !patientId}>
+        <Button type="submit" disabled={bookPending || !patientId || !selectedSlot}>
           {bookPending ? t("booking") : t("bookCta")}
         </Button>
       </form>
-
-      <section className="space-y-3">
-        <h2 className="font-serif text-xl text-teal-800 dark:text-teal-300">
-          {t("scheduleTitle")}
-        </h2>
-        {appointments.length === 0 ? (
-          <p className="text-sm text-stone-600 dark:text-slate-300">
-            {t("scheduleEmpty")}
-          </p>
-        ) : (
-          <ul className="space-y-2">
-            {appointments.map((a) => {
-              const patient = patients.find((p) => p.id === a.patientId);
-              return (
-                <li
-                  key={a.id}
-                  className="border-b border-stone-200 py-2 text-sm dark:border-slate-700"
-                >
-                  <span className="font-medium">
-                    {patient?.displayName ?? a.patientId}
-                  </span>
-                  {" · "}
-                  {new Date(a.startsAt).toLocaleString()}
-                  {" · "}
-                  {a.status}
-                </li>
-              );
-            })}
-          </ul>
-        )}
-      </section>
     </div>
   );
 }
