@@ -8,11 +8,28 @@
     "themeLight": "Claro",
     "themeDark": "Oscuro",
     "themeSystem": "Sistema",
-    "localeLabel": "Idioma"
+    "localeLabel": "Idioma",
+    "privacyLink": "Política de privacidad"
   },
   "Home": {
     "title": "Cuidado, con agenda clara",
     "description": "Reserva especialistas, gestiona disponibilidad y protege el historial clínico."
+  },
+  "Privacy": {
+    "backHome": "← Inicio",
+    "title": "Política de privacidad",
+    "updated": "Última actualización: agosto 2026",
+    "intro": "Thaydee Elena (yelena-booking) es una aplicación de citas clínicas e historias. Esta política describe qué datos tratamos y para qué.",
+    "dataTitle": "Datos que tratamos",
+    "dataBody": "Cuenta (email, nombre, rol), datos de perfil clínico y citas, documentos médicos que subes, y registros técnicos necesarios para operar el servicio (p. ej. autenticación Firebase).",
+    "googleTitle": "Google Calendar",
+    "googleBody": "Si un especialista conecta Google Calendar, solicitamos acceso solo a eventos del calendario y a FreeBusy para evitar dobles reservas y crear/actualizar/cancelar eventos de cita. No leemos Gmail, Contactos ni Drive. Puedes desconectar Calendar en cualquier momento desde el panel del especialista.",
+    "storageTitle": "Almacenamiento y seguridad",
+    "storageBody": "Los datos se almacenan en Firebase/Firestore y archivos clínicos en almacenamiento privado (Vercel Blob). El acceso a documentos clínicos requiere autenticación.",
+    "rightsTitle": "Tus derechos",
+    "rightsBody": "Puedes solicitar acceso, rectificación o eliminación de tus datos de cuenta contactando al responsable del servicio. Los documentos clínicos siguen el modelo de archivo clínico (solo-añadir) salvo procesos legales o administrativos acordados.",
+    "contactTitle": "Contacto",
+    "contactBody": "Responsable del tratamiento / desarrollador de la app: erickorso@gmail.com. Para ejercer derechos o dudas sobre privacidad, escribe a esa dirección."
   },
   "Directory": {
     "title": "Especialistas",

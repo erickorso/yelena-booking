@@ -8,11 +8,28 @@
     "themeLight": "Light",
     "themeDark": "Dark",
     "themeSystem": "System",
-    "localeLabel": "Language"
+    "localeLabel": "Language",
+    "privacyLink": "Privacy policy"
   },
   "Home": {
     "title": "Care, scheduled with clarity",
     "description": "Book specialists, manage availability, and keep clinical history secure."
+  },
+  "Privacy": {
+    "backHome": "← Home",
+    "title": "Privacy policy",
+    "updated": "Last updated: August 2026",
+    "intro": "Thaydee Elena (yelena-booking) is a clinical booking and records app. This policy describes what data we process and why.",
+    "dataTitle": "Data we process",
+    "dataBody": "Account data (email, name, role), clinical profile and appointments, medical documents you upload, and technical logs needed to run the service (e.g. Firebase authentication).",
+    "googleTitle": "Google Calendar",
+    "googleBody": "If a specialist connects Google Calendar, we only request calendar events and FreeBusy access to avoid double-booking and to create/update/cancel appointment events. We do not read Gmail, Contacts, or Drive. You can disconnect Calendar anytime from the specialist panel.",
+    "storageTitle": "Storage and security",
+    "storageBody": "Data is stored in Firebase/Firestore and clinical files in private storage (Vercel Blob). Access to clinical documents requires authentication.",
+    "rightsTitle": "Your rights",
+    "rightsBody": "You may request access, correction, or deletion of account data by contacting the service owner. Clinical documents follow an append-only clinical archive model except where required by law or agreed admin processes.",
+    "contactTitle": "Contact",
+    "contactBody": "Data controller / app developer: erickorso@gmail.com. For privacy questions or rights requests, email that address."
   },
   "Directory": {
     "title": "Specialists",
