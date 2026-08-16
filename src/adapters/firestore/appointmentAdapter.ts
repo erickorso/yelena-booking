@@ -16,6 +16,9 @@ export interface AppointmentDoc {
   status?: unknown;
   notes?: unknown;
   transfer?: unknown;
+  googleEventId?: unknown;
+  googleCalendarId?: unknown;
+  meetLink?: unknown;
   createdAt?: unknown;
   updatedAt?: unknown;
 }
@@ -89,6 +92,9 @@ export function adaptAppointment(
     status: data.status,
     notes: optionalString(data.notes),
     transfer: adaptTransfer(data.transfer),
+    googleEventId: optionalString(data.googleEventId),
+    googleCalendarId: optionalString(data.googleCalendarId),
+    meetLink: optionalString(data.meetLink),
     createdAt: toDate(data.createdAt),
     updatedAt: toDate(data.updatedAt),
   };

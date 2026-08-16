@@ -43,6 +43,7 @@ export class MailService {
     startsAt: Date;
     endsAt: Date;
     locale?: "es" | "en";
+    meetLink?: string | null;
   }): Promise<SendResult> {
     const built = buildAppointmentBookedEmail({
       patientName: input.patientName,
@@ -51,6 +52,7 @@ export class MailService {
       endsAt: input.endsAt,
       locale: input.locale,
       dashboardUrl: `${getAppBaseUrl()}/es/dashboard/patient`,
+      meetLink: input.meetLink,
     });
     return this.dispatch(input.to, built.subject, built.html, built.text);
   }

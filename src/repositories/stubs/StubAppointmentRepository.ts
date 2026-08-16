@@ -46,6 +46,9 @@ export class StubAppointmentRepository implements IAppointmentRepository {
         requestedAt: null,
         respondedAt: null,
       },
+      googleEventId: null,
+      googleCalendarId: null,
+      meetLink: null,
       createdAt: now,
       updatedAt: now,
     };

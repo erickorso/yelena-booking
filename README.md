@@ -131,6 +131,7 @@ Tras el primer push a `main`, Vercel despliega automáticamente si el proyecto e
 
 - **Spark:** Custom Claims vía Admin en BFF; sin Cloud Functions en v1.  
 - **Archivos:** Vercel Blob (`private`) + metadata en `medicalFiles`.  
+- **Google Calendar (especialista):** OAuth → FreeBusy en slots + evento Meet al citar. En Google Cloud Console crea OAuth Client (Web) con redirect `https://<host>/api/integrations/google/callback` (y `http://localhost:3000/...` en local). Env: `GOOGLE_CLIENT_ID`, `GOOGLE_CLIENT_SECRET`. Conectar desde panel → Horario.  
 - **Tailwind v4 + next-themes:** `@custom-variant dark` en `globals.css` (clase `.dark` en `<html>`).  
 - No commitear `.env.local` ni JSON de service account.
 

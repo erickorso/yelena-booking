@@ -37,6 +37,11 @@ export interface Appointment {
   status: AppointmentStatus;
   notes: string | null;
   transfer: AppointmentTransfer;
+  /** Google Calendar event id when synced. */
+  googleEventId: string | null;
+  googleCalendarId: string | null;
+  /** Google Meet link from conferenceData (if created). */
+  meetLink: string | null;
   createdAt: Date;
   updatedAt: Date;
 }

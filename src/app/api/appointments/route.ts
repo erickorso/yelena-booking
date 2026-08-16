@@ -5,6 +5,7 @@ import { AdminAppointmentRepository } from "@/repositories/firestore/AdminAppoin
 import { AdminUserRepository } from "@/repositories/firestore/AdminUserRepository";
 import { AppointmentService } from "@/services/appointmentService";
 import { enqueueMail, MailService } from "@/services/mailService";
+import { GoogleCalendarService } from "@/services/googleCalendarService";
 import { canActAsPatient } from "@/types/domain";
 import { isWithinSchedule } from "@/lib/availability/defaultSlots";
 
@@ -25,6 +26,8 @@ function serialize(appointment: {
   endsAt: Date;
   status: string;
   notes: string | null;
+  meetLink?: string | null;
+  googleEventId?: string | null;
   transfer: {
     status: string;
     toSpecialistId: string | null;
@@ -40,6 +43,8 @@ function serialize(appointment: {
     endsAt: appointment.endsAt.toISOString(),
     status: appointment.status,
     notes: appointment.notes,
+    meetLink: appointment.meetLink ?? null,
+    googleEventId: appointment.googleEventId ?? null,
     transfer: {
       status: appointment.transfer.status,
       toSpecialistId: appointment.transfer.toSpecialistId,
@@ -179,8 +184,20 @@ export async function POST(request: Request) {
       );
     }
 
+    const gcal = new GoogleCalendarService();
+    try {
+      if (await gcal.hasConflict(specialistId, startsAt, endsAt)) {
+        return NextResponse.json(
+          { error: "Slot conflicts with Google Calendar" },
+          { status: 409 },
+        );
+      }
+    } catch {
+      // If FreeBusy fails, continue with app-only conflict check.
+    }
+
     const service = new AppointmentService(repo);
-    const appointment = await service.book({
+    let appointment = await service.book({
       patientId,
       specialistId,
       startsAt,
@@ -188,6 +205,27 @@ export async function POST(request: Request) {
       notes,
       bookedById: auth.uid,
     });
+
+    try {
+      const event = await gcal.createAppointmentEvent({
+        specialistId,
+        appointmentId: appointment.id,
+        summary: `Yelena · ${patient.displayName}`,
+        description: notes ?? undefined,
+        startsAt: appointment.startsAt,
+        endsAt: appointment.endsAt,
+        attendeeEmail: patient.email,
+      });
+      if (event) {
+        appointment = await repo.updateFields(appointment.id, {
+          googleEventId: event.eventId,
+          googleCalendarId: event.calendarId,
+          meetLink: event.meetLink,
+        });
+      }
+    } catch (err) {
+      console.error("[gcal] create event failed", err);
+    }
 
     const specialistUser = await users.getById(specialistId);
     enqueueMail(() =>
@@ -198,6 +236,7 @@ export async function POST(request: Request) {
         startsAt: appointment.startsAt,
         endsAt: appointment.endsAt,
         locale: patient.locale === "en" ? "en" : "es",
+        meetLink: appointment.meetLink,
       }),
     );
 

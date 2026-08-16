@@ -8,10 +8,11 @@ import {
   parseDateInput,
   resolveSlotMinutes,
 } from "@/lib/availability/defaultSlots";
+import { GoogleCalendarService } from "@/services/googleCalendarService";
 
 /**
  * GET /api/specialists/[id]/slots?date=YYYY-MM-DD
- * Free slots for an active specialist (uses their saved schedule).
+ * Free slots for an active specialist (schedule + Google FreeBusy).
  */
 export async function GET(
   request: Request,
@@ -61,6 +62,25 @@ export async function GET(
         status: a.status,
       }));
 
+    let googleBusyCount = 0;
+    try {
+      const gBusy = await new GoogleCalendarService().listBusy(
+        id,
+        dayStart,
+        dayEnd,
+      );
+      googleBusyCount = gBusy.length;
+      for (const g of gBusy) {
+        busy.push({
+          startsAt: g.startsAt,
+          endsAt: g.endsAt,
+          status: "confirmed",
+        });
+      }
+    } catch {
+      // FreeBusy failure must not break slot listing.
+    }
+
     const slots = computeFreeSlots(day, busy, new Date(), schedule).map(
       (s) => ({
         startsAt: s.startsAt.toISOString(),
@@ -73,6 +93,7 @@ export async function GET(
       date: dateParam,
       slotMinutes: resolveSlotMinutes(schedule),
       schedule,
+      googleBusyCount,
       slots,
     });
   } catch (error) {

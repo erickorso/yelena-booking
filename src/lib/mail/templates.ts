@@ -5,6 +5,7 @@ export type AppointmentMailPayload = {
   endsAt: Date;
   locale?: "es" | "en";
   dashboardUrl: string;
+  meetLink?: string | null;
 };
 
 export type TransferMailPayload = {
@@ -56,14 +57,18 @@ export function buildAppointmentBookedEmail(payload: AppointmentMailPayload): {
       : `Appointment confirmed · ${when}`;
   const text =
     locale === "es"
-      ? `Hola ${payload.patientName}. Tu cita con ${payload.specialistName} está confirmada para ${when}. Panel: ${payload.dashboardUrl}`
-      : `Hi ${payload.patientName}. Your appointment with ${payload.specialistName} is confirmed for ${when}. Dashboard: ${payload.dashboardUrl}`;
+      ? `Hola ${payload.patientName}. Tu cita con ${payload.specialistName} está confirmada para ${when}.${payload.meetLink ? ` Meet: ${payload.meetLink}` : ""} Panel: ${payload.dashboardUrl}`
+      : `Hi ${payload.patientName}. Your appointment with ${payload.specialistName} is confirmed for ${when}.${payload.meetLink ? ` Meet: ${payload.meetLink}` : ""} Dashboard: ${payload.dashboardUrl}`;
+  const meetHtml = payload.meetLink
+    ? `<p style="margin:0 0 16px"><strong>Google Meet:</strong> <a href="${escapeAttr(payload.meetLink)}" style="color:#0f766e">${escapeHtml(payload.meetLink)}</a></p>`
+    : "";
   const html = `<!DOCTYPE html><html><body style="font-family:Georgia,serif;background:#faf8f5;padding:24px;color:#1c1917">
   <div style="max-width:520px;margin:0 auto;background:#fff;border:1px solid #e7e5e4;border-radius:8px;padding:24px">
     <h1 style="font-size:22px;color:#0f766e;margin:0 0 12px">${locale === "es" ? "Cita confirmada" : "Appointment confirmed"}</h1>
     <p style="margin:0 0 12px">${locale === "es" ? "Hola" : "Hi"} <strong>${escapeHtml(payload.patientName)}</strong>.</p>
     <p style="margin:0 0 8px"><strong>${locale === "es" ? "Especialista" : "Specialist"}:</strong> ${escapeHtml(payload.specialistName)}</p>
     <p style="margin:0 0 16px"><strong>${locale === "es" ? "Cuándo" : "When"}:</strong> ${escapeHtml(when)}</p>
+    ${meetHtml}
     <p style="margin:0 0 16px"><a href="${escapeAttr(payload.dashboardUrl)}" style="color:#0f766e">${locale === "es" ? "Abrir panel" : "Open dashboard"}</a></p>
     <p style="margin:0;font-size:12px;color:#78716c">Yelena Booking</p>
   </div></body></html>`;

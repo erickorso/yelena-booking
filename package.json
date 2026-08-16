@@ -21,6 +21,7 @@
     "clsx": "^2.1.1",
     "firebase": "^12.17.1",
     "firebase-admin": "^14.2.0",
+    "googleapis": "^174.0.1",
     "lucide-react": "^1.31.0",
     "next": "16.3.1",
     "next-intl": "^4.13.6",

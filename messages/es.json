@@ -172,6 +172,33 @@
       "sun": "Dom"
     }
   },
+  "GoogleCalendar": {
+    "title": "Tu calendario de Google",
+    "subtitle": "Así Yelena evita citarte cuando ya estás ocupado y puede crear la videollamada (Meet) al reservar.",
+    "loading": "Cargando…",
+    "howToTitle": "Cómo conectarlo (1 minuto)",
+    "step1": "Pulsa el botón «Conectar con Google».",
+    "step2": "Inicia sesión con la cuenta de Google que usas para tu agenda (Gmail / Workspace).",
+    "step3": "Cuando Google te pregunte, acepta ver y editar tu calendario.",
+    "step4": "Volverás aquí automáticamente. Si sale tu correo, ya está listo.",
+    "benefit1": "Los huecos ocupados en Google no aparecen como disponibles.",
+    "benefit2": "Cada cita nueva se guarda en tu Google Calendar.",
+    "benefit3": "Si Google lo permite, se genera un enlace de Meet para el paciente.",
+    "privacyNote": "Solo se usa tu calendario para citas. Puedes desconectar cuando quieras.",
+    "notConfigured": "Esta función aún no está activada en la clínica. Avisa a quien administra Yelena.",
+    "connect": "Conectar con Google",
+    "connecting": "Abriendo Google…",
+    "connectedTitle": "Calendario conectado",
+    "connectedAs": "Cuenta: {email}",
+    "connectedHint": "Ya sincronizamos tu agenda. Si cambias de cuenta, desconecta y vuelve a conectar.",
+    "disconnect": "Desconectar",
+    "disconnecting": "Desconectando…",
+    "connectSuccess": "Listo: tu Google Calendar está conectado.",
+    "connectError": "No pudimos conectar con Google. Prueba otra vez o usa otra cuenta.",
+    "disconnectSuccess": "Calendario desconectado. Las citas ya hechas no se borran de Google.",
+    "disconnectError": "No pudimos desconectar. Inténtalo de nuevo.",
+    "statusError": "No pudimos comprobar el estado. Recarga la página."
+  },
   "SlotModal": {
     "title": "Duración de la cita",
     "subtitle": "Inicio: {start}. ¿Mantienes la duración por defecto o la cambias?",

@@ -172,6 +172,33 @@
       "sun": "Sun"
     }
   },
+  "GoogleCalendar": {
+    "title": "Your Google Calendar",
+    "subtitle": "Yelena won’t offer times when you’re already busy, and can create a Meet link when someone books.",
+    "loading": "Loading…",
+    "howToTitle": "How to connect (about 1 minute)",
+    "step1": "Tap «Connect with Google».",
+    "step2": "Sign in with the Google account you use for your work calendar (Gmail / Workspace).",
+    "step3": "When Google asks, allow access to view and edit your calendar.",
+    "step4": "You’ll return here automatically. If you see your email, you’re done.",
+    "benefit1": "Busy times on Google won’t show as available.",
+    "benefit2": "New appointments are saved to your Google Calendar.",
+    "benefit3": "When Google allows it, a Meet link is created for the patient.",
+    "privacyNote": "We only use your calendar for bookings. You can disconnect anytime.",
+    "notConfigured": "This feature isn’t turned on for the clinic yet. Ask whoever manages Yelena.",
+    "connect": "Connect with Google",
+    "connecting": "Opening Google…",
+    "connectedTitle": "Calendar connected",
+    "connectedAs": "Account: {email}",
+    "connectedHint": "Your schedule is syncing. To switch accounts, disconnect and connect again.",
+    "disconnect": "Disconnect",
+    "disconnecting": "Disconnecting…",
+    "connectSuccess": "Done — your Google Calendar is connected.",
+    "connectError": "We couldn’t connect to Google. Try again or use another account.",
+    "disconnectSuccess": "Calendar disconnected. Existing Google events are not deleted.",
+    "disconnectError": "We couldn’t disconnect. Please try again.",
+    "statusError": "We couldn’t check the status. Reload the page."
+  },
   "SlotModal": {
     "title": "Appointment duration",
     "subtitle": "Starts: {start}. Keep the default length or change it?",

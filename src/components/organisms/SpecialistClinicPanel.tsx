@@ -5,6 +5,7 @@ import { useTranslations } from "next-intl";
 import { PanelTabs } from "@/components/molecules/PanelTabs";
 import type { CalendarSlot } from "@/components/molecules/WeekCalendar";
 import { SpecialistScheduleForm } from "@/components/organisms/SpecialistScheduleForm";
+import { GoogleCalendarConnect } from "@/components/organisms/GoogleCalendarConnect";
 import { ClinicAgendaTab } from "@/components/organisms/clinic/ClinicAgendaTab";
 import { ClinicRegisterPatientTab } from "@/components/organisms/clinic/ClinicRegisterPatientTab";
 import { ClinicTransferTab } from "@/components/organisms/clinic/ClinicTransferTab";
@@ -261,16 +262,19 @@ export function SpecialistClinicPanel() {
         ) : null}
 
         {tab === "schedule" ? (
-          <SpecialistScheduleForm
-            onSaved={(next) => {
-              setSchedule({
-                workdays: next.workdays,
-                ranges: next.ranges,
-                slotMinutes: next.slotMinutes,
-                timezone: next.timezone,
-              });
-            }}
-          />
+          <div className="space-y-8">
+            <SpecialistScheduleForm
+              onSaved={(next) => {
+                setSchedule({
+                  workdays: next.workdays,
+                  ranges: next.ranges,
+                  slotMinutes: next.slotMinutes,
+                  timezone: next.timezone,
+                });
+              }}
+            />
+            <GoogleCalendarConnect />
+          </div>
         ) : null}
 
         {tab === "transfer" ? (

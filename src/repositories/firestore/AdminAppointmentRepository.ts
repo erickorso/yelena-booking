@@ -60,6 +60,9 @@ export class AdminAppointmentRepository implements IAppointmentRepository {
       endsAt: input.endsAt,
       status: "pending",
       notes: input.notes ?? null,
+      googleEventId: null,
+      googleCalendarId: null,
+      meetLink: null,
       transfer: {
         status: "none",
         toSpecialistId: null,

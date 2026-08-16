@@ -18,6 +18,8 @@ describe("adaptAppointment", () => {
     expect(appointment.status).toBe("pending");
     expect(appointment.bookedById).toBeNull();
     expect(appointment.transfer.status).toBe("none");
+    expect(appointment.meetLink).toBeNull();
+    expect(appointment.googleEventId).toBeNull();
     expect(appointment.startsAt.toISOString()).toBe("2026-08-15T10:00:00.000Z");
   });
 
