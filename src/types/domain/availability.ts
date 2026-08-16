@@ -1,6 +1,6 @@
 /** Allowed consultation lengths (minutes). */
 export const SLOT_DURATION_OPTIONS = [
-  15, 30, 45, 60, 75, 90, 105, 120,
+  15, 20, 30, 45, 60, 75, 90, 105, 120,
 ] as const;
 
 export type SlotDurationMinutes = (typeof SLOT_DURATION_OPTIONS)[number];
