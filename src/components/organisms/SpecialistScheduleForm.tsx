@@ -6,7 +6,15 @@ import { Button } from "@/components/atoms/Button";
 import { useAuth } from "@/components/providers/AuthProvider";
 import { useToast } from "@/components/providers/ToastProvider";
 import { getIdToken } from "@/services/authService";
-import type { TimeRange, Weekday } from "@/types/domain";
+import type {
+  SlotDurationMinutes,
+  TimeRange,
+  Weekday,
+} from "@/types/domain";
+import {
+  DEFAULT_SLOT_MINUTES,
+  SLOT_DURATION_OPTIONS,
+} from "@/types/domain";
 import { DEFAULT_SCHEDULE } from "@/lib/availability/defaultSlots";
 
 const DAY_KEYS: { day: Weekday; key: string }[] = [
@@ -20,11 +28,16 @@ const DAY_KEYS: { day: Weekday; key: string }[] = [
 ];
 
 type SpecialistScheduleFormProps = {
-  onSaved?: (schedule: { workdays: Weekday[]; ranges: TimeRange[] }) => void;
+  onSaved?: (schedule: {
+    workdays: Weekday[];
+    ranges: TimeRange[];
+    slotMinutes: SlotDurationMinutes;
+    timezone?: string;
+  }) => void;
 };
 
 /**
- * Specialist configures workdays + time ranges (e.g. lunch gap).
+ * Specialist configures workdays, ranges, and default slot length (15–120 min).
  */
 export function SpecialistScheduleForm({ onSaved }: SpecialistScheduleFormProps) {
   const t = useTranslations("Schedule");
@@ -37,6 +50,8 @@ export function SpecialistScheduleForm({ onSaved }: SpecialistScheduleFormProps)
     ...DEFAULT_SCHEDULE.ranges,
   ]);
   const [timezone, setTimezone] = useState("Europe/Madrid");
+  const [slotMinutes, setSlotMinutes] =
+    useState<SlotDurationMinutes>(DEFAULT_SLOT_MINUTES);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
 
@@ -54,6 +69,7 @@ export function SpecialistScheduleForm({ onSaved }: SpecialistScheduleFormProps)
             workdays: Weekday[];
             ranges: TimeRange[];
             timezone: string;
+            slotMinutes?: SlotDurationMinutes;
           };
         };
         if (!cancelled && res.ok && data.schedule) {
@@ -64,6 +80,9 @@ export function SpecialistScheduleForm({ onSaved }: SpecialistScheduleFormProps)
               : [...DEFAULT_SCHEDULE.ranges],
           );
           setTimezone(data.schedule.timezone || "Europe/Madrid");
+          if (data.schedule.slotMinutes) {
+            setSlotMinutes(data.schedule.slotMinutes);
+          }
         }
       } finally {
         if (!cancelled) setLoading(false);
@@ -106,11 +125,16 @@ export function SpecialistScheduleForm({ onSaved }: SpecialistScheduleFormProps)
           Authorization: `Bearer ${token}`,
           "Content-Type": "application/json",
         },
-        body: JSON.stringify({ workdays, ranges, timezone }),
+        body: JSON.stringify({ workdays, ranges, timezone, slotMinutes }),
       });
       const data = (await res.json()) as {
         error?: string;
-        schedule?: { workdays: Weekday[]; ranges: TimeRange[] };
+        schedule?: {
+          workdays: Weekday[];
+          ranges: TimeRange[];
+          slotMinutes: SlotDurationMinutes;
+          timezone?: string;
+        };
       };
       if (!res.ok) throw new Error(data.error ?? t("saveError"));
       success(t("saveSuccess"));
@@ -211,6 +235,28 @@ export function SpecialistScheduleForm({ onSaved }: SpecialistScheduleFormProps)
           {t("addRange")}
         </Button>
       </fieldset>
+
+      <label className="flex flex-col gap-1.5 text-sm">
+        <span className="font-medium text-stone-800 dark:text-slate-100">
+          {t("slotMinutes")}
+        </span>
+        <p className="text-xs text-stone-500 dark:text-slate-400">
+          {t("slotMinutesHint")}
+        </p>
+        <select
+          value={slotMinutes}
+          onChange={(e) =>
+            setSlotMinutes(Number(e.target.value) as SlotDurationMinutes)
+          }
+          className="h-10 rounded-md border border-stone-300 bg-white px-3 dark:border-slate-600 dark:bg-slate-900"
+        >
+          {SLOT_DURATION_OPTIONS.map((m) => (
+            <option key={m} value={m}>
+              {t("slotMinutesOption", { count: m })}
+            </option>
+          ))}
+        </select>
+      </label>
 
       <label className="flex flex-col gap-1.5 text-sm">
         <span className="font-medium text-stone-800 dark:text-slate-100">

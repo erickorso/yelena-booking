@@ -121,7 +121,7 @@
     "patientEmpty": "Sin coincidencias",
     "calToday": "Hoy",
     "calWeek": "semana",
-    "calHint": "Solo puedes citar dentro de tu horario guardado. Bloques teal = ocupados.",
+    "calHint": "Clic en un hueco libre. Confirma o cambia la duración en la modal. Teal = ocupado.",
     "calSelected": "Hueco seleccionado",
     "calPast": "No puedes citar en un día u hora que ya pasó.",
     "calOutside": "Fuera de tu horario de trabajo.",
@@ -155,6 +155,9 @@
     "addRange": "Añadir franja",
     "removeRange": "Quitar",
     "timezone": "Zona horaria",
+    "slotMinutes": "Duración de cita por defecto",
+    "slotMinutesHint": "Paso del calendario al citar (15 min–2 h). Luego puedes ajustar en la modal.",
+    "slotMinutesOption": "{count} minutos",
     "save": "Guardar horario",
     "saving": "Guardando…",
     "saveSuccess": "Horario guardado.",
@@ -168,6 +171,16 @@
       "sat": "Sáb",
       "sun": "Dom"
     }
+  },
+  "SlotModal": {
+    "title": "Duración de la cita",
+    "subtitle": "Inicio: {start}. ¿Mantienes la duración por defecto o la cambias?",
+    "duration": "Duración",
+    "minutes": "{count} minutos",
+    "defaultMark": "por defecto",
+    "endsAt": "Termina a las {end}",
+    "cancel": "Cancelar",
+    "confirm": "Confirmar hueco"
   },
   "Notifications": {
     "title": "Notificaciones",

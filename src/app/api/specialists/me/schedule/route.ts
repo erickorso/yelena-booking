@@ -2,9 +2,15 @@ import { NextResponse } from "next/server";
 import { isAuthError, requireAuth } from "@/lib/auth/requireAuth";
 import { AdminAvailabilityRepository } from "@/repositories/firestore/AdminAvailabilityRepository";
 import { AdminUserRepository } from "@/repositories/firestore/AdminUserRepository";
-import { DEFAULT_SCHEDULE } from "@/lib/availability/defaultSlots";
+import {
+  DEFAULT_SCHEDULE,
+  hmToMinutes,
+} from "@/lib/availability/defaultSlots";
 import type { TimeRange, Weekday } from "@/types/domain";
-import { hmToMinutes } from "@/lib/availability/defaultSlots";
+import {
+  DEFAULT_SLOT_MINUTES,
+  isSlotDurationMinutes,
+} from "@/types/domain";
 
 async function assertActiveSpecialist(uid: string, role: string) {
   if (role === "admin") return;
@@ -32,11 +38,13 @@ export async function GET(request: Request) {
             workdays: saved.workdays,
             ranges: saved.ranges,
             timezone: saved.timezone,
+            slotMinutes: saved.slotMinutes,
           }
         : {
             workdays: DEFAULT_SCHEDULE.workdays,
             ranges: DEFAULT_SCHEDULE.ranges,
             timezone: "Europe/Madrid",
+            slotMinutes: DEFAULT_SLOT_MINUTES,
             isDefault: true,
           },
     });
@@ -52,7 +60,7 @@ export async function GET(request: Request) {
 
 /**
  * PUT /api/specialists/me/schedule
- * Body: { workdays: number[], ranges: {start,end}[], timezone?: string }
+ * Body: { workdays, ranges, timezone?, slotMinutes? }
  */
 export async function PUT(request: Request) {
   const auth = await requireAuth(request, ["especialista", "admin"]);
@@ -62,6 +70,7 @@ export async function PUT(request: Request) {
     workdays?: unknown;
     ranges?: unknown;
     timezone?: unknown;
+    slotMinutes?: unknown;
   };
   try {
     body = (await request.json()) as typeof body;
@@ -119,6 +128,10 @@ export async function PUT(request: Request) {
       ? body.timezone.trim()
       : "Europe/Madrid";
 
+  const slotMinutes = isSlotDurationMinutes(body.slotMinutes)
+    ? body.slotMinutes
+    : DEFAULT_SLOT_MINUTES;
+
   try {
     await assertActiveSpecialist(auth.uid, auth.role);
     const saved = await new AdminAvailabilityRepository().upsert({
@@ -126,6 +139,7 @@ export async function PUT(request: Request) {
       timezone,
       workdays: uniqueDays,
       ranges,
+      slotMinutes,
     });
     return NextResponse.json({
       ok: true,
@@ -133,6 +147,7 @@ export async function PUT(request: Request) {
         workdays: saved.workdays,
         ranges: saved.ranges,
         timezone: saved.timezone,
+        slotMinutes: saved.slotMinutes,
       },
     });
   } catch (error) {

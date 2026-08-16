@@ -3,12 +3,15 @@
 import { useMemo, useState } from "react";
 import { clsx } from "clsx";
 import {
-  SLOT_MINUTES,
-  isWithinSchedule,
+  checkIntervalAvailability,
+  resolveSlotMinutes,
+  type BusyInterval,
   type ScheduleConfig,
   DEFAULT_SCHEDULE,
 } from "@/lib/availability/defaultSlots";
+import { SlotDurationModal } from "@/components/molecules/SlotDurationModal";
 import { useToast } from "@/components/providers/ToastProvider";
+import type { SlotDurationMinutes } from "@/types/domain";
 
 export type CalendarEvent = {
   id: string;
@@ -72,15 +75,6 @@ function minutesFromDayStart(d: Date): number {
   return d.getHours() * 60 + d.getMinutes() - DAY_START_HOUR * 60;
 }
 
-function overlaps(
-  a0: Date,
-  a1: Date,
-  b0: Date,
-  b1: Date,
-): boolean {
-  return a0 < b1 && b0 < a1;
-}
-
 function formatHour(h: number): string {
   return `${String(h).padStart(2, "0")}:00`;
 }
@@ -89,8 +83,16 @@ function weekdayShort(d: Date, locale: string): string {
   return d.toLocaleDateString(locale, { weekday: "short" });
 }
 
+function toBusy(events: CalendarEvent[]): BusyInterval[] {
+  return events.map((e) => ({
+    startsAt: e.startsAt,
+    endsAt: e.endsAt,
+    status: e.status,
+  }));
+}
+
 /**
- * Google Calendar–style week grid. Click empty area → 30 min free slot.
+ * Week grid. Click empty area → duration modal → validate full interval → select.
  */
 export function WeekCalendar({
   events,
@@ -101,6 +103,8 @@ export function WeekCalendar({
 }: WeekCalendarProps) {
   const { error: toastError } = useToast();
   const [anchor, setAnchor] = useState(() => startOfWeek(new Date()));
+  const [draftStart, setDraftStart] = useState<Date | null>(null);
+  const [modalError, setModalError] = useState<string | null>(null);
   const locale =
     typeof navigator !== "undefined" ? navigator.language : "es-ES";
   const today = useMemo(() => {
@@ -108,6 +112,8 @@ export function WeekCalendar({
     t.setHours(0, 0, 0, 0);
     return t;
   }, []);
+
+  const slotMinutes = resolveSlotMinutes(schedule);
 
   const days = useMemo(
     () => Array.from({ length: 7 }, (_, i) => addDays(anchor, i)),
@@ -139,50 +145,64 @@ export function WeekCalendar({
     const y = event.clientY - rect.top;
     const minutesFromStart = (y / HOUR_HEIGHT) * 60;
     const raw = DAY_START_HOUR * 60 + minutesFromStart;
-    const slotted = Math.floor(raw / SLOT_MINUTES) * SLOT_MINUTES;
+    const slotted = Math.floor(raw / slotMinutes) * slotMinutes;
     const h = Math.floor(slotted / 60);
     const m = slotted % 60;
     if (h < DAY_START_HOUR || h >= DAY_END_HOUR) return;
 
     const startsAt = new Date(day);
     startsAt.setHours(h, m, 0, 0);
-    const endsAt = new Date(startsAt.getTime() + SLOT_MINUTES * 60_000);
-    if (
-      endsAt.getHours() > DAY_END_HOUR ||
-      (endsAt.getHours() === DAY_END_HOUR && endsAt.getMinutes() > 0)
-    ) {
-      return;
-    }
     if (startsAt <= new Date()) {
       toastError(labels.pastSlot);
       return;
     }
 
-    if (!isWithinSchedule(startsAt, endsAt, schedule)) {
-      toastError(labels.outsideHours);
-      return;
-    }
+    setModalError(null);
+    setDraftStart(startsAt);
+  }
 
-    const busy = events.some(
-      (e) =>
-        e.status !== "cancelled" &&
-        overlaps(startsAt, endsAt, e.startsAt, e.endsAt),
+  function confirmDuration(minutes: SlotDurationMinutes) {
+    if (!draftStart) return;
+    const endsAt = new Date(draftStart.getTime() + minutes * 60_000);
+    const check = checkIntervalAvailability(
+      draftStart,
+      endsAt,
+      toBusy(events),
+      schedule,
     );
-    if (busy) {
-      toastError(labels.busySlot);
+    if (!check.ok) {
+      const msg =
+        check.reason === "past"
+          ? labels.pastSlot
+          : check.reason === "outside_hours"
+            ? labels.outsideHours
+            : check.reason === "busy"
+              ? labels.busySlot
+              : labels.outsideHours;
+      setModalError(msg);
+      toastError(msg);
       return;
     }
-
     onSelectSlot({
-      startsAt: startsAt.toISOString(),
+      startsAt: draftStart.toISOString(),
       endsAt: endsAt.toISOString(),
     });
+    setDraftStart(null);
+    setModalError(null);
   }
 
   const weekLabel = `${anchor.toLocaleDateString(locale, {
     month: "long",
     year: "numeric",
   })} · ${labels.weekOf}`;
+
+  const selectedDurationMin = selectedSlot
+    ? Math.round(
+        (new Date(selectedSlot.endsAt).getTime() -
+          new Date(selectedSlot.startsAt).getTime()) /
+          60_000,
+      )
+    : slotMinutes;
 
   return (
     <div className="space-y-3">
@@ -214,7 +234,9 @@ export function WeekCalendar({
           {weekLabel}
         </p>
       </div>
-      <p className="text-xs text-stone-500 dark:text-slate-400">{labels.hint}</p>
+      <p className="text-xs text-stone-500 dark:text-slate-400">
+        {labels.hint} · {slotMinutes} min
+      </p>
 
       {selectedSlot ? (
         <p
@@ -229,6 +251,12 @@ export function WeekCalendar({
             hour: "2-digit",
             minute: "2-digit",
           })}
+          {" → "}
+          {new Date(selectedSlot.endsAt).toLocaleTimeString(locale, {
+            hour: "2-digit",
+            minute: "2-digit",
+          })}{" "}
+          ({selectedDurationMin} min)
         </p>
       ) : null}
 
@@ -237,7 +265,6 @@ export function WeekCalendar({
           className="min-w-[720px]"
           style={{ display: "grid", gridTemplateColumns: "56px repeat(7, 1fr)" }}
         >
-          {/* Header */}
           <div className="border-b border-stone-200 bg-stone-50 dark:border-slate-700 dark:bg-slate-900" />
           {days.map((day) => {
             const isToday = sameDay(day, today);
@@ -267,7 +294,6 @@ export function WeekCalendar({
             );
           })}
 
-          {/* Time gutter + day columns */}
           <div
             className="relative border-stone-200 dark:border-slate-700"
             style={{ height: GRID_HEIGHT }}
@@ -344,7 +370,7 @@ export function WeekCalendar({
                         (minutesFromDayStart(new Date(selectedOnDay.startsAt)) /
                           60) *
                         HOUR_HEIGHT,
-                      height: (SLOT_MINUTES / 60) * HOUR_HEIGHT,
+                      height: (selectedDurationMin / 60) * HOUR_HEIGHT,
                     }}
                   />
                 ) : null}
@@ -353,6 +379,19 @@ export function WeekCalendar({
           })}
         </div>
       </div>
+
+      <SlotDurationModal
+        key={draftStart?.toISOString() ?? "closed"}
+        open={draftStart !== null}
+        startsAt={draftStart ?? new Date()}
+        defaultMinutes={slotMinutes}
+        error={modalError}
+        onCancel={() => {
+          setDraftStart(null);
+          setModalError(null);
+        }}
+        onConfirm={confirmDuration}
+      />
     </div>
   );
 }

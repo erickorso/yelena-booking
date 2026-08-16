@@ -1,4 +1,13 @@
-import type { TimeRange, Weekday, SpecialistSchedule } from "@/types/domain";
+import type {
+  TimeRange,
+  Weekday,
+  SpecialistSchedule,
+  SlotDurationMinutes,
+} from "@/types/domain";
+import {
+  DEFAULT_SLOT_MINUTES,
+  isSlotDurationMinutes,
+} from "@/types/domain";
 import type { AppointmentStatus } from "@/types/domain";
 
 export type BusyInterval = {
@@ -15,7 +24,8 @@ export type FreeSlot = {
 /** @deprecated Prefer SpecialistSchedule from domain; alias kept for call sites. */
 export type ScheduleConfig = SpecialistSchedule;
 
-export const SLOT_MINUTES = 30;
+/** Fallback default length when schedule omits slotMinutes. */
+export const SLOT_MINUTES = DEFAULT_SLOT_MINUTES;
 
 /** Fallback until the specialist saves their own hours. */
 export const DEFAULT_SCHEDULE: ScheduleConfig = {
@@ -25,6 +35,7 @@ export const DEFAULT_SCHEDULE: ScheduleConfig = {
     { start: "15:00", end: "18:00" },
   ],
   timezone: "Europe/Madrid",
+  slotMinutes: DEFAULT_SLOT_MINUTES,
 };
 
 const BLOCKING: ReadonlySet<string> = new Set([
@@ -69,8 +80,17 @@ function isValidRange(r: TimeRange): boolean {
   return a.h * 60 + a.m < b.h * 60 + b.m;
 }
 
+export function resolveSlotMinutes(
+  schedule: ScheduleConfig = DEFAULT_SCHEDULE,
+): SlotDurationMinutes {
+  return isSlotDurationMinutes(schedule.slotMinutes)
+    ? schedule.slotMinutes
+    : DEFAULT_SLOT_MINUTES;
+}
+
 /**
- * Free 30-min slots for a day from specialist schedule − busy appointments.
+ * Free slots for a day from specialist schedule − busy appointments.
+ * Grid step = schedule.slotMinutes (default 30).
  */
 export function computeFreeSlots(
   day: Date,
@@ -84,12 +104,13 @@ export function computeFreeSlots(
   const ranges = schedule.ranges.filter(isValidRange);
   if (ranges.length === 0) return [];
 
+  const slotMinutes = resolveSlotMinutes(schedule);
   const candidates: FreeSlot[] = [];
   for (const range of ranges) {
     let cursor = atLocal(day, range.start);
     const end = atLocal(day, range.end);
-    while (cursor.getTime() + SLOT_MINUTES * 60_000 <= end.getTime()) {
-      const slotEnd = new Date(cursor.getTime() + SLOT_MINUTES * 60_000);
+    while (cursor.getTime() + slotMinutes * 60_000 <= end.getTime()) {
+      const slotEnd = new Date(cursor.getTime() + slotMinutes * 60_000);
       candidates.push({ startsAt: new Date(cursor), endsAt: slotEnd });
       cursor = slotEnd;
     }
@@ -105,7 +126,7 @@ export function computeFreeSlots(
   });
 }
 
-/** Whether a proposed slot start falls inside the schedule (ignoring busy). */
+/** Whether a proposed interval falls inside the schedule (ignoring busy). */
 export function isWithinSchedule(
   startsAt: Date,
   endsAt: Date,
@@ -124,6 +145,47 @@ export function isWithinSchedule(
     const r1 = atLocal(day, range.end);
     return startsAt >= r0 && endsAt <= r1;
   });
+}
+
+export type IntervalAvailability =
+  | { ok: true }
+  | {
+      ok: false;
+      reason: "past" | "outside_hours" | "busy" | "invalid";
+    };
+
+/**
+ * Full check for a proposed booking window (schedule + busy + not past).
+ */
+export function checkIntervalAvailability(
+  startsAt: Date,
+  endsAt: Date,
+  busy: BusyInterval[],
+  schedule: ScheduleConfig = DEFAULT_SCHEDULE,
+  now: Date = new Date(),
+): IntervalAvailability {
+  if (
+    Number.isNaN(startsAt.getTime()) ||
+    Number.isNaN(endsAt.getTime()) ||
+    endsAt <= startsAt
+  ) {
+    return { ok: false, reason: "invalid" };
+  }
+  if (startsAt <= now) {
+    return { ok: false, reason: "past" };
+  }
+  if (!isWithinSchedule(startsAt, endsAt, schedule)) {
+    return { ok: false, reason: "outside_hours" };
+  }
+  const blocking = busy.filter((b) => BLOCKING.has(b.status));
+  if (
+    blocking.some((b) =>
+      overlaps(startsAt, endsAt, b.startsAt, b.endsAt),
+    )
+  ) {
+    return { ok: false, reason: "busy" };
+  }
+  return { ok: true };
 }
 
 export function parseDateInput(value: string): Date | null {

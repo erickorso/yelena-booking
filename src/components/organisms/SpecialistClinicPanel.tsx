@@ -21,7 +21,6 @@ import {
   DEFAULT_SCHEDULE,
   type ScheduleConfig,
 } from "@/lib/availability/defaultSlots";
-import type { Weekday } from "@/types/domain";
 
 /**
  * Specialist clinic shell: loads shared data and routes tabs to focused organisms.
@@ -69,12 +68,14 @@ export function SpecialistClinicPanel() {
         headers: { Authorization: `Bearer ${token}` },
       });
       const data = (await res.json()) as {
-        schedule?: { workdays: Weekday[]; ranges: ScheduleConfig["ranges"] };
+        schedule?: ScheduleConfig & { timezone?: string };
       };
       if (!cancelled && res.ok && data.schedule) {
         setSchedule({
           workdays: data.schedule.workdays,
           ranges: data.schedule.ranges,
+          slotMinutes: data.schedule.slotMinutes,
+          timezone: data.schedule.timezone,
         });
       }
     })();
@@ -262,7 +263,12 @@ export function SpecialistClinicPanel() {
         {tab === "schedule" ? (
           <SpecialistScheduleForm
             onSaved={(next) => {
-              setSchedule({ workdays: next.workdays, ranges: next.ranges });
+              setSchedule({
+                workdays: next.workdays,
+                ranges: next.ranges,
+                slotMinutes: next.slotMinutes,
+                timezone: next.timezone,
+              });
             }}
           />
         ) : null}

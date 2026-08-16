@@ -6,6 +6,7 @@ import { AdminUserRepository } from "@/repositories/firestore/AdminUserRepositor
 import {
   computeFreeSlots,
   parseDateInput,
+  resolveSlotMinutes,
 } from "@/lib/availability/defaultSlots";
 
 /**
@@ -70,7 +71,7 @@ export async function GET(
     return NextResponse.json({
       specialistId: id,
       date: dateParam,
-      slotMinutes: 30,
+      slotMinutes: resolveSlotMinutes(schedule),
       schedule,
       slots,
     });

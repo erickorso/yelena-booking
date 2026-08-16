@@ -1,10 +1,12 @@
 import { describe, expect, it } from "vitest";
 import {
+  checkIntervalAvailability,
   computeFreeSlots,
+  DEFAULT_SCHEDULE,
+  hmToMinutes,
   isWithinSchedule,
   parseDateInput,
   toDateInputValue,
-  hmToMinutes,
 } from "@/lib/availability/defaultSlots";
 
 describe("computeFreeSlots", () => {
@@ -47,6 +49,44 @@ describe("computeFreeSlots", () => {
       ranges: [{ start: "09:00", end: "12:00" }],
     });
     expect(slots).toHaveLength(0);
+  });
+
+  it("checks full interval availability", () => {
+    const monday = new Date(2026, 7, 17, 10, 0, 0);
+    const end = new Date(2026, 7, 17, 10, 30, 0);
+    const now = new Date(2026, 7, 1);
+    expect(
+      checkIntervalAvailability(monday, end, [], DEFAULT_SCHEDULE, now).ok,
+    ).toBe(true);
+    const busyCheck = checkIntervalAvailability(
+      monday,
+      new Date(2026, 7, 17, 11, 30, 0),
+      [
+        {
+          startsAt: new Date(2026, 7, 17, 10, 45, 0),
+          endsAt: new Date(2026, 7, 17, 11, 15, 0),
+          status: "confirmed",
+        },
+      ],
+      DEFAULT_SCHEDULE,
+      now,
+    );
+    expect(busyCheck.ok).toBe(false);
+    if (!busyCheck.ok) expect(busyCheck.reason).toBe("busy");
+  });
+
+  it("uses custom slotMinutes for free slots", () => {
+    const monday = new Date(2026, 7, 17, 12, 0, 0);
+    const now = new Date(2026, 7, 1);
+    const slots = computeFreeSlots(monday, [], now, {
+      workdays: [1],
+      ranges: [{ start: "09:00", end: "11:00" }],
+      slotMinutes: 60,
+    });
+    expect(slots).toHaveLength(2);
+    expect(
+      (slots[0]!.endsAt.getTime() - slots[0]!.startsAt.getTime()) / 60_000,
+    ).toBe(60);
   });
 
   it("returns empty when ranges are invalid", () => {

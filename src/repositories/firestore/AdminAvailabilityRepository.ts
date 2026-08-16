@@ -2,8 +2,12 @@ import "server-only";
 
 import { FieldValue } from "firebase-admin/firestore";
 import { getAdminFirestore } from "@/lib/firebase/admin";
-import type { TimeRange, Weekday } from "@/types/domain";
-import { assertValidSchedule } from "@/types/domain";
+import type { SlotDurationMinutes, TimeRange, Weekday } from "@/types/domain";
+import {
+  assertValidSchedule,
+  DEFAULT_SLOT_MINUTES,
+  isSlotDurationMinutes,
+} from "@/types/domain";
 import {
   DEFAULT_SCHEDULE,
   type ScheduleConfig,
@@ -14,6 +18,7 @@ const COLLECTION = "availabilitySchedules";
 export type SpecialistScheduleDoc = ScheduleConfig & {
   specialistId: string;
   timezone: string;
+  slotMinutes: SlotDurationMinutes;
   updatedAt: Date;
   createdAt: Date;
 };
@@ -60,6 +65,9 @@ export class AdminAvailabilityRepository {
     const ranges = Array.isArray(data.ranges)
       ? data.ranges.map(asRange).filter((r): r is TimeRange => r !== null)
       : [...DEFAULT_SCHEDULE.ranges];
+    const slotMinutes = isSlotDurationMinutes(data.slotMinutes)
+      ? data.slotMinutes
+      : DEFAULT_SLOT_MINUTES;
 
     return {
       specialistId,
@@ -69,6 +77,7 @@ export class AdminAvailabilityRepository {
           : "Europe/Madrid",
       workdays,
       ranges,
+      slotMinutes,
       createdAt:
         data.createdAt && typeof data.createdAt.toDate === "function"
           ? data.createdAt.toDate()
@@ -89,6 +98,7 @@ export class AdminAvailabilityRepository {
       workdays: saved.workdays,
       ranges: saved.ranges,
       timezone: saved.timezone,
+      slotMinutes: saved.slotMinutes,
     };
   }
 
@@ -97,11 +107,13 @@ export class AdminAvailabilityRepository {
     timezone: string;
     workdays: Weekday[];
     ranges: TimeRange[];
+    slotMinutes: SlotDurationMinutes;
   }): Promise<SpecialistScheduleDoc> {
     assertValidSchedule({
       workdays: input.workdays,
       ranges: input.ranges,
       timezone: input.timezone,
+      slotMinutes: input.slotMinutes,
     });
     const ref = (await this.db()).collection(COLLECTION).doc(input.specialistId);
     const existing = await ref.get();
@@ -111,6 +123,7 @@ export class AdminAvailabilityRepository {
         timezone: input.timezone,
         workdays: input.workdays,
         ranges: input.ranges,
+        slotMinutes: input.slotMinutes,
         updatedAt: FieldValue.serverTimestamp(),
         ...(existing.exists
           ? {}
