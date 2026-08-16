@@ -7,6 +7,7 @@ export interface CreateAppointmentInput {
   endsAt: Date;
   notes?: string | null;
   bookedById?: string | null;
+  rescheduledFromId?: string | null;
 }
 
 export interface AppointmentFilters {
@@ -23,4 +24,8 @@ export interface IAppointmentRepository {
   list(filters: AppointmentFilters): Promise<Appointment[]>;
   create(input: CreateAppointmentInput): Promise<Appointment>;
   updateStatus(id: string, status: AppointmentStatus): Promise<Appointment>;
+  updateFields(
+    id: string,
+    fields: Record<string, unknown>,
+  ): Promise<Appointment>;
 }

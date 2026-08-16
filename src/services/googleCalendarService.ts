@@ -258,6 +258,61 @@ export class GoogleCalendarService {
     };
   }
 
+  async updateAppointmentEvent(input: {
+    specialistId: string;
+    eventId: string;
+    calendarId?: string | null;
+    startsAt: Date;
+    endsAt: Date;
+    timeZone: string;
+    summary?: string;
+    description?: string;
+  }): Promise<boolean> {
+    const auth = await this.getAuthedClient(input.specialistId);
+    if (!auth) return false;
+    const calendar = google.calendar({ version: "v3", auth: auth.client });
+    const tz = input.timeZone.trim() || "UTC";
+    await calendar.events.patch({
+      calendarId: input.calendarId || auth.conn.calendarId,
+      eventId: input.eventId,
+      requestBody: {
+        start: {
+          dateTime: formatGoogleDateTime(input.startsAt, tz),
+          timeZone: tz,
+        },
+        end: {
+          dateTime: formatGoogleDateTime(input.endsAt, tz),
+          timeZone: tz,
+        },
+        ...(input.summary ? { summary: input.summary } : {}),
+        ...(input.description !== undefined
+          ? { description: input.description }
+          : {}),
+      },
+    });
+    return true;
+  }
+
+  async deleteAppointmentEvent(input: {
+    specialistId: string;
+    eventId: string;
+    calendarId?: string | null;
+  }): Promise<boolean> {
+    const auth = await this.getAuthedClient(input.specialistId);
+    if (!auth) return false;
+    const calendar = google.calendar({ version: "v3", auth: auth.client });
+    try {
+      await calendar.events.delete({
+        calendarId: input.calendarId || auth.conn.calendarId,
+        eventId: input.eventId,
+        sendUpdates: "all",
+      });
+      return true;
+    } catch {
+      return false;
+    }
+  }
+
   private async getAuthedClient(specialistId: string) {
     if (!this.isConfigured()) return null;
     const conn = await this.repo.get(specialistId);

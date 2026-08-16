@@ -40,6 +40,8 @@ function sampleAppointment(
     googleEventId: null,
     googleCalendarId: null,
     meetLink: null,
+    rescheduledFromId: null,
+    rescheduledToId: null,
     createdAt: startsAt,
     updatedAt: startsAt,
     ...overrides,

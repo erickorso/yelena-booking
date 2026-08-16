@@ -42,6 +42,10 @@ export interface Appointment {
   googleCalendarId: string | null;
   /** Google Meet link from conferenceData (if created). */
   meetLink: string | null;
+  /** If this booking replaces a cancelled ghost appointment. */
+  rescheduledFromId: string | null;
+  /** Latest rebooking created from this cancelled ghost. */
+  rescheduledToId: string | null;
   createdAt: Date;
   updatedAt: Date;
 }

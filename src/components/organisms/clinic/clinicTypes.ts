@@ -17,5 +17,7 @@ export type ClinicAppointmentRow = {
   startsAt: string;
   endsAt: string;
   status: string;
+  rescheduledFromId?: string | null;
+  rescheduledToId?: string | null;
   transfer?: { status: string; toSpecialistId: string | null };
 };

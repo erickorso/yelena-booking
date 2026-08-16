@@ -33,6 +33,8 @@ function serialize(appointment: {
   notes: string | null;
   meetLink?: string | null;
   googleEventId?: string | null;
+  rescheduledFromId?: string | null;
+  rescheduledToId?: string | null;
   transfer: {
     status: string;
     toSpecialistId: string | null;
@@ -50,6 +52,8 @@ function serialize(appointment: {
     notes: appointment.notes,
     meetLink: appointment.meetLink ?? null,
     googleEventId: appointment.googleEventId ?? null,
+    rescheduledFromId: appointment.rescheduledFromId ?? null,
+    rescheduledToId: appointment.rescheduledToId ?? null,
     transfer: {
       status: appointment.transfer.status,
       toSpecialistId: appointment.transfer.toSpecialistId,
@@ -219,7 +223,7 @@ export async function POST(request: Request) {
       const event = await gcal.createAppointmentEvent({
         specialistId,
         appointmentId: appointment.id,
-        summary: `Yelena · ${patient.displayName}`,
+        summary: `Thaydee Elena · ${patient.displayName}`,
         description: [
           notes?.trim() || null,
           `Paciente: ${patientLocal}`,

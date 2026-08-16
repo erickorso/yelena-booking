@@ -49,6 +49,8 @@ export class StubAppointmentRepository implements IAppointmentRepository {
       googleEventId: null,
       googleCalendarId: null,
       meetLink: null,
+      rescheduledFromId: input.rescheduledFromId ?? null,
+      rescheduledToId: null,
       createdAt: now,
       updatedAt: now,
     };
@@ -67,6 +69,23 @@ export class StubAppointmentRepository implements IAppointmentRepository {
     const updated: Appointment = {
       ...existing,
       status,
+      updatedAt: new Date(),
+    };
+    this.appointments.set(id, updated);
+    return updated;
+  }
+
+  async updateFields(
+    id: string,
+    fields: Record<string, unknown>,
+  ): Promise<Appointment> {
+    const existing = this.appointments.get(id);
+    if (!existing) {
+      throw new Error(`Appointment not found: ${id}`);
+    }
+    const updated: Appointment = {
+      ...existing,
+      ...(fields as Partial<Appointment>),
       updatedAt: new Date(),
     };
     this.appointments.set(id, updated);

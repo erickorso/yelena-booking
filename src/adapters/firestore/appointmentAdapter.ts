@@ -19,6 +19,8 @@ export interface AppointmentDoc {
   googleEventId?: unknown;
   googleCalendarId?: unknown;
   meetLink?: unknown;
+  rescheduledFromId?: unknown;
+  rescheduledToId?: unknown;
   createdAt?: unknown;
   updatedAt?: unknown;
 }
@@ -95,6 +97,8 @@ export function adaptAppointment(
     googleEventId: optionalString(data.googleEventId),
     googleCalendarId: optionalString(data.googleCalendarId),
     meetLink: optionalString(data.meetLink),
+    rescheduledFromId: optionalString(data.rescheduledFromId),
+    rescheduledToId: optionalString(data.rescheduledToId),
     createdAt: toDate(data.createdAt),
     updatedAt: toDate(data.updatedAt),
   };

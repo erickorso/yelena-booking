@@ -63,6 +63,8 @@ export class AdminAppointmentRepository implements IAppointmentRepository {
       googleEventId: null,
       googleCalendarId: null,
       meetLink: null,
+      rescheduledFromId: input.rescheduledFromId ?? null,
+      rescheduledToId: null,
       transfer: {
         status: "none",
         toSpecialistId: null,

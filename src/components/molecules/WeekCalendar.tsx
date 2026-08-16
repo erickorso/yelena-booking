@@ -29,6 +29,7 @@ export type CalendarEvent = {
   endsAt: Date;
   title: string;
   status: string;
+  patientId?: string;
   /** google = FreeBusy block from integrated calendar */
   source?: "yelena" | "google";
 };
@@ -50,6 +51,10 @@ type WeekCalendarProps = {
    * Specialist working hours are projected into this zone.
    */
   displayTimeZone?: string;
+  /** Click a Yelena appointment block (not Google busy). */
+  onEventClick?: (event: CalendarEvent) => void;
+  /** Banner while picking a new slot for reschedule. */
+  rescheduleHint?: string | null;
   labels: {
     today: string;
     weekOf: string;
@@ -65,6 +70,7 @@ type WeekCalendarProps = {
     legendOutside: string;
     legendBusy: string;
     legendGoogle?: string;
+    legendGhost?: string;
   };
 };
 
@@ -94,11 +100,20 @@ function formatHour(h: number): string {
 }
 
 function toBusy(events: CalendarEvent[]): BusyInterval[] {
-  return events.map((e) => ({
-    startsAt: e.startsAt,
-    endsAt: e.endsAt,
-    status: e.status,
-  }));
+  return events
+    .filter((e) => e.status !== "cancelled")
+    .map((e) => ({
+      startsAt: e.startsAt,
+      endsAt: e.endsAt,
+      status: e.status,
+    }));
+}
+
+function intervalsOverlap(
+  a: { startsAt: Date; endsAt: Date },
+  b: { startsAt: Date; endsAt: Date },
+): boolean {
+  return a.startsAt < b.endsAt && b.startsAt < a.endsAt;
 }
 
 /**
@@ -112,6 +127,8 @@ export function WeekCalendar({
   onSelectSlot,
   schedule = DEFAULT_SCHEDULE,
   displayTimeZone,
+  onEventClick,
+  rescheduleHint,
   labels,
 }: WeekCalendarProps) {
   const { error: toastError } = useToast();
@@ -289,6 +306,14 @@ export function WeekCalendar({
       <p className="text-xs text-stone-500 dark:text-slate-400">
         {labels.hint} · {slotMinutes} min
       </p>
+      {rescheduleHint ? (
+        <p
+          role="status"
+          className="rounded-md border border-amber-500/40 bg-amber-50 px-3 py-2 text-sm text-amber-950 dark:bg-amber-950/40 dark:text-amber-100"
+        >
+          {rescheduleHint}
+        </p>
+      ) : null}
       <ul
         className="flex flex-wrap gap-3 text-xs text-stone-600 dark:text-slate-300"
         aria-label="Leyenda"
@@ -321,6 +346,15 @@ export function WeekCalendar({
               aria-hidden
             />
             {labels.legendGoogle}
+          </li>
+        ) : null}
+        {labels.legendGhost ? (
+          <li className="inline-flex items-center gap-1.5">
+            <span
+              className="inline-block h-3 w-4 rounded-sm border border-dashed border-stone-500 bg-stone-300/50 dark:bg-slate-600/40"
+              aria-hidden
+            />
+            {labels.legendGhost}
           </li>
         ) : null}
       </ul>
@@ -490,13 +524,60 @@ export function WeekCalendar({
                       HOUR_HEIGHT,
                   );
                   const isGoogle = ev.source === "google";
+                  const isGhost = !isGoogle && ev.status === "cancelled";
+                  const hasSplitPartner =
+                    !isGoogle &&
+                    dayEvents.some(
+                      (other) =>
+                        other.id !== ev.id &&
+                        other.source !== "google" &&
+                        intervalsOverlap(ev, other) &&
+                        (isGhost
+                          ? other.status !== "cancelled"
+                          : other.status === "cancelled"),
+                    );
+                  const clickable = !isGoogle && Boolean(onEventClick);
                   return (
                     <div
                       key={ev.id}
                       title={`${ev.title} · ${ev.status}`}
+                      role={clickable ? "button" : undefined}
+                      tabIndex={clickable ? 0 : undefined}
+                      onClick={
+                        clickable
+                          ? (e) => {
+                              e.stopPropagation();
+                              onEventClick?.(ev);
+                            }
+                          : undefined
+                      }
+                      onKeyDown={
+                        clickable
+                          ? (e) => {
+                              if (e.key === "Enter" || e.key === " ") {
+                                e.preventDefault();
+                                e.stopPropagation();
+                                onEventClick?.(ev);
+                              }
+                            }
+                          : undefined
+                      }
                       className={clsx(
-                        "pointer-events-none absolute inset-x-1 z-[1] overflow-hidden rounded-md px-1.5 py-0.5 text-[11px] leading-tight text-white shadow-sm",
-                        isGoogle ? "bg-violet-700/90" : "bg-rose-600/90",
+                        "absolute z-[1] overflow-hidden rounded-md px-1.5 py-0.5 text-[11px] leading-tight shadow-sm",
+                        isGoogle && "pointer-events-none inset-x-1 bg-violet-700/90 text-white",
+                        isGhost &&
+                          "border border-dashed border-stone-500 bg-stone-400/35 text-stone-800 dark:border-slate-400 dark:bg-slate-600/45 dark:text-slate-100",
+                        !isGoogle &&
+                          !isGhost &&
+                          "bg-rose-600/90 text-white",
+                        hasSplitPartner && isGhost && "left-1 w-[calc(50%-0.35rem)]",
+                        hasSplitPartner &&
+                          !isGhost &&
+                          !isGoogle &&
+                          "left-[50%] right-1",
+                        !hasSplitPartner && !isGoogle && "inset-x-1",
+                        clickable &&
+                          "cursor-pointer ring-offset-1 hover:ring-2 hover:ring-amber-400",
                       )}
                       style={{ top, height }}
                     >

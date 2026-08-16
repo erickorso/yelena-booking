@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { useTranslations } from "next-intl";
 import { Button } from "@/components/atoms/Button";
 import { SearchableSelect } from "@/components/molecules/SearchableSelect";
@@ -20,7 +20,9 @@ type AppointmentRow = {
   id: string;
   specialistId: string;
   startsAt: string;
+  endsAt: string;
   status: string;
+  rescheduledToId?: string | null;
 };
 
 /**
@@ -38,8 +40,38 @@ export function BookSelfAppointmentForm() {
   const [slotsLoading, setSlotsLoading] = useState(false);
   const [dateYmd, setDateYmd] = useState(() => toDateInputValue(new Date()));
   const [pending, setPending] = useState(false);
+  const [actionId, setActionId] = useState<string | null>(null);
+  const [rebookId, setRebookId] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [info, setInfo] = useState<string | null>(null);
+
+  const activeAppointments = useMemo(
+    () =>
+      appointments.filter(
+        (a) => a.status === "pending" || a.status === "confirmed",
+      ),
+    [appointments],
+  );
+  const cancelledAppointments = useMemo(
+    () =>
+      [...appointments]
+        .filter((a) => a.status === "cancelled")
+        .sort(
+          (a, b) =>
+            new Date(b.startsAt).getTime() - new Date(a.startsAt).getTime(),
+        ),
+    [appointments],
+  );
+
+  async function reloadAppointments(token: string) {
+    const apptRes = await fetch("/api/appointments?as=patient", {
+      headers: { Authorization: `Bearer ${token}` },
+    });
+    const apptData = (await apptRes.json()) as {
+      appointments?: AppointmentRow[];
+    };
+    if (apptRes.ok) setAppointments(apptData.appointments ?? []);
+  }
 
   useEffect(() => {
     let cancelled = false;
@@ -108,6 +140,30 @@ export function BookSelfAppointmentForm() {
     setInfo(null);
     try {
       const token = await getIdToken(user);
+      if (rebookId) {
+        const response = await fetch(`/api/appointments/${rebookId}`, {
+          method: "PATCH",
+          headers: {
+            Authorization: `Bearer ${token}`,
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify({
+            startsAt: selectedSlot.startsAt,
+            endsAt: selectedSlot.endsAt,
+          }),
+        });
+        const data = (await response.json()) as { error?: string };
+        if (!response.ok) {
+          throw new Error(data.error ?? t("rebookError"));
+        }
+        setInfo(t("rebookSuccess"));
+        success(t("rebookSuccess"));
+        setRebookId(null);
+        setSelectedSlot(null);
+        await reloadAppointments(token);
+        return;
+      }
+
       const response = await fetch("/api/appointments", {
         method: "POST",
         headers: {
@@ -131,10 +187,7 @@ export function BookSelfAppointmentForm() {
       setInfo(t("bookSuccess"));
       success(t("bookSuccess"));
       setSelectedSlot(null);
-      if (data.appointment) {
-        setAppointments((prev) => [...prev, data.appointment!]);
-      }
-      setDateYmd((d) => d);
+      await reloadAppointments(token);
     } catch (err) {
       const msg = err instanceof Error ? err.message : t("bookError");
       setError(msg);
@@ -144,6 +197,47 @@ export function BookSelfAppointmentForm() {
     }
   }
 
+  async function cancelAppointment(id: string) {
+    if (!user) return;
+    setActionId(id);
+    try {
+      const token = await getIdToken(user);
+      const res = await fetch(`/api/appointments/${id}`, {
+        method: "PATCH",
+        headers: {
+          Authorization: `Bearer ${token}`,
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({ status: "cancelled" }),
+      });
+      const data = (await res.json()) as { error?: string };
+      if (!res.ok) throw new Error(data.error ?? t("cancelError"));
+      success(t("cancelSuccess"));
+      await reloadAppointments(token);
+    } catch (err) {
+      toastError(err instanceof Error ? err.message : t("cancelError"));
+    } finally {
+      setActionId(null);
+    }
+  }
+
+  function startRebook(a: AppointmentRow) {
+    setRebookId(a.id);
+    setSpecialistId(a.specialistId);
+    setSelectedSlot(null);
+    setInfo(t("rebookHint"));
+  }
+
+  function startMove(a: AppointmentRow) {
+    setRebookId(a.id);
+    setSpecialistId(a.specialistId);
+    setSelectedSlot(null);
+    setInfo(t("rescheduleHint"));
+  }
+
+  const specialistName = (id: string) =>
+    specialists.find((s) => s.id === id)?.displayName ?? id.slice(0, 8);
+
   return (
     <div className="space-y-6">
       <form
@@ -151,9 +245,11 @@ export function BookSelfAppointmentForm() {
         className="space-y-4 rounded-md border border-stone-200 p-4 dark:border-slate-700"
       >
         <h2 className="font-serif text-xl text-teal-800 dark:text-teal-300">
-          {t("title")}
+          {rebookId ? t("rebookTitle") : t("title")}
         </h2>
-        <p className="text-sm text-stone-600 dark:text-slate-300">{t("subtitle")}</p>
+        <p className="text-sm text-stone-600 dark:text-slate-300">
+          {rebookId ? t("rebookSubtitle") : t("subtitle")}
+        </p>
         <SearchableSelect
           label={t("specialist")}
           placeholder={t("specialistPlaceholder")}
@@ -161,6 +257,7 @@ export function BookSelfAppointmentForm() {
           emptyLabel={t("specialistEmpty")}
           value={specialistId}
           onChange={(id) => {
+            if (rebookId) return;
             setSpecialistId(id);
             setSelectedSlot(null);
             setRemoteSlots(null);
@@ -202,27 +299,117 @@ export function BookSelfAppointmentForm() {
             {info}
           </p>
         ) : null}
-        <Button type="submit" disabled={pending || !specialistId || !selectedSlot}>
-          {pending ? t("booking") : t("bookCta")}
-        </Button>
+        <div className="flex flex-wrap gap-2">
+          <Button
+            type="submit"
+            disabled={pending || !specialistId || !selectedSlot}
+          >
+            {pending
+              ? rebookId
+                ? t("rebooking")
+                : t("booking")
+              : rebookId
+                ? t("rebookCta")
+                : t("bookCta")}
+          </Button>
+          {rebookId ? (
+            <Button
+              type="button"
+              variant="secondary"
+              disabled={pending}
+              onClick={() => {
+                setRebookId(null);
+                setSelectedSlot(null);
+                setInfo(null);
+              }}
+            >
+              {t("rebookAbort")}
+            </Button>
+          ) : null}
+        </div>
       </form>
 
       <section className="space-y-2">
         <h3 className="font-medium text-stone-800 dark:text-slate-100">
           {t("myAppointments")}
         </h3>
-        {appointments.length === 0 ? (
+        {activeAppointments.length === 0 ? (
           <p className="text-sm text-stone-600 dark:text-slate-300">
             {t("empty")}
           </p>
         ) : (
           <ul className="space-y-2 text-sm">
-            {appointments.map((a) => (
+            {activeAppointments.map((a) => (
               <li
                 key={a.id}
-                className="border-b border-stone-200 py-2 dark:border-slate-700"
+                className="flex flex-wrap items-center justify-between gap-2 border-b border-stone-200 py-2 dark:border-slate-700"
               >
-                {new Date(a.startsAt).toLocaleString()} · {a.status}
+                <span>
+                  {new Date(a.startsAt).toLocaleString()} ·{" "}
+                  {specialistName(a.specialistId)} · {a.status}
+                </span>
+                <span className="flex flex-wrap gap-2">
+                  <Button
+                    type="button"
+                    size="sm"
+                    variant="secondary"
+                    disabled={Boolean(rebookId) || actionId === a.id}
+                    onClick={() => startMove(a)}
+                  >
+                    {t("reschedule")}
+                  </Button>
+                  <Button
+                    type="button"
+                    size="sm"
+                    variant="secondary"
+                    disabled={Boolean(rebookId) || actionId === a.id}
+                    onClick={() => void cancelAppointment(a.id)}
+                  >
+                    {actionId === a.id ? t("cancelling") : t("cancel")}
+                  </Button>
+                </span>
+              </li>
+            ))}
+          </ul>
+        )}
+      </section>
+
+      <section className="space-y-2">
+        <h3 className="font-medium text-stone-800 dark:text-slate-100">
+          {t("cancelledTitle")}
+        </h3>
+        <p className="text-xs text-stone-500 dark:text-slate-400">
+          {t("cancelledSubtitle")}
+        </p>
+        {cancelledAppointments.length === 0 ? (
+          <p className="text-sm text-stone-600 dark:text-slate-300">
+            {t("cancelledEmpty")}
+          </p>
+        ) : (
+          <ul className="space-y-2 text-sm">
+            {cancelledAppointments.map((a) => (
+              <li
+                key={a.id}
+                className="flex flex-wrap items-center justify-between gap-2 border-b border-stone-200 py-2 dark:border-slate-700"
+              >
+                <span>
+                  {new Date(a.startsAt).toLocaleString()} ·{" "}
+                  {specialistName(a.specialistId)}
+                  {a.rescheduledToId ? (
+                    <span className="ml-1 text-xs text-teal-700 dark:text-teal-300">
+                      ({t("cancelledRebooked")})
+                    </span>
+                  ) : null}
+                </span>
+                <Button
+                  type="button"
+                  size="sm"
+                  variant="secondary"
+                  disabled={Boolean(rebookId)}
+                  onClick={() => startRebook(a)}
+                >
+                  {t("cancelledRebook")}
+                </Button>
               </li>
             ))}
           </ul>

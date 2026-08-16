@@ -257,6 +257,7 @@ export function SpecialistClinicPanel() {
             schedule={schedule}
             bookPending={bookPending}
             onSubmit={(e) => void bookAppointment(e)}
+            onAppointmentsChanged={() => setReloadKey((k) => k + 1)}
           />
         ) : null}
 
