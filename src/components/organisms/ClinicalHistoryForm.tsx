@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { useTranslations } from "next-intl";
+import { useLocale, useTranslations } from "next-intl";
 import { Button } from "@/components/atoms/Button";
 import { Input } from "@/components/atoms/Input";
 import { FormSkeleton } from "@/components/atoms/Skeleton";
@@ -11,6 +11,7 @@ import { useToast } from "@/components/providers/ToastProvider";
 import { getIdToken } from "@/services/authService";
 import {
   PATIENT_SEX_OPTIONS,
+  type ClinicalFieldLocale,
   type PatientSex,
 } from "@/types/domain";
 
@@ -31,6 +32,14 @@ type HistoryForm = {
   generalNotes: string;
 };
 
+type CustomFieldRow = {
+  id: string;
+  fieldKey: string;
+  labels: Partial<Record<ClinicalFieldLocale, string>>;
+  label: string;
+  missingLocales: ClinicalFieldLocale[];
+};
+
 const EMPTY: HistoryForm = {
   birthDate: "",
   sex: "",
@@ -49,17 +58,14 @@ const EMPTY: HistoryForm = {
 };
 
 type ClinicalHistoryFormProps = {
-  /** Defaults to current user. */
   patientId?: string;
-  /** Specialist editing another patient's chart. */
   readOnly?: boolean;
   onSaved?: (incomplete: boolean) => void;
-  /** Outer panel starts collapsed. */
   defaultOpen?: boolean;
 };
 
 /**
- * Standard clinical history form (demographics + antecedents), collapsible.
+ * Standard clinical history form (demographics + antecedents + custom fields).
  */
 export function ClinicalHistoryForm({
   patientId: patientIdProp,
@@ -68,16 +74,32 @@ export function ClinicalHistoryForm({
   defaultOpen = true,
 }: ClinicalHistoryFormProps) {
   const t = useTranslations("ClinicalHistory");
-  const { user } = useAuth();
+  const tc = useTranslations("ClinicalCustomFields");
+  const locale = useLocale();
+  const { user, role } = useAuth();
   const { success, error: toastError } = useToast();
   const patientId = patientIdProp ?? user?.uid ?? "";
   const [form, setForm] = useState<HistoryForm>(EMPTY);
+  const [customValues, setCustomValues] = useState<Record<string, string>>({});
+  const [customFields, setCustomFields] = useState<CustomFieldRow[]>([]);
   const [displayName, setDisplayName] = useState("");
   const [patientNumber, setPatientNumber] = useState("");
   const [canEditName, setCanEditName] = useState(true);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [updatedAt, setUpdatedAt] = useState<string | null>(null);
+  const [translateOpenId, setTranslateOpenId] = useState<string | null>(null);
+  const [translateDraft, setTranslateDraft] = useState("");
+  const [translatingId, setTranslatingId] = useState<string | null>(null);
+
+  const currentLocale: ClinicalFieldLocale = locale.startsWith("en")
+    ? "en"
+    : "es";
+  const canManageFieldDefs =
+    !readOnly &&
+    (role === "especialista" || role === "admin") &&
+    Boolean(patientIdProp) &&
+    patientIdProp !== user?.uid;
 
   useEffect(() => {
     if (!user || !patientId) return;
@@ -87,11 +109,12 @@ export function ClinicalHistoryForm({
       try {
         const token = await getIdToken(user);
         const res = await fetch(
-          `/api/patients/${patientId}/clinical-history`,
+          `/api/patients/${patientId}/clinical-history?locale=${currentLocale}`,
           { headers: { Authorization: `Bearer ${token}` } },
         );
         const data = (await res.json()) as {
           history?: Record<string, unknown>;
+          customFields?: CustomFieldRow[];
           displayName?: string | null;
           patientNumber?: string | null;
           error?: string;
@@ -109,6 +132,14 @@ export function ClinicalHistoryForm({
           typeof data.patientNumber === "string" ? data.patientNumber : "",
         );
         setCanEditName(!readOnly);
+        setCustomFields(data.customFields ?? []);
+        const cv =
+          h.customValues &&
+          typeof h.customValues === "object" &&
+          !Array.isArray(h.customValues)
+            ? (h.customValues as Record<string, string>)
+            : {};
+        setCustomValues(cv);
         setForm({
           birthDate: typeof h.birthDate === "string" ? h.birthDate : "",
           sex: typeof h.sex === "string" ? (h.sex as PatientSex) : "",
@@ -138,9 +169,7 @@ export function ClinicalHistoryForm({
           generalNotes:
             typeof h.generalNotes === "string" ? h.generalNotes : "",
         });
-        setUpdatedAt(
-          typeof h.updatedAt === "string" ? h.updatedAt : null,
-        );
+        setUpdatedAt(typeof h.updatedAt === "string" ? h.updatedAt : null);
       } catch {
         if (!cancelled) toastError(t("loadError"));
       } finally {
@@ -150,10 +179,60 @@ export function ClinicalHistoryForm({
     return () => {
       cancelled = true;
     };
-  }, [user, patientId, toastError, t, readOnly]);
+  }, [user, patientId, toastError, t, readOnly, currentLocale]);
 
   function patch<K extends keyof HistoryForm>(key: K, value: HistoryForm[K]) {
     setForm((prev) => ({ ...prev, [key]: value }));
+  }
+
+  async function saveTranslation(
+    field: CustomFieldRow,
+    localeToSet: ClinicalFieldLocale,
+  ) {
+    if (!user || !translateDraft.trim()) return;
+    setTranslatingId(field.id);
+    try {
+      const token = await getIdToken(user);
+      const res = await fetch("/api/specialists/me/clinical-fields", {
+        method: "PATCH",
+        headers: {
+          Authorization: `Bearer ${token}`,
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          fieldId: field.id,
+          locale: localeToSet,
+          label: translateDraft.trim(),
+        }),
+      });
+      const data = (await res.json()) as {
+        field?: CustomFieldRow;
+        error?: string;
+      };
+      if (!res.ok) throw new Error(data.error ?? tc("translateError"));
+      setCustomFields((prev) =>
+        prev.map((f) =>
+          f.id === field.id
+            ? {
+                ...f,
+                labels: data.field?.labels ?? {
+                  ...f.labels,
+                  [localeToSet]: translateDraft.trim(),
+                },
+                label: data.field?.label ?? f.label,
+                missingLocales: data.field?.missingLocales ?? [],
+              }
+            : f,
+        ),
+      );
+      setTranslateOpenId(null);
+      setTranslateDraft("");
+      success(tc("translateSuccess"));
+    } catch (err) {
+      toastError(err instanceof Error ? err.message : tc("translateError"));
+    } finally {
+      setTranslatingId(null);
+    }
   }
 
   async function onSubmit(event: React.FormEvent) {
@@ -172,6 +251,7 @@ export function ClinicalHistoryForm({
           ...form,
           sex: form.sex || null,
           birthDate: form.birthDate || null,
+          customValues,
           ...(canEditName ? { displayName: displayName.trim() } : {}),
         }),
       });
@@ -348,6 +428,105 @@ export function ClinicalHistoryForm({
                 />
               </label>
             ))}
+
+            {customFields.length > 0 ? (
+              <div className="space-y-3 border-t border-stone-200 pt-3 dark:border-slate-700">
+                <p className="text-sm font-medium text-stone-800 dark:text-slate-100">
+                  {t("sectionCustom")}
+                </p>
+                {customFields.map((field) => {
+                  const missingForUi = field.missingLocales.includes(
+                    currentLocale,
+                  );
+                  const translateLocale =
+                    field.missingLocales.find((l) => l !== currentLocale) ??
+                    field.missingLocales[0] ??
+                    null;
+                  const open = translateOpenId === field.id;
+                  return (
+                    <div key={field.id} className="space-y-2">
+                      <label className="flex flex-col gap-1.5 text-sm text-stone-800 dark:text-slate-100">
+                        <span className="flex flex-wrap items-center gap-2 font-medium">
+                          {field.label}
+                          {field.missingLocales.length > 0 ? (
+                            <button
+                              type="button"
+                              className="inline-flex items-center gap-1 rounded border border-amber-300 bg-amber-50 px-1.5 py-0.5 text-[11px] font-medium text-amber-900 dark:border-amber-700 dark:bg-amber-950/40 dark:text-amber-100"
+                              title={tc("missingHint", {
+                                locales: field.missingLocales
+                                  .map((l) => l.toUpperCase())
+                                  .join(", "),
+                              })}
+                              aria-label={tc("missingHint", {
+                                locales: field.missingLocales
+                                  .map((l) => l.toUpperCase())
+                                  .join(", "),
+                              })}
+                              disabled={!canManageFieldDefs}
+                              onClick={() => {
+                                if (!canManageFieldDefs || !translateLocale)
+                                  return;
+                                setTranslateOpenId(open ? null : field.id);
+                                setTranslateDraft("");
+                              }}
+                            >
+                              <span aria-hidden>ⓘ</span>
+                              {missingForUi
+                                ? tc("missingCurrent")
+                                : tc("missingBadge")}
+                            </button>
+                          ) : null}
+                        </span>
+                        <textarea
+                          name={`custom_${field.id}`}
+                          rows={3}
+                          value={customValues[field.id] ?? ""}
+                          onChange={(e) =>
+                            setCustomValues((prev) => ({
+                              ...prev,
+                              [field.id]: e.target.value,
+                            }))
+                          }
+                          className="rounded-md border border-stone-300 bg-white px-3 py-2 dark:border-slate-600 dark:bg-slate-900"
+                        />
+                      </label>
+                      {open && translateLocale && canManageFieldDefs ? (
+                        <div className="flex flex-col gap-2 rounded-md border border-stone-200 p-3 dark:border-slate-600 sm:flex-row sm:items-end">
+                          <div className="flex-1">
+                            <Input
+                              label={tc("translateLabel", {
+                                locale: translateLocale.toUpperCase(),
+                              })}
+                              name={`hist-translate-${field.id}`}
+                              value={translateDraft}
+                              onChange={(e) =>
+                                setTranslateDraft(e.target.value)
+                              }
+                              placeholder={tc("translatePlaceholder")}
+                            />
+                          </div>
+                          <Button
+                            type="button"
+                            size="sm"
+                            disabled={
+                              translatingId === field.id ||
+                              !translateDraft.trim()
+                            }
+                            onClick={() =>
+                              void saveTranslation(field, translateLocale)
+                            }
+                          >
+                            {translatingId === field.id
+                              ? tc("savingTranslation")
+                              : tc("saveTranslation")}
+                          </Button>
+                        </div>
+                      ) : null}
+                    </div>
+                  );
+                })}
+              </div>
+            ) : null}
           </fieldset>
         </CollapsibleSection>
 

@@ -2,9 +2,12 @@ import { NextResponse } from "next/server";
 import { getAdminAuth } from "@/lib/firebase/admin";
 import { isAuthError, requireAuth } from "@/lib/auth/requireAuth";
 import { AdminClinicalHistoryRepository } from "@/repositories/firestore/AdminClinicalHistoryRepository";
+import { AdminSpecialistClinicalFieldsRepository } from "@/repositories/firestore/AdminSpecialistClinicalFieldsRepository";
+import { AdminAppointmentRepository } from "@/repositories/firestore/AdminAppointmentRepository";
 import { AdminUserRepository } from "@/repositories/firestore/AdminUserRepository";
 import type {
   AuthRole,
+  ClinicalCustomFieldDef,
   PatientClinicalHistory,
   PatientClinicalHistoryInput,
 } from "@/types/domain";
@@ -13,7 +16,9 @@ import {
   canActAsSpecialist,
   isClinicalHistoryIncomplete,
   isPatientSex,
+  missingCustomFieldLocales,
   normalizeBirthDate,
+  resolveCustomFieldLabel,
 } from "@/types/domain";
 
 function serialize(history: PatientClinicalHistory) {
@@ -33,9 +38,20 @@ function serialize(history: PatientClinicalHistory) {
     familyHistory: history.familyHistory,
     habits: history.habits,
     generalNotes: history.generalNotes,
+    customValues: history.customValues,
     createdAt: history.createdAt.toISOString(),
     updatedAt: history.updatedAt.toISOString(),
     updatedById: history.updatedById,
+  };
+}
+
+function serializeField(field: ClinicalCustomFieldDef, locale: string) {
+  return {
+    id: field.id,
+    fieldKey: field.fieldKey,
+    labels: field.labels,
+    label: resolveCustomFieldLabel(field, locale),
+    missingLocales: missingCustomFieldLocales(field),
   };
 }
 
@@ -82,7 +98,20 @@ function parseBody(raw: unknown): PatientClinicalHistoryInput {
     habits: typeof body.habits === "string" ? body.habits : "",
     generalNotes:
       typeof body.generalNotes === "string" ? body.generalNotes : "",
+    customValues: parseCustomValues(body.customValues),
   };
+}
+
+function parseCustomValues(raw: unknown): Record<string, string> | undefined {
+  if (raw === undefined) return undefined;
+  if (!raw || typeof raw !== "object" || Array.isArray(raw)) {
+    throw new Error("customValues must be an object");
+  }
+  const out: Record<string, string> = {};
+  for (const [k, v] of Object.entries(raw as Record<string, unknown>)) {
+    if (typeof v === "string") out[k] = v;
+  }
+  return out;
 }
 
 async function assertCanAccessPatient(
@@ -134,12 +163,28 @@ export async function GET(
 
   try {
     const users = new AdminUserRepository();
+    const fieldsRepo = new AdminSpecialistClinicalFieldsRepository();
+    const locale =
+      new URL(request.url).searchParams.get("locale")?.trim() || "es";
     const [history, patient] = await Promise.all([
       new AdminClinicalHistoryRepository().getByPatientId(patientId),
       users.getById(patientId),
     ]);
+
+    let customFields: ClinicalCustomFieldDef[] = [];
+    if (canActAsSpecialist(auth.role) && auth.uid !== patientId) {
+      customFields = await fieldsRepo.list(auth.uid);
+    } else {
+      const appts = await new AdminAppointmentRepository().list({ patientId });
+      const specialistIds = [
+        ...new Set(appts.map((a) => a.specialistId).filter(Boolean)),
+      ];
+      customFields = await fieldsRepo.listForSpecialists(specialistIds);
+    }
+
     return NextResponse.json({
       history: serialize(history),
+      customFields: customFields.map((f) => serializeField(f, locale)),
       incomplete: isClinicalHistoryIncomplete(history),
       displayName: patient?.displayName ?? null,
       email: patient?.email ?? null,

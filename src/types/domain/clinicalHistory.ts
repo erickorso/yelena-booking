@@ -27,6 +27,8 @@ export interface PatientClinicalHistory {
   familyHistory: string;
   habits: string;
   generalNotes: string;
+  /** Values for specialist custom fields, keyed by field def id. */
+  customValues: Record<string, string>;
   createdAt: Date;
   updatedAt: Date;
   updatedById: string | null;
@@ -47,6 +49,7 @@ export type PatientClinicalHistoryInput = {
   familyHistory?: string;
   habits?: string;
   generalNotes?: string;
+  customValues?: Record<string, string>;
 };
 
 export function isPatientSex(value: unknown): value is PatientSex {
@@ -76,6 +79,7 @@ export function emptyClinicalHistory(
     familyHistory: "",
     habits: "",
     generalNotes: "",
+    customValues: {},
     createdAt: now,
     updatedAt: now,
     updatedById: null,

@@ -4,5 +4,6 @@ export * from "./availability";
 export * from "./appointment";
 export * from "./ehr";
 export * from "./clinicalHistory";
+export * from "./clinicalCustomFields";
 export * from "./notification";
 export * from "./googleCalendar";

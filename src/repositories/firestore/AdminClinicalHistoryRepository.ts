@@ -58,6 +58,9 @@ export class AdminClinicalHistoryRepository {
   ): Promise<PatientClinicalHistory> {
     const ref = (await this.db()).collection(COLLECTION).doc(patientId);
     const existing = await ref.get();
+    const previous = existing.exists
+      ? adaptClinicalHistory(patientId, existing.data() ?? {})
+      : emptyClinicalHistory(patientId);
 
     const payload = {
       patientId,
@@ -75,6 +78,12 @@ export class AdminClinicalHistoryRepository {
       familyHistory: (input.familyHistory ?? "").trim(),
       habits: (input.habits ?? "").trim(),
       generalNotes: (input.generalNotes ?? "").trim(),
+      customValues: input.customValues
+        ? {
+            ...previous.customValues,
+            ...sanitizeCustomValues(input.customValues),
+          }
+        : previous.customValues,
       updatedById,
       updatedAt: FieldValue.serverTimestamp(),
       ...(existing.exists
@@ -86,4 +95,15 @@ export class AdminClinicalHistoryRepository {
     const snap = await ref.get();
     return adaptClinicalHistory(patientId, snap.data() ?? {});
   }
+}
+
+function sanitizeCustomValues(
+  values: Record<string, string>,
+): Record<string, string> {
+  const out: Record<string, string> = {};
+  for (const [k, v] of Object.entries(values)) {
+    if (!k.trim()) continue;
+    out[k] = typeof v === "string" ? v.trim() : "";
+  }
+  return out;
 }

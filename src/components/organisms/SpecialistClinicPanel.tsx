@@ -5,6 +5,7 @@ import { useTranslations } from "next-intl";
 import { PanelTabs } from "@/components/molecules/PanelTabs";
 import type { CalendarSlot } from "@/components/molecules/WeekCalendar";
 import { SpecialistScheduleForm } from "@/components/organisms/SpecialistScheduleForm";
+import { SpecialistClinicalFieldsEditor } from "@/components/organisms/SpecialistClinicalFieldsEditor";
 import { GoogleCalendarConnect } from "@/components/organisms/GoogleCalendarConnect";
 import { ClinicAgendaTab } from "@/components/organisms/clinic/ClinicAgendaTab";
 import { ClinicPatientsTab } from "@/components/organisms/clinic/ClinicPatientsTab";
@@ -315,6 +316,7 @@ export function SpecialistClinicPanel() {
                 });
               }}
             />
+            <SpecialistClinicalFieldsEditor />
             <GoogleCalendarConnect />
           </div>
         ) : null}

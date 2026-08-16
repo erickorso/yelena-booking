@@ -25,6 +25,7 @@ export interface ClinicalHistoryDoc {
   familyHistory?: unknown;
   habits?: unknown;
   generalNotes?: unknown;
+  customValues?: unknown;
   createdAt?: unknown;
   updatedAt?: unknown;
   updatedById?: unknown;
@@ -34,6 +35,15 @@ function textField(value: unknown): string {
   if (value === null || value === undefined) return "";
   if (typeof value !== "string") return "";
   return value;
+}
+
+function adaptCustomValues(value: unknown): Record<string, string> {
+  if (!value || typeof value !== "object" || Array.isArray(value)) return {};
+  const out: Record<string, string> = {};
+  for (const [k, v] of Object.entries(value as Record<string, unknown>)) {
+    if (typeof v === "string") out[k] = v;
+  }
+  return out;
 }
 
 function optionalSex(value: unknown): PatientSex | null {
@@ -90,6 +100,7 @@ export function adaptClinicalHistory(
     familyHistory: textField(data.familyHistory),
     habits: textField(data.habits),
     generalNotes: textField(data.generalNotes),
+    customValues: adaptCustomValues(data.customValues),
     createdAt,
     updatedAt,
     updatedById: optionalString(data.updatedById ?? null),
