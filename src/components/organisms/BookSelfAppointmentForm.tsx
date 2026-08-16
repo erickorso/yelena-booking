@@ -247,13 +247,19 @@ export function BookSelfAppointmentForm() {
       });
       const data = (await response.json()) as {
         error?: string;
+        googleSynced?: boolean;
         appointment?: AppointmentRow;
       };
       if (!response.ok) {
         throw new Error(data.error ?? t("bookError"));
       }
-      setInfo(t("bookSuccess"));
-      success(t("bookSuccess"));
+      if (data.googleSynced) {
+        setInfo(t("bookSuccess"));
+        success(t("bookSuccess"));
+      } else {
+        setInfo(t("bookSuccessNoGoogle"));
+        success(t("bookSuccessNoGoogle"));
+      }
       setSelectedSlot(null);
       await reloadAppointments(token);
       if (weekRange) {

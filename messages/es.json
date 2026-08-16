@@ -367,6 +367,7 @@
     "bookCta": "Reservar",
     "booking": "Reservando…",
     "bookSuccess": "Cita reservada.",
+    "bookSuccessNoGoogle": "Cita reservada. El especialista no tiene Google Calendar conectado (o falló el sync).",
     "bookError": "No se pudo reservar.",
     "myAppointments": "Mis citas",
     "empty": "Aún no tienes citas activas.",

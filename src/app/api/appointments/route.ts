@@ -239,6 +239,7 @@ export async function POST(request: Request) {
       bookedById: auth.uid,
     });
 
+    let googleSynced = false;
     try {
       const patientTz = resolvePatientTimezone(patient.timezone);
       const patientLocal = `${formatGoogleDateTime(appointment.startsAt, patientTz)}–${formatGoogleDateTime(appointment.endsAt, patientTz).slice(11)} (${patientTz})`;
@@ -260,6 +261,7 @@ export async function POST(request: Request) {
         attendeeEmail: patient.email,
       });
       if (event) {
+        googleSynced = true;
         appointment = await repo.updateFields(appointment.id, {
           googleEventId: event.eventId,
           googleCalendarId: event.calendarId,
@@ -283,7 +285,11 @@ export async function POST(request: Request) {
       }),
     );
 
-    return NextResponse.json({ ok: true, appointment: serialize(appointment) });
+    return NextResponse.json({
+      ok: true,
+      googleSynced,
+      appointment: serialize(appointment),
+    });
   } catch (error) {
     const message =
       error instanceof Error ? error.message : "Failed to create appointment";

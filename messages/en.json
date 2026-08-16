@@ -367,6 +367,7 @@
     "bookCta": "Book",
     "booking": "Booking…",
     "bookSuccess": "Appointment booked.",
+    "bookSuccessNoGoogle": "Appointment booked. Specialist has no Google Calendar connected (or sync failed).",
     "bookError": "Could not book.",
     "myAppointments": "My appointments",
     "empty": "No active appointments yet.",

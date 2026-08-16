@@ -205,7 +205,13 @@ export class GoogleCalendarService {
     attendeeEmail?: string | null;
   }): Promise<GoogleCreatedEvent | null> {
     const auth = await this.getAuthedClient(input.specialistId);
-    if (!auth) return null;
+    if (!auth) {
+      console.warn(
+        "[gcal] skip create: specialist has no Google connection",
+        input.specialistId,
+      );
+      return null;
+    }
 
     const calendar = google.calendar({ version: "v3", auth: auth.client });
     const attendees =
@@ -214,31 +220,49 @@ export class GoogleCalendarService {
         : undefined;
 
     const tz = input.timeZone.trim() || "UTC";
-    const res = await calendar.events.insert({
-      calendarId: auth.conn.calendarId,
-      conferenceDataVersion: 1,
-      sendUpdates: attendees ? "all" : "none",
-      requestBody: {
-        summary: input.summary,
-        description: input.description ?? undefined,
-        start: {
-          dateTime: formatGoogleDateTime(input.startsAt, tz),
-          timeZone: tz,
-        },
-        end: {
-          dateTime: formatGoogleDateTime(input.endsAt, tz),
-          timeZone: tz,
-        },
-        attendees,
-        conferenceData: {
-          createRequest: {
-            requestId: input.appointmentId.replace(/[^a-zA-Z0-9]/g, "").slice(0, 64) ||
-              `yelena${Date.now()}`,
-            conferenceSolutionKey: { type: "hangoutsMeet" },
+    const requestId =
+      input.appointmentId.replace(/[^a-zA-Z0-9]/g, "").slice(0, 64) ||
+      `yelena${Date.now()}`;
+
+    const baseBody = {
+      summary: input.summary,
+      description: input.description ?? undefined,
+      start: {
+        dateTime: formatGoogleDateTime(input.startsAt, tz),
+        timeZone: tz,
+      },
+      end: {
+        dateTime: formatGoogleDateTime(input.endsAt, tz),
+        timeZone: tz,
+      },
+      attendees,
+    };
+
+    let res;
+    try {
+      res = await calendar.events.insert({
+        calendarId: auth.conn.calendarId,
+        conferenceDataVersion: 1,
+        sendUpdates: attendees ? "all" : "none",
+        requestBody: {
+          ...baseBody,
+          conferenceData: {
+            createRequest: {
+              requestId,
+              conferenceSolutionKey: { type: "hangoutsMeet" },
+            },
           },
         },
-      },
-    });
+      });
+    } catch (err) {
+      // Meet often fails on consumer Gmail / missing Workspace — still create the event.
+      console.warn("[gcal] Meet create failed, retrying without conference", err);
+      res = await calendar.events.insert({
+        calendarId: auth.conn.calendarId,
+        sendUpdates: attendees ? "all" : "none",
+        requestBody: baseBody,
+      });
+    }
 
     const eventId = res.data.id;
     if (!eventId) return null;
