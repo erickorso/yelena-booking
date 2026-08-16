@@ -19,6 +19,7 @@ import {
   missingCustomFieldLocales,
   normalizeBirthDate,
   resolveCustomFieldLabel,
+  validateCustomValuesMap,
 } from "@/types/domain";
 
 function serialize(history: PatientClinicalHistory) {
@@ -51,6 +52,10 @@ function serializeField(field: ClinicalCustomFieldDef, locale: string) {
     fieldKey: field.fieldKey,
     labels: field.labels,
     label: resolveCustomFieldLabel(field, locale),
+    type: field.type,
+    required: field.required,
+    options: field.options,
+    sortOrder: field.sortOrder,
     missingLocales: missingCustomFieldLocales(field),
   };
 }
@@ -241,6 +246,24 @@ export async function PUT(
     } else {
       const patient = await users.getById(patientId);
       displayName = patient?.displayName ?? null;
+    }
+
+    const fieldsRepo = new AdminSpecialistClinicalFieldsRepository();
+    let schemaFields: ClinicalCustomFieldDef[] = [];
+    if (canActAsSpecialist(auth.role) && auth.uid !== patientId) {
+      schemaFields = await fieldsRepo.list(auth.uid);
+    } else {
+      const appts = await new AdminAppointmentRepository().list({ patientId });
+      const specialistIds = [
+        ...new Set(appts.map((a) => a.specialistId).filter(Boolean)),
+      ];
+      schemaFields = await fieldsRepo.listForSpecialists(specialistIds);
+    }
+    if (input.customValues) {
+      input = {
+        ...input,
+        customValues: validateCustomValuesMap(schemaFields, input.customValues),
+      };
     }
 
     const history = await new AdminClinicalHistoryRepository().upsert(

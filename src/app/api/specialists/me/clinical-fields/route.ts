@@ -5,6 +5,7 @@ import { AdminClinicalHistoryRepository } from "@/repositories/firestore/AdminCl
 import { AdminUserRepository } from "@/repositories/firestore/AdminUserRepository";
 import {
   canActAsSpecialist,
+  isClinicalCustomFieldType,
   isClinicalFieldLocale,
   missingCustomFieldLocales,
   resolveCustomFieldLabel,
@@ -20,9 +21,15 @@ function serializeField(field: ClinicalCustomFieldDef, locale: string) {
     fieldKey: field.fieldKey,
     labels: field.labels,
     label: resolveCustomFieldLabel(field, locale),
+    type: field.type,
+    required: field.required,
+    options: field.options,
+    sortOrder: field.sortOrder,
     missingLocales: missingCustomFieldLocales(field),
     createdAt: field.createdAt.toISOString(),
     updatedAt: field.updatedAt.toISOString(),
+    createdById: field.createdById || null,
+    updatedById: field.updatedById || null,
   };
 }
 
@@ -43,9 +50,9 @@ async function assertActiveSpecialist(uid: string, role: AuthRole) {
 }
 
 /**
- * GET /api/specialists/me/clinical-fields
- * POST { label, locale? } — add field
- * PATCH { fieldId, locale, label } | { fieldId, labels: { es?, en? } }
+ * GET /api/specialists/me/clinical-fields — own schema only (+ auditLog)
+ * POST { label, locale?, type?, required?, options? }
+ * PATCH labels | meta | order
  * DELETE ?fieldId=
  */
 export async function GET(request: Request) {
@@ -57,11 +64,20 @@ export async function GET(request: Request) {
   const locale =
     new URL(request.url).searchParams.get("locale")?.trim() || "es";
   try {
-    const fields = await new AdminSpecialistClinicalFieldsRepository().list(
-      auth.uid,
-    );
+    const repo = new AdminSpecialistClinicalFieldsRepository();
+    const [fields, auditLog] = await Promise.all([
+      repo.list(auth.uid),
+      repo.listAudit(auth.uid),
+    ]);
     return NextResponse.json({
       fields: fields.map((f) => serializeField(f, locale)),
+      auditLog: auditLog.slice(0, 40).map((e) => ({
+        at: e.at.toISOString(),
+        byUserId: e.byUserId,
+        action: e.action,
+        fieldId: e.fieldId,
+        detail: e.detail ?? null,
+      })),
     });
   } catch (error) {
     const message =
@@ -76,7 +92,13 @@ export async function POST(request: Request) {
   const denied = await assertActiveSpecialist(auth.uid, auth.role);
   if (denied) return denied;
 
-  let body: { label?: unknown; locale?: unknown };
+  let body: {
+    label?: unknown;
+    locale?: unknown;
+    type?: unknown;
+    required?: unknown;
+    options?: unknown;
+  };
   try {
     body = (await request.json()) as typeof body;
   } catch {
@@ -85,11 +107,17 @@ export async function POST(request: Request) {
 
   const label = typeof body.label === "string" ? body.label : "";
   const locale = isClinicalFieldLocale(body.locale) ? body.locale : "es";
+  const type = isClinicalCustomFieldType(body.type) ? body.type : "textarea";
+  const required = body.required === true;
+  const options = Array.isArray(body.options)
+    ? body.options.filter((o): o is string => typeof o === "string")
+    : undefined;
 
   try {
     const field = await new AdminSpecialistClinicalFieldsRepository().addField(
       auth.uid,
-      { label, locale },
+      auth.uid,
+      { label, locale, type, required, options },
     );
     return NextResponse.json({
       ok: true,
@@ -113,6 +141,10 @@ export async function PATCH(request: Request) {
     locale?: unknown;
     label?: unknown;
     labels?: unknown;
+    type?: unknown;
+    required?: unknown;
+    options?: unknown;
+    order?: unknown;
   };
   try {
     body = (await request.json()) as typeof body;
@@ -120,22 +152,51 @@ export async function PATCH(request: Request) {
     return NextResponse.json({ error: "Invalid JSON" }, { status: 400 });
   }
 
-  const fieldId = typeof body.fieldId === "string" ? body.fieldId.trim() : "";
-  if (!fieldId) {
-    return NextResponse.json({ error: "fieldId is required" }, { status: 400 });
-  }
-
   const repo = new AdminSpecialistClinicalFieldsRepository();
   const localeHint =
     new URL(request.url).searchParams.get("locale")?.trim() || "es";
 
   try {
+    if (Array.isArray(body.order)) {
+      const orderedIds = body.order.filter(
+        (id): id is string => typeof id === "string" && !!id.trim(),
+      );
+      const fields = await repo.reorderFields(auth.uid, auth.uid, orderedIds);
+      return NextResponse.json({
+        ok: true,
+        fields: fields.map((f) => serializeField(f, localeHint)),
+      });
+    }
+
+    const fieldId = typeof body.fieldId === "string" ? body.fieldId.trim() : "";
+    if (!fieldId) {
+      return NextResponse.json({ error: "fieldId is required" }, { status: 400 });
+    }
+
+    if (
+      body.type !== undefined ||
+      body.required !== undefined ||
+      body.options !== undefined
+    ) {
+      const field = await repo.updateFieldMeta(auth.uid, auth.uid, fieldId, {
+        type: isClinicalCustomFieldType(body.type) ? body.type : undefined,
+        required: typeof body.required === "boolean" ? body.required : undefined,
+        options: Array.isArray(body.options)
+          ? body.options.filter((o): o is string => typeof o === "string")
+          : undefined,
+      });
+      return NextResponse.json({
+        ok: true,
+        field: serializeField(field, localeHint),
+      });
+    }
+
     if (body.labels && typeof body.labels === "object") {
       const raw = body.labels as Record<string, unknown>;
       const labels: Partial<Record<"es" | "en", string>> = {};
       if (typeof raw.es === "string") labels.es = raw.es;
       if (typeof raw.en === "string") labels.en = raw.en;
-      const field = await repo.updateLabels(auth.uid, fieldId, labels);
+      const field = await repo.updateLabels(auth.uid, auth.uid, fieldId, labels);
       return NextResponse.json({
         ok: true,
         field: serializeField(field, localeHint),
@@ -149,14 +210,20 @@ export async function PATCH(request: Request) {
         { status: 400 },
       );
     }
-    const field = await repo.setLabel(auth.uid, fieldId, body.locale, label);
+    const field = await repo.setLabel(
+      auth.uid,
+      auth.uid,
+      fieldId,
+      body.locale,
+      label,
+    );
     return NextResponse.json({
       ok: true,
       field: serializeField(field, body.locale),
     });
   } catch (error) {
     const message =
-      error instanceof Error ? error.message : "Failed to update label";
+      error instanceof Error ? error.message : "Failed to update field";
     return NextResponse.json({ error: message }, { status: 400 });
   }
 }
@@ -176,14 +243,11 @@ export async function DELETE(request: Request) {
   try {
     const fieldsRepo = new AdminSpecialistClinicalFieldsRepository();
     const histories = new AdminClinicalHistoryRepository();
-    // Not one Firestore TX (N patient charts). Soft-delete → purge → hard-remove;
-    // each step is idempotent so a failed mid-flight DELETE can be retried safely.
     const existing = await fieldsRepo.listAll(auth.uid);
     const field = existing.find((f) => f.id === fieldId);
     if (field && !field.deletedAt) {
-      await fieldsRepo.markFieldDeleted(auth.uid, fieldId);
+      await fieldsRepo.markFieldDeleted(auth.uid, auth.uid, fieldId);
     } else if (!field) {
-      // Already fully removed: still purge orphans, then succeed.
       const purged = await histories.purgeCustomFieldValue(fieldId);
       return NextResponse.json({
         ok: true,

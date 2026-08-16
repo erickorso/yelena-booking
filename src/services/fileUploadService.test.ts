@@ -13,10 +13,13 @@ describe("FileUploadService", () => {
   it("uploads patient chart file and lists by patient", async () => {
     const ehr = new StubEhrRepository();
     const storage: IFileStorage = {
-      upload: vi.fn(async ({ path }) => ({
+      upload: vi.fn(async ({ path, contentType, data }) => ({
         path,
         url: `https://blob/${path}`,
+        contentType: contentType ?? "application/pdf",
+        sizeBytes: data instanceof File ? data.size : 3,
       })),
+      delete: vi.fn(async () => undefined),
     };
     const service = new FileUploadService(storage, ehr);
     const file = await service.uploadMedicalFile({
@@ -35,10 +38,13 @@ describe("FileUploadService", () => {
   it("uploads specialist library file and lists by profile", async () => {
     const ehr = new StubEhrRepository();
     const storage: IFileStorage = {
-      upload: vi.fn(async ({ path }) => ({
+      upload: vi.fn(async ({ path, contentType, data }) => ({
         path,
         url: `https://blob/${path}`,
+        contentType: contentType ?? "application/pdf",
+        sizeBytes: data instanceof File ? data.size : 3,
       })),
+      delete: vi.fn(async () => undefined),
     };
     const service = new FileUploadService(storage, ehr);
     await service.uploadMedicalFile({

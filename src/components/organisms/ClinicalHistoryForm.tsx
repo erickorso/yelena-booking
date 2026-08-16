@@ -8,9 +8,11 @@ import { FormSkeleton } from "@/components/atoms/Skeleton";
 import { CollapsibleSection } from "@/components/molecules/CollapsibleSection";
 import { useAuth } from "@/components/providers/AuthProvider";
 import { useToast } from "@/components/providers/ToastProvider";
+import { reportError } from "@/lib/observability/reportError";
 import { getIdToken } from "@/services/authService";
 import {
   PATIENT_SEX_OPTIONS,
+  type ClinicalCustomFieldType,
   type ClinicalFieldLocale,
   type PatientSex,
 } from "@/types/domain";
@@ -37,6 +39,10 @@ type CustomFieldRow = {
   fieldKey: string;
   labels: Partial<Record<ClinicalFieldLocale, string>>;
   label: string;
+  type: ClinicalCustomFieldType;
+  required: boolean;
+  options: string[];
+  sortOrder: number;
   missingLocales: ClinicalFieldLocale[];
 };
 
@@ -132,7 +138,15 @@ export function ClinicalHistoryForm({
           typeof data.patientNumber === "string" ? data.patientNumber : "",
         );
         setCanEditName(!readOnly);
-        setCustomFields(data.customFields ?? []);
+        setCustomFields(
+          (data.customFields ?? []).map((f) => ({
+            ...f,
+            type: f.type ?? "textarea",
+            required: f.required === true,
+            options: Array.isArray(f.options) ? f.options : [],
+            sortOrder: typeof f.sortOrder === "number" ? f.sortOrder : 0,
+          })),
+        );
         const cv =
           h.customValues &&
           typeof h.customValues === "object" &&
@@ -229,6 +243,7 @@ export function ClinicalHistoryForm({
       setTranslateDraft("");
       success(tc("translateSuccess"));
     } catch (err) {
+      reportError(err, { surface: "clinical-history-translate" });
       toastError(err instanceof Error ? err.message : tc("translateError"));
     } finally {
       setTranslatingId(null);
@@ -276,6 +291,7 @@ export function ClinicalHistoryForm({
         );
       }
     } catch (err) {
+      reportError(err, { surface: "clinical-history-save" });
       toastError(err instanceof Error ? err.message : t("saveError"));
     } finally {
       setSaving(false);
@@ -448,6 +464,11 @@ export function ClinicalHistoryForm({
                       <label className="flex flex-col gap-1.5 text-sm text-stone-800 dark:text-slate-100">
                         <span className="flex flex-wrap items-center gap-2 font-medium">
                           {field.label}
+                          {field.required ? (
+                            <span className="text-red-600" aria-hidden>
+                              *
+                            </span>
+                          ) : null}
                           {field.missingLocales.length > 0 ? (
                             <button
                               type="button"
@@ -477,18 +498,78 @@ export function ClinicalHistoryForm({
                             </button>
                           ) : null}
                         </span>
-                        <textarea
-                          name={`custom_${field.id}`}
-                          rows={3}
-                          value={customValues[field.id] ?? ""}
-                          onChange={(e) =>
-                            setCustomValues((prev) => ({
-                              ...prev,
-                              [field.id]: e.target.value,
-                            }))
-                          }
-                          className="rounded-md border border-stone-300 bg-white px-3 py-2 dark:border-slate-600 dark:bg-slate-900"
-                        />
+                        {field.type === "textarea" ? (
+                          <textarea
+                            name={`custom_${field.id}`}
+                            rows={3}
+                            required={field.required}
+                            value={customValues[field.id] ?? ""}
+                            onChange={(e) =>
+                              setCustomValues((prev) => ({
+                                ...prev,
+                                [field.id]: e.target.value,
+                              }))
+                            }
+                            className="rounded-md border border-stone-300 bg-white px-3 py-2 dark:border-slate-600 dark:bg-slate-900"
+                          />
+                        ) : field.type === "boolean" ? (
+                          <select
+                            name={`custom_${field.id}`}
+                            required={field.required}
+                            value={customValues[field.id] ?? ""}
+                            onChange={(e) =>
+                              setCustomValues((prev) => ({
+                                ...prev,
+                                [field.id]: e.target.value,
+                              }))
+                            }
+                            className="h-10 rounded-md border border-stone-300 bg-white px-3 dark:border-slate-600 dark:bg-slate-900"
+                          >
+                            <option value="">—</option>
+                            <option value="true">{tc("boolYes")}</option>
+                            <option value="false">{tc("boolNo")}</option>
+                          </select>
+                        ) : field.type === "select" ? (
+                          <select
+                            name={`custom_${field.id}`}
+                            required={field.required}
+                            value={customValues[field.id] ?? ""}
+                            onChange={(e) =>
+                              setCustomValues((prev) => ({
+                                ...prev,
+                                [field.id]: e.target.value,
+                              }))
+                            }
+                            className="h-10 rounded-md border border-stone-300 bg-white px-3 dark:border-slate-600 dark:bg-slate-900"
+                          >
+                            <option value="">—</option>
+                            {field.options.map((opt) => (
+                              <option key={opt} value={opt}>
+                                {opt}
+                              </option>
+                            ))}
+                          </select>
+                        ) : (
+                          <input
+                            name={`custom_${field.id}`}
+                            type={
+                              field.type === "number"
+                                ? "number"
+                                : field.type === "date"
+                                  ? "date"
+                                  : "text"
+                            }
+                            required={field.required}
+                            value={customValues[field.id] ?? ""}
+                            onChange={(e) =>
+                              setCustomValues((prev) => ({
+                                ...prev,
+                                [field.id]: e.target.value,
+                              }))
+                            }
+                            className="h-10 rounded-md border border-stone-300 bg-white px-3 dark:border-slate-600 dark:bg-slate-900"
+                          />
+                        )}
                       </label>
                       {open && translateLocale && canManageFieldDefs ? (
                         <div className="flex flex-col gap-2 rounded-md border border-stone-200 p-3 dark:border-slate-600 sm:flex-row sm:items-end">

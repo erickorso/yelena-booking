@@ -506,12 +506,16 @@
   },
   "ClinicalCustomFields": {
     "title": "Campos personalizados de historia",
-    "subtitle": "Preguntas extra que verás en antecedentes de tus pacientes. Un label basta; añade la otra lengua cuando falte.",
+    "subtitle": "Solo tuyos: cada especialista define sus preguntas (tipo, orden, obligatorio). No se mezclan con las de otros.",
     "loading": "Cargando campos…",
     "loadError": "No se pudieron cargar los campos.",
     "empty": "Aún no has añadido campos personalizados.",
     "newLabel": "Nuevo campo",
     "newLabelPlaceholder": "p. ej. Antecedentes obstétricos",
+    "fieldType": "Tipo",
+    "required": "Obligatorio",
+    "optionsLabel": "Opciones (una por línea)",
+    "optionsPlaceholder": "Sí\nNo\nNo sabe",
     "addCta": "Añadir campo",
     "adding": "Añadiendo…",
     "addSuccess": "Campo añadido.",
@@ -536,7 +540,23 @@
     "deleteCta": "Eliminar",
     "deleteConfirm": "¿Eliminar el campo «{label}»? También se borrarán sus valores en las historias de pacientes.",
     "deleteSuccess": "Campo eliminado.",
-    "deleteError": "No se pudo eliminar el campo."
+    "deleteError": "No se pudo eliminar el campo.",
+    "moveUp": "Subir",
+    "moveDown": "Bajar",
+    "reorderError": "No se pudo reordenar.",
+    "lastEditor": "editado por {id}…",
+    "auditTitle": "Auditoría de cambios",
+    "auditReorder": "reordenación",
+    "boolYes": "Sí",
+    "boolNo": "No",
+    "types": {
+      "text": "Texto corto",
+      "textarea": "Texto largo",
+      "number": "Número",
+      "boolean": "Sí / No",
+      "date": "Fecha",
+      "select": "Lista"
+    }
   },
   "MedicalFiles": {
     "chartTitle": "Documentos clínicos",

@@ -506,12 +506,16 @@
   },
   "ClinicalCustomFields": {
     "title": "Custom history fields",
-    "subtitle": "Extra questions on your patients’ clinical background. One label is enough; add the other language when missing.",
+    "subtitle": "Yours only: each specialist defines their own questions (type, order, required). They are not shared with other specialists.",
     "loading": "Loading fields…",
     "loadError": "Could not load fields.",
     "empty": "No custom fields yet.",
     "newLabel": "New field",
     "newLabelPlaceholder": "e.g. Obstetric history",
+    "fieldType": "Type",
+    "required": "Required",
+    "optionsLabel": "Options (one per line)",
+    "optionsPlaceholder": "Yes\nNo\nUnknown",
     "addCta": "Add field",
     "adding": "Adding…",
     "addSuccess": "Field added.",
@@ -536,7 +540,23 @@
     "deleteCta": "Delete",
     "deleteConfirm": "Delete field “{label}”? Values stored on patient charts will also be removed.",
     "deleteSuccess": "Field deleted.",
-    "deleteError": "Could not delete field."
+    "deleteError": "Could not delete field.",
+    "moveUp": "Move up",
+    "moveDown": "Move down",
+    "reorderError": "Could not reorder.",
+    "lastEditor": "edited by {id}…",
+    "auditTitle": "Change audit",
+    "auditReorder": "reorder",
+    "boolYes": "Yes",
+    "boolNo": "No",
+    "types": {
+      "text": "Short text",
+      "textarea": "Long text",
+      "number": "Number",
+      "boolean": "Yes / No",
+      "date": "Date",
+      "select": "List"
+    }
   },
   "MedicalFiles": {
     "chartTitle": "Clinical documents",

@@ -19,6 +19,7 @@ export default defineConfig({
         "src/lib/storage/medicalUploadPolicy.ts",
         "src/lib/patients/patientSearch.ts",
         "src/lib/patients/patientNumber.ts",
+        "src/lib/observability/reportError.ts",
         "src/adapters/firestore/appointmentAdapter.ts",
         "src/repositories/stubs/StubAppointmentRepository.ts",
         "src/repositories/stubs/StubEhrRepository.ts",
