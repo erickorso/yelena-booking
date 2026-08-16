@@ -82,6 +82,59 @@ src/
 
 ---
 
+## Data model (Firestore)
+
+**How it works:** Firebase Auth holds identity + custom claim `role`. Almost all reads/writes go through the **Next.js BFF** with the **Admin SDK** (bypasses client rules). Firestore is the source of truth for profiles, bookings, EHR metadata, and schemas; **binary files** live in **Vercel Blob** and only their metadata is in `medicalFiles`.
+
+Client [`firestore.rules`](./firestore.rules) remain as defense-in-depth for any direct SDK access (owner / role checks). Catalog types live under `src/types/domain/`.
+
+```mermaid
+erDiagram
+  users ||--o| specialists : "userId / usually same id"
+  users ||--o| patientClinicalHistories : "doc id = patient uid"
+  users ||--o{ appointments : "patientId"
+  specialists ||--o{ appointments : "specialistId"
+  specialists ||--o| availabilitySchedules : "doc id = specialist uid"
+  specialists ||--o| googleCalendarConnections : "doc id = specialist uid"
+  specialists ||--o| specialistClinicalFieldSchemas : "doc id = specialist uid"
+  appointments ||--o{ ehrNotes : "appointmentId"
+  appointments ||--o{ medicalFiles : "appointmentId optional"
+  users ||--o{ medicalFiles : "patientId"
+  users ||--o{ notifications : "userId"
+  specialties ||--o{ specialists : "specialty label"
+```
+
+### Collections
+
+| Collection | Doc id | Purpose / key fields |
+| --- | --- | --- |
+| `users` | Auth uid | `email`, `displayName`, `role`, `locale`, `timezone`, `patientNumber` (TE code) |
+| `specialists` | usually = uid | `userId`, `specialty`, `bio`, `location`, `status` (`pending`\|`active`\|`rejected`), `licenseNumber`, `timezone` |
+| `specialties` | auto | Catalog labels for the directory / promote flow |
+| `appointments` | auto | `patientId`, `specialistId`, `bookedById`, `startsAt`/`endsAt`, `status` FSM, `notes`, `transfer{}`, `googleEventId`, `meetLink`, reschedule links |
+| `availabilitySchedules` | specialist uid | `workdays`, `ranges[]`, `timezone`, `slotMinutes` |
+| `googleCalendarConnections` | specialist uid | OAuth tokens / calendar id (server-only) |
+| `patientClinicalHistories` | patient uid | Demographics + allergies/meds/… + `customValues` / `customValuesMeta` keyed by field id |
+| `specialistClinicalFieldSchemas` | specialist uid | Embedded field defs (`labels`, `type`, `required`, `options`, `sortOrder`, soft-delete) + `auditLog` |
+| `ehrNotes` | auto | Per-visit notes: `patientId`, `specialistId`, `appointmentId`, `body` |
+| `medicalFiles` | auto | Blob metadata: `scope`, `patientId` / `specialistProfileId`, `url`/`storagePath`, `contentType`, `sizeBytes` |
+| `notifications` | auto | In-app inbox: `userId`, `kind`, `title`, `body`, `href`, `meta` |
+
+### Appointment status FSM
+
+`pending` → `confirmed` → `completed` \| `cancelled` \| `no_show` (see `APPOINTMENT_TRANSITIONS` in domain). Transfers use `transfer.status`: `none` → `pending` → `accepted` \| `rejected`.
+
+### Outside Firestore
+
+| Store | What |
+| --- | --- |
+| **Firebase Auth** | Users, Google/email providers, custom claims |
+| **Vercel Blob** | Private PDFs/images; path scoped under patient/specialist |
+| **Google Calendar** | Events + FreeBusy (linked via `googleCalendarConnections`) |
+| **Resend** | Transactional mail (not persisted as mail log in v1) |
+
+---
+
 ## Roles
 
 | Claim | Who |
