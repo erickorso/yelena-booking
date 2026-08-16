@@ -95,6 +95,42 @@ export class AdminClinicalHistoryRepository {
     const snap = await ref.get();
     return adaptClinicalHistory(patientId, snap.data() ?? {});
   }
+
+  /**
+   * Remove a custom field key from every patient chart (avoids orphan values).
+   * Returns how many documents were updated.
+   */
+  async purgeCustomFieldValue(fieldId: string): Promise<number> {
+    const id = fieldId.trim();
+    if (!id) return 0;
+
+    const db = await this.db();
+    const snap = await db.collection(COLLECTION).get();
+    let updated = 0;
+    let batch = db.batch();
+    let ops = 0;
+
+    for (const doc of snap.docs) {
+      const data = doc.data() ?? {};
+      const cv = data.customValues;
+      if (!cv || typeof cv !== "object" || Array.isArray(cv)) continue;
+      if (!(id in (cv as Record<string, unknown>))) continue;
+
+      batch.update(doc.ref, {
+        [`customValues.${id}`]: FieldValue.delete(),
+        updatedAt: FieldValue.serverTimestamp(),
+      });
+      ops += 1;
+      updated += 1;
+      if (ops >= 400) {
+        await batch.commit();
+        batch = db.batch();
+        ops = 0;
+      }
+    }
+    if (ops > 0) await batch.commit();
+    return updated;
+  }
 }
 
 function sanitizeCustomValues(

@@ -534,7 +534,7 @@
     "editSuccess": "Field updated.",
     "editError": "Could not edit field.",
     "deleteCta": "Delete",
-    "deleteConfirm": "Delete field “{label}”? Values already saved on charts are not removed automatically.",
+    "deleteConfirm": "Delete field “{label}”? Values stored on patient charts will also be removed.",
     "deleteSuccess": "Field deleted.",
     "deleteError": "Could not delete field."
   },

@@ -534,7 +534,7 @@
     "editSuccess": "Campo actualizado.",
     "editError": "No se pudo editar el campo.",
     "deleteCta": "Eliminar",
-    "deleteConfirm": "¿Eliminar el campo «{label}»? Los valores ya guardados en historias no se borran automáticamente.",
+    "deleteConfirm": "¿Eliminar el campo «{label}»? También se borrarán sus valores en las historias de pacientes.",
     "deleteSuccess": "Campo eliminado.",
     "deleteError": "No se pudo eliminar el campo."
   },

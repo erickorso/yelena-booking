@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { isAuthError, requireAuth } from "@/lib/auth/requireAuth";
 import { AdminSpecialistClinicalFieldsRepository } from "@/repositories/firestore/AdminSpecialistClinicalFieldsRepository";
+import { AdminClinicalHistoryRepository } from "@/repositories/firestore/AdminClinicalHistoryRepository";
 import { AdminUserRepository } from "@/repositories/firestore/AdminUserRepository";
 import {
   canActAsSpecialist,
@@ -173,11 +174,11 @@ export async function DELETE(request: Request) {
   }
 
   try {
-    await new AdminSpecialistClinicalFieldsRepository().deleteField(
-      auth.uid,
-      fieldId,
-    );
-    return NextResponse.json({ ok: true });
+    const fieldsRepo = new AdminSpecialistClinicalFieldsRepository();
+    await fieldsRepo.deleteField(auth.uid, fieldId);
+    const purged =
+      await new AdminClinicalHistoryRepository().purgeCustomFieldValue(fieldId);
+    return NextResponse.json({ ok: true, purgedPatientCharts: purged });
   } catch (error) {
     const message =
       error instanceof Error ? error.message : "Failed to delete field";
