@@ -1,5 +1,7 @@
 import { NextResponse } from "next/server";
 import { isAuthError, requireAuth } from "@/lib/auth/requireAuth";
+import { denyUnlessActiveSpecialist } from "@/lib/auth/requireActiveSpecialist";
+import { serializeAppointment } from "@/lib/api/serializeAppointment";
 import {
   isWithinSchedule,
   resolveScheduleTimezone,
@@ -14,44 +16,14 @@ import { AppointmentService } from "@/services/appointmentService";
 import { GoogleCalendarService } from "@/services/googleCalendarService";
 import { canActAsSpecialist, type AuthRole } from "@/types/domain";
 
-function serialize(appointment: {
-  id: string;
-  patientId: string;
-  specialistId: string;
-  startsAt: Date;
-  endsAt: Date;
-  status: string;
-  notes: string | null;
-  meetLink?: string | null;
-  googleEventId?: string | null;
-  rescheduledFromId?: string | null;
-  rescheduledToId?: string | null;
-}) {
-  return {
-    id: appointment.id,
-    patientId: appointment.patientId,
-    specialistId: appointment.specialistId,
-    startsAt: appointment.startsAt.toISOString(),
-    endsAt: appointment.endsAt.toISOString(),
-    status: appointment.status,
-    notes: appointment.notes,
-    meetLink: appointment.meetLink ?? null,
-    googleEventId: appointment.googleEventId ?? null,
-    rescheduledFromId: appointment.rescheduledFromId ?? null,
-    rescheduledToId: appointment.rescheduledToId ?? null,
-  };
-}
-
 async function assertCanManage(
   auth: { uid: string; role: AuthRole },
   appt: { specialistId: string; patientId: string; bookedById: string | null },
 ) {
   if (auth.role === "admin") return;
   if (canActAsSpecialist(auth.role) && appt.specialistId === auth.uid) {
-    const me = await new AdminUserRepository().getSpecialistByUserId(auth.uid);
-    if (auth.role === "especialista" && (!me || me.status !== "active")) {
-      throw new Error("FORBIDDEN");
-    }
+    const denied = await denyUnlessActiveSpecialist(auth.uid, auth.role);
+    if (denied) throw new Error("FORBIDDEN");
     return;
   }
   if (appt.patientId === auth.uid || appt.bookedById === auth.uid) return;
@@ -143,7 +115,7 @@ export async function PATCH(
           console.error("[gcal] delete event failed", err);
         }
       }
-      return NextResponse.json({ ok: true, appointment: serialize(updated) });
+      return NextResponse.json({ ok: true, appointment: serializeAppointment(updated) });
     }
 
     if (typeof body.startsAt === "string" && typeof body.endsAt === "string") {
@@ -244,7 +216,7 @@ export async function PATCH(
         }
         return NextResponse.json({
           ok: true,
-          appointment: serialize(created),
+          appointment: serializeAppointment(created),
           ghostId: id,
         });
       }
@@ -278,7 +250,7 @@ export async function PATCH(
       }
 
       updated = (await repo.getById(id)) ?? updated;
-      return NextResponse.json({ ok: true, appointment: serialize(updated) });
+      return NextResponse.json({ ok: true, appointment: serializeAppointment(updated) });
     }
 
     return NextResponse.json(

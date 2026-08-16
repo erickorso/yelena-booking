@@ -1,72 +1,25 @@
-import { NextResponse } from "next/server";
 import { isAuthError, requireAuth } from "@/lib/auth/requireAuth";
-import { AdminAvailabilityRepository } from "@/repositories/firestore/AdminAvailabilityRepository";
 import { AdminAppointmentRepository } from "@/repositories/firestore/AdminAppointmentRepository";
-import { AdminUserRepository } from "@/repositories/firestore/AdminUserRepository";
 import { AppointmentService } from "@/services/appointmentService";
-import { MailService } from "@/services/mailService";
-import { GoogleCalendarService } from "@/services/googleCalendarService";
-import { canActAsPatient } from "@/types/domain";
 import {
-  isWithinSchedule,
-  resolveScheduleTimezone,
-} from "@/lib/availability/defaultSlots";
-import { formatGoogleDateTime } from "@/lib/availability/scheduleTimeZone";
-import { evaluatePatientBooking } from "@/lib/appointments/patientBookingRules";
-import { resolvePatientTimezone } from "@/lib/timezones";
-
-interface CreateBody {
-  patientId?: unknown;
-  specialistId?: unknown;
-  startsAt?: unknown;
-  endsAt?: unknown;
-  notes?: unknown;
-}
-
-function serialize(appointment: {
-  id: string;
-  patientId: string;
-  specialistId: string;
-  bookedById: string | null;
-  startsAt: Date;
-  endsAt: Date;
-  status: string;
-  notes: string | null;
-  meetLink?: string | null;
-  googleEventId?: string | null;
-  rescheduledFromId?: string | null;
-  rescheduledToId?: string | null;
-  transfer: {
-    status: string;
-    toSpecialistId: string | null;
-    fromSpecialistId: string | null;
-  };
-}) {
-  return {
-    id: appointment.id,
-    patientId: appointment.patientId,
-    specialistId: appointment.specialistId,
-    bookedById: appointment.bookedById,
-    startsAt: appointment.startsAt.toISOString(),
-    endsAt: appointment.endsAt.toISOString(),
-    status: appointment.status,
-    notes: appointment.notes,
-    meetLink: appointment.meetLink ?? null,
-    googleEventId: appointment.googleEventId ?? null,
-    rescheduledFromId: appointment.rescheduledFromId ?? null,
-    rescheduledToId: appointment.rescheduledToId ?? null,
-    transfer: {
-      status: appointment.transfer.status,
-      toSpecialistId: appointment.transfer.toSpecialistId,
-      fromSpecialistId: appointment.transfer.fromSpecialistId,
-    },
-  };
-}
+  bookAppointment,
+  BookAppointmentError,
+} from "@/application/bookAppointment";
+import { bookAppointmentBodySchema } from "@/contracts/appointments";
+import { serializeAppointment } from "@/lib/api/serializeAppointment";
+import {
+  beginApiRequest,
+  jsonError,
+  jsonOk,
+  readJsonBody,
+  zodErrorResponse,
+} from "@/lib/http/apiResponse";
 
 /**
  * GET /api/appointments?as=patient|specialist
  */
 export async function GET(request: Request) {
+  const ctx = beginApiRequest(request);
   const auth = await requireAuth(request);
   if (isAuthError(auth)) return auth;
 
@@ -80,229 +33,70 @@ export async function GET(request: Request) {
       const patientId = url.searchParams.get("patientId")?.trim();
       if (patientId) {
         const list = await service.list({ patientId });
-        return NextResponse.json({ appointments: list.map(serialize) });
+        return jsonOk(ctx, { appointments: list.map(serializeAppointment) });
       }
       const list = await service.list({ specialistId: auth.uid });
-      return NextResponse.json({ appointments: list.map(serialize) });
+      return jsonOk(ctx, { appointments: list.map(serializeAppointment) });
     }
 
-    if (!canActAsPatient(auth.role)) {
-      return NextResponse.json({ error: "Forbidden" }, { status: 403 });
+    if (auth.role !== "paciente" && auth.role !== "especialista" && auth.role !== "admin") {
+      return jsonError(ctx, 403, "Forbidden");
     }
 
     const list = await service.list({ patientId: auth.uid });
-    return NextResponse.json({ appointments: list.map(serialize) });
+    return jsonOk(ctx, { appointments: list.map(serializeAppointment) });
   } catch (error) {
     const message =
       error instanceof Error ? error.message : "Failed to list appointments";
-    return NextResponse.json({ error: message }, { status: 500 });
+    return jsonError(ctx, 500, message);
   }
 }
 
 /**
- * POST /api/appointments
- * - Self-book: patientId === caller (paciente | especialista | admin)
- * - On behalf: active especialista/admin; specialistId must be caller's uid (unless admin)
+ * POST /api/appointments — thin BFF over bookAppointment use-case.
  */
 export async function POST(request: Request) {
+  const ctx = beginApiRequest(request);
   const auth = await requireAuth(request);
   if (isAuthError(auth)) return auth;
 
-  let body: CreateBody;
-  try {
-    body = (await request.json()) as CreateBody;
-  } catch {
-    return NextResponse.json({ error: "Invalid JSON body" }, { status: 400 });
-  }
+  const raw = await readJsonBody(request);
+  if (raw === null) return jsonError(ctx, 400, "Invalid JSON body");
 
-  const patientId =
-    typeof body.patientId === "string" ? body.patientId.trim() : "";
-  const specialistId =
-    typeof body.specialistId === "string" ? body.specialistId.trim() : "";
-  const startsAt =
-    typeof body.startsAt === "string" ? new Date(body.startsAt) : null;
-  const endsAt = typeof body.endsAt === "string" ? new Date(body.endsAt) : null;
-  const notes = typeof body.notes === "string" ? body.notes : null;
+  const parsed = bookAppointmentBodySchema.safeParse(raw);
+  if (!parsed.success) return zodErrorResponse(ctx, parsed.error);
 
-  if (!patientId || !specialistId || !startsAt || !endsAt) {
-    return NextResponse.json(
-      { error: "patientId, specialistId, startsAt, endsAt are required" },
-      { status: 400 },
-    );
-  }
+  const startsAt = new Date(parsed.data.startsAt);
+  const endsAt = new Date(parsed.data.endsAt);
   if (Number.isNaN(startsAt.getTime()) || Number.isNaN(endsAt.getTime())) {
-    return NextResponse.json({ error: "Invalid dates" }, { status: 400 });
+    return jsonError(ctx, 400, "Invalid dates");
   }
 
   try {
-    const users = new AdminUserRepository();
-    const isSelf = patientId === auth.uid;
-
-    if (isSelf) {
-      if (!canActAsPatient(auth.role)) {
-        return NextResponse.json({ error: "Forbidden" }, { status: 403 });
-      }
-    } else {
-      if (auth.role !== "especialista" && auth.role !== "admin") {
-        return NextResponse.json({ error: "Forbidden" }, { status: 403 });
-      }
-      if (auth.role === "especialista") {
-        const me = await users.getSpecialistByUserId(auth.uid);
-        if (!me || me.status !== "active") {
-          return NextResponse.json(
-            { error: "Specialist must be active" },
-            { status: 403 },
-          );
-        }
-        if (specialistId !== auth.uid) {
-          return NextResponse.json(
-            { error: "Can only book patients with yourself as specialist" },
-            { status: 403 },
-          );
-        }
-      }
-    }
-
-    const specialist = await users.getSpecialistByUserId(specialistId);
-    if (!specialist || specialist.status !== "active") {
-      return NextResponse.json(
-        { error: "Target specialist is not active" },
-        { status: 400 },
-      );
-    }
-
-    const patient = await users.getById(patientId);
-    if (!patient || !canActAsPatient(patient.role)) {
-      return NextResponse.json({ error: "Patient not found" }, { status: 404 });
-    }
-
-    const schedule = await new AdminAvailabilityRepository().getConfigOrDefault(
-      specialistId,
-    );
-    const scheduleTz = resolveScheduleTimezone(schedule);
-    if (!isWithinSchedule(startsAt, endsAt, schedule)) {
-      return NextResponse.json(
-        { error: "Outside specialist working hours" },
-        { status: 400 },
-      );
-    }
-
-    const repo = new AdminAppointmentRepository();
-    const existing = await repo.list({ specialistId });
-    const conflict = existing.some((a) => {
-      if (a.status === "cancelled") return false;
-      return startsAt < a.endsAt && a.startsAt < endsAt;
-    });
-    if (conflict) {
-      return NextResponse.json(
-        { error: "Slot already booked" },
-        { status: 409 },
-      );
-    }
-
-    const patientAppointments = await repo.list({ patientId });
-    const patientCheck = await evaluatePatientBooking({
-      patientAppointments,
-      targetSpecialistId: specialistId,
-      targetSpecialty: specialist.specialty,
+    const result = await bookAppointment({
+      actor: { uid: auth.uid, role: auth.role },
+      patientId: parsed.data.patientId,
+      specialistId: parsed.data.specialistId,
       startsAt,
       endsAt,
-      getSpecialty: async (id) =>
-        (await users.getSpecialistByUserId(id))?.specialty ?? null,
+      notes: parsed.data.notes ?? null,
+      requestId: ctx.requestId,
     });
-    if (!patientCheck.ok) {
-      return NextResponse.json(
-        { error: patientCheck.error, code: patientCheck.code },
-        { status: 409 },
-      );
-    }
-
-    const gcal = new GoogleCalendarService();
-    try {
-      if (await gcal.hasConflict(specialistId, startsAt, endsAt, scheduleTz)) {
-        return NextResponse.json(
-          { error: "Slot conflicts with Google Calendar" },
-          { status: 409 },
-        );
-      }
-    } catch {
-      // If FreeBusy fails, continue with app-only conflict check.
-    }
-
-    const service = new AppointmentService(repo);
-    let appointment = await service.book({
-      patientId,
-      specialistId,
-      startsAt,
-      endsAt,
-      notes,
-      bookedById: auth.uid,
-    });
-
-    let googleSynced = false;
-    try {
-      const patientTz = resolvePatientTimezone(patient.timezone);
-      const patientLocal = `${formatGoogleDateTime(appointment.startsAt, patientTz)}–${formatGoogleDateTime(appointment.endsAt, patientTz).slice(11)} (${patientTz})`;
-      const specialistLocal = `${formatGoogleDateTime(appointment.startsAt, scheduleTz)}–${formatGoogleDateTime(appointment.endsAt, scheduleTz).slice(11)} (${scheduleTz})`;
-      const event = await gcal.createAppointmentEvent({
-        specialistId,
-        appointmentId: appointment.id,
-        summary: `Thaydee Elena · ${patient.displayName}`,
-        description: [
-          notes?.trim() || null,
-          `Paciente: ${patientLocal}`,
-          `Especialista: ${specialistLocal}`,
-        ]
-          .filter(Boolean)
-          .join("\n"),
-        startsAt: appointment.startsAt,
-        endsAt: appointment.endsAt,
-        timeZone: scheduleTz,
-        attendeeEmail: patient.email,
-      });
-      if (event) {
-        googleSynced = true;
-        appointment = await repo.updateFields(appointment.id, {
-          googleEventId: event.eventId,
-          googleCalendarId: event.calendarId,
-          meetLink: event.meetLink,
-        });
-      }
-    } catch (err) {
-      console.error("[gcal] create event failed", err);
-    }
-
-    const specialistUser = await users.getById(specialistId);
-    const mailResult = await new MailService().sendAppointmentBooked({
-      to: patient.email,
-      patientName: patient.displayName,
-      specialistName: specialistUser?.displayName ?? specialist.specialty,
-      startsAt: appointment.startsAt,
-      endsAt: appointment.endsAt,
-      locale: patient.locale === "en" ? "en" : "es",
-      meetLink: appointment.meetLink,
-    });
-    if (!mailResult.ok) {
-      console.error("[mail] appointment booked", mailResult.error);
-    } else if ("skipped" in mailResult && mailResult.skipped) {
-      console.info("[mail] skipped:", mailResult.reason);
-    }
-
-    const mailSent = mailResult.ok && !("skipped" in mailResult && mailResult.skipped);
-
-    return NextResponse.json({
+    return jsonOk(ctx, {
       ok: true,
-      googleSynced,
-      mailSent,
-      mailSkipped:
-        mailResult.ok && "skipped" in mailResult && mailResult.skipped
-          ? mailResult.reason
-          : null,
-      appointment: serialize(appointment),
+      googleSynced: result.googleSynced,
+      mailSent: result.mailSent,
+      mailSkipped: result.mailSkipped,
+      appointment: serializeAppointment(result.appointment),
     });
   } catch (error) {
+    if (error instanceof BookAppointmentError) {
+      return jsonError(ctx, error.status, error.message, {
+        code: error.code,
+      });
+    }
     const message =
       error instanceof Error ? error.message : "Failed to create appointment";
-    return NextResponse.json({ error: message }, { status: 400 });
+    return jsonError(ctx, 400, message);
   }
 }

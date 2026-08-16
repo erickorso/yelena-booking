@@ -1,4 +1,5 @@
 export * from "./roles";
+export * from "./capabilities";
 export * from "./user";
 export * from "./availability";
 export * from "./appointment";

@@ -1,80 +1,38 @@
-"use client";
-
-import { useEffect, useState } from "react";
-import { useTranslations } from "next-intl";
+import { getTranslations } from "next-intl/server";
 import { Link } from "@/i18n/navigation";
 import { buttonVariants } from "@/components/atoms/Button";
-import { ListSkeleton } from "@/components/atoms/Skeleton";
 import { clsx } from "clsx";
+import type { DirectorySpecialist } from "@/lib/specialists/listDirectorySpecialists";
 
-type DirectorySpecialist = {
-  id: string;
-  displayName: string;
-  specialty: string;
-  location: string;
-  bio: string;
-  rating: number | null;
+type Props = {
+  specialists: DirectorySpecialist[];
+  errorMessage?: string | null;
 };
 
-export function SpecialistDirectory() {
-  const t = useTranslations("Directory");
-  const [items, setItems] = useState<DirectorySpecialist[]>([]);
-  const [error, setError] = useState<string | null>(null);
-  const [loading, setLoading] = useState(true);
+/** Public directory list — Server Component (HTML from SSR/ISR, no client waterfall). */
+export async function SpecialistDirectory({
+  specialists,
+  errorMessage = null,
+}: Props) {
+  const t = await getTranslations("Directory");
 
-  useEffect(() => {
-    let cancelled = false;
-    (async () => {
-      try {
-        const response = await fetch("/api/specialists");
-        const text = await response.text();
-        const data = (
-          text
-            ? (JSON.parse(text) as {
-                specialists?: DirectorySpecialist[];
-                error?: string;
-              })
-            : {}
-        ) as { specialists?: DirectorySpecialist[]; error?: string };
-
-        if (!response.ok) {
-          throw new Error(data.error ?? t("error"));
-        }
-        if (!cancelled) {
-          setItems(data.specialists ?? []);
-        }
-      } catch (err) {
-        if (!cancelled) {
-          setError(err instanceof Error ? err.message : t("error"));
-        }
-      } finally {
-        if (!cancelled) setLoading(false);
-      }
-    })();
-    return () => {
-      cancelled = true;
-    };
-  }, [t]);
-
-  if (loading) {
-    return <ListSkeleton rows={4} />;
-  }
-
-  if (error) {
+  if (errorMessage) {
     return (
       <p role="alert" className="text-sm text-red-600 dark:text-red-400">
-        {error}
+        {errorMessage}
       </p>
     );
   }
 
-  if (items.length === 0) {
-    return <p className="text-sm text-stone-600 dark:text-slate-300">{t("empty")}</p>;
+  if (specialists.length === 0) {
+    return (
+      <p className="text-sm text-stone-600 dark:text-slate-300">{t("empty")}</p>
+    );
   }
 
   return (
     <ul className="space-y-4" aria-label={t("title")}>
-      {items.map((item) => (
+      {specialists.map((item) => (
         <li
           key={item.id}
           className="border-b border-stone-200 py-4 dark:border-slate-700"
@@ -101,7 +59,9 @@ export function SpecialistDirectory() {
             </div>
             <Link
               href="/login"
-              className={clsx(buttonVariants({ variant: "secondary", size: "sm" }))}
+              className={clsx(
+                buttonVariants({ variant: "secondary", size: "sm" }),
+              )}
             >
               {t("bookCta")}
             </Link>

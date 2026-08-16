@@ -33,6 +33,10 @@ import {
   isPlaceholderDisplayName,
   resolveDisplayName,
 } from "@/lib/auth/displayName";
+import {
+  clearClientSession,
+  markClientSession,
+} from "@/lib/auth/sessionCookie";
 
 export type AuthStatus =
   | "loading"
@@ -118,12 +122,15 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         if (!nextUser) {
           setRole(null);
           setStatus("anonymous");
+          clearClientSession();
           return;
         }
         try {
           const resolved = await resolveAuthenticatedUser(nextUser);
           setRole(resolved.role);
           setStatus(resolved.status);
+          if (resolved.status === "authenticated") markClientSession();
+          else clearClientSession();
         } catch (err) {
           setError(err instanceof Error ? err.message : "Auth error");
           setRole(null);
@@ -234,12 +241,14 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     setUser(signedIn);
     setRole(nextRole);
     setStatus("authenticated");
+    markClientSession();
     return nextRole;
   }, []);
 
   const logout = useCallback(async () => {
     setError(null);
     await authSignOut();
+    clearClientSession();
     setRole(null);
     setUser(null);
     setStatus("anonymous");

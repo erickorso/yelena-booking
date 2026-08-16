@@ -16,13 +16,13 @@ import {
   canActAsSpecialist,
   isClinicalHistoryIncomplete,
   isPatientSex,
-  missingCustomFieldLocales,
   normalizeBirthDate,
-  resolveCustomFieldLabel,
   validateCustomValuesMap,
 } from "@/types/domain";
+import { denyUnlessActiveSpecialist } from "@/lib/auth/requireActiveSpecialist";
+import { serializeClinicalField } from "@/lib/api/serializeClinicalField";
 
-function serialize(history: PatientClinicalHistory) {
+function serializeHistory(history: PatientClinicalHistory) {
   return {
     patientId: history.patientId,
     birthDate: history.birthDate,
@@ -54,21 +54,6 @@ function serialize(history: PatientClinicalHistory) {
     updatedById: history.updatedById,
   };
 }
-
-function serializeField(field: ClinicalCustomFieldDef, locale: string) {
-  return {
-    id: field.id,
-    fieldKey: field.fieldKey,
-    labels: field.labels,
-    label: resolveCustomFieldLabel(field, locale),
-    type: field.type,
-    required: field.required,
-    options: field.options,
-    sortOrder: field.sortOrder,
-    missingLocales: missingCustomFieldLocales(field),
-  };
-}
-
 function parseBody(raw: unknown): PatientClinicalHistoryInput {
   if (!raw || typeof raw !== "object") {
     throw new Error("Invalid JSON body");
@@ -137,17 +122,9 @@ async function assertCanAccessPatient(
   }
   if (auth.role === "admin") return null;
   if (canActAsSpecialist(auth.role)) {
-    const users = new AdminUserRepository();
-    if (auth.role === "especialista") {
-      const me = await users.getSpecialistByUserId(auth.uid);
-      if (!me || me.status !== "active") {
-        return NextResponse.json(
-          { error: "Specialist must be active" },
-          { status: 403 },
-        );
-      }
-    }
-    const patient = await users.getById(patientId);
+    const denied = await denyUnlessActiveSpecialist(auth.uid, auth.role);
+    if (denied) return denied;
+    const patient = await new AdminUserRepository().getById(patientId);
     if (!patient || !canActAsPatient(patient.role)) {
       return NextResponse.json({ error: "Patient not found" }, { status: 404 });
     }
@@ -197,8 +174,8 @@ export async function GET(
     }
 
     return NextResponse.json({
-      history: serialize(history),
-      customFields: customFields.map((f) => serializeField(f, locale)),
+      history: serializeHistory(history),
+      customFields: customFields.map((f) => serializeClinicalField(f, locale)),
       incomplete: isClinicalHistoryIncomplete(history),
       displayName: patient?.displayName ?? null,
       email: patient?.email ?? null,
@@ -282,7 +259,7 @@ export async function PUT(
     );
     return NextResponse.json({
       ok: true,
-      history: serialize(history),
+      history: serializeHistory(history),
       incomplete: isClinicalHistoryIncomplete(history),
       displayName,
     });

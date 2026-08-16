@@ -1,53 +1,22 @@
 import { NextResponse } from "next/server";
 import { isAuthError, requireAuth } from "@/lib/auth/requireAuth";
+import { denyUnlessActiveSpecialist } from "@/lib/auth/requireActiveSpecialist";
+import { serializeClinicalField } from "@/lib/api/serializeClinicalField";
 import { AdminSpecialistClinicalFieldsRepository } from "@/repositories/firestore/AdminSpecialistClinicalFieldsRepository";
 import { AdminClinicalHistoryRepository } from "@/repositories/firestore/AdminClinicalHistoryRepository";
-import { AdminUserRepository } from "@/repositories/firestore/AdminUserRepository";
 import {
-  canActAsSpecialist,
-  isClinicalCustomFieldType,
-  isClinicalFieldLocale,
-  missingCustomFieldLocales,
-  resolveCustomFieldLabel,
-  type AuthRole,
-  type ClinicalCustomFieldDef,
-} from "@/types/domain";
+  createClinicalFieldSchema,
+  patchClinicalFieldSchema,
+} from "@/contracts/clinicalFields";
+import {
+  beginApiRequest,
+  jsonError,
+  jsonOk,
+  readJsonBody,
+  zodErrorResponse,
+} from "@/lib/http/apiResponse";
 
 export const runtime = "nodejs";
-
-function serializeField(field: ClinicalCustomFieldDef, locale: string) {
-  return {
-    id: field.id,
-    fieldKey: field.fieldKey,
-    labels: field.labels,
-    label: resolveCustomFieldLabel(field, locale),
-    type: field.type,
-    required: field.required,
-    options: field.options,
-    sortOrder: field.sortOrder,
-    missingLocales: missingCustomFieldLocales(field),
-    createdAt: field.createdAt.toISOString(),
-    updatedAt: field.updatedAt.toISOString(),
-    createdById: field.createdById || null,
-    updatedById: field.updatedById || null,
-  };
-}
-
-async function assertActiveSpecialist(uid: string, role: AuthRole) {
-  if (!canActAsSpecialist(role)) {
-    return NextResponse.json({ error: "Forbidden" }, { status: 403 });
-  }
-  if (role === "especialista") {
-    const me = await new AdminUserRepository().getSpecialistByUserId(uid);
-    if (!me || me.status !== "active") {
-      return NextResponse.json(
-        { error: "Specialist must be active" },
-        { status: 403 },
-      );
-    }
-  }
-  return null;
-}
 
 /**
  * GET /api/specialists/me/clinical-fields — own schema only (+ auditLog)
@@ -58,7 +27,7 @@ async function assertActiveSpecialist(uid: string, role: AuthRole) {
 export async function GET(request: Request) {
   const auth = await requireAuth(request);
   if (isAuthError(auth)) return auth;
-  const denied = await assertActiveSpecialist(auth.uid, auth.role);
+  const denied = await denyUnlessActiveSpecialist(auth.uid, auth.role);
   if (denied) return denied;
 
   const locale =
@@ -70,7 +39,9 @@ export async function GET(request: Request) {
       repo.listAudit(auth.uid),
     ]);
     return NextResponse.json({
-      fields: fields.map((f) => serializeField(f, locale)),
+      fields: fields.map((f) =>
+        serializeClinicalField(f, locale, { includeAudit: true }),
+      ),
       auditLog: auditLog.slice(0, 40).map((e) => ({
         at: e.at.toISOString(),
         byUserId: e.byUserId,
@@ -87,90 +58,75 @@ export async function GET(request: Request) {
 }
 
 export async function POST(request: Request) {
+  const ctx = beginApiRequest(request);
   const auth = await requireAuth(request);
   if (isAuthError(auth)) return auth;
-  const denied = await assertActiveSpecialist(auth.uid, auth.role);
+  const denied = await denyUnlessActiveSpecialist(auth.uid, auth.role);
   if (denied) return denied;
 
-  let body: {
-    label?: unknown;
-    locale?: unknown;
-    type?: unknown;
-    required?: unknown;
-    options?: unknown;
-  };
-  try {
-    body = (await request.json()) as typeof body;
-  } catch {
-    return NextResponse.json({ error: "Invalid JSON" }, { status: 400 });
-  }
+  const raw = await readJsonBody(request);
+  if (raw === null) return jsonError(ctx, 400, "Invalid JSON");
 
-  const label = typeof body.label === "string" ? body.label : "";
-  const locale = isClinicalFieldLocale(body.locale) ? body.locale : "es";
-  const type = isClinicalCustomFieldType(body.type) ? body.type : "textarea";
-  const required = body.required === true;
-  const options = Array.isArray(body.options)
-    ? body.options.filter((o): o is string => typeof o === "string")
-    : undefined;
+  const parsed = createClinicalFieldSchema.safeParse(raw);
+  if (!parsed.success) return zodErrorResponse(ctx, parsed.error);
 
   try {
     const field = await new AdminSpecialistClinicalFieldsRepository().addField(
       auth.uid,
       auth.uid,
-      { label, locale, type, required, options },
+      {
+        label: parsed.data.label,
+        locale: parsed.data.locale,
+        type: parsed.data.type,
+        required: parsed.data.required,
+        options: parsed.data.options,
+      },
     );
-    return NextResponse.json({
+    return jsonOk(ctx, {
       ok: true,
-      field: serializeField(field, locale),
+      field: serializeClinicalField(field, parsed.data.locale, {
+        includeAudit: true,
+      }),
     });
   } catch (error) {
     const message =
       error instanceof Error ? error.message : "Failed to add field";
-    return NextResponse.json({ error: message }, { status: 400 });
+    return jsonError(ctx, 400, message);
   }
 }
 
 export async function PATCH(request: Request) {
+  const ctx = beginApiRequest(request);
   const auth = await requireAuth(request);
   if (isAuthError(auth)) return auth;
-  const denied = await assertActiveSpecialist(auth.uid, auth.role);
+  const denied = await denyUnlessActiveSpecialist(auth.uid, auth.role);
   if (denied) return denied;
 
-  let body: {
-    fieldId?: unknown;
-    locale?: unknown;
-    label?: unknown;
-    labels?: unknown;
-    type?: unknown;
-    required?: unknown;
-    options?: unknown;
-    order?: unknown;
-  };
-  try {
-    body = (await request.json()) as typeof body;
-  } catch {
-    return NextResponse.json({ error: "Invalid JSON" }, { status: 400 });
-  }
+  const raw = await readJsonBody(request);
+  if (raw === null) return jsonError(ctx, 400, "Invalid JSON");
 
+  const parsed = patchClinicalFieldSchema.safeParse(raw);
+  if (!parsed.success) return zodErrorResponse(ctx, parsed.error);
+
+  const body = parsed.data;
   const repo = new AdminSpecialistClinicalFieldsRepository();
   const localeHint =
     new URL(request.url).searchParams.get("locale")?.trim() || "es";
 
   try {
-    if (Array.isArray(body.order)) {
-      const orderedIds = body.order.filter(
-        (id): id is string => typeof id === "string" && !!id.trim(),
-      );
-      const fields = await repo.reorderFields(auth.uid, auth.uid, orderedIds);
-      return NextResponse.json({
+    if (body.order) {
+      const fields = await repo.reorderFields(auth.uid, auth.uid, body.order);
+      return jsonOk(ctx, {
         ok: true,
-        fields: fields.map((f) => serializeField(f, localeHint)),
+        fields: fields.map((f) =>
+          serializeClinicalField(f, localeHint, { includeAudit: true }),
+        ),
       });
     }
 
-    const fieldId = typeof body.fieldId === "string" ? body.fieldId.trim() : "";
+    const fieldId = body.fieldId?.trim() || "";
     if (!fieldId) {
-      return NextResponse.json({ error: "fieldId is required" }, { status: 400 });
+      return jsonError(ctx, 400, "fieldId is required");
     }
 
     if (
@@ -179,59 +135,56 @@ export async function PATCH(request: Request) {
       body.options !== undefined
     ) {
       const field = await repo.updateFieldMeta(auth.uid, auth.uid, fieldId, {
-        type: isClinicalCustomFieldType(body.type) ? body.type : undefined,
-        required: typeof body.required === "boolean" ? body.required : undefined,
-        options: Array.isArray(body.options)
-          ? body.options.filter((o): o is string => typeof o === "string")
-          : undefined,
+        type: body.type,
+        required: body.required,
+        options: body.options,
       });
-      return NextResponse.json({
+      return jsonOk(ctx, {
         ok: true,
-        field: serializeField(field, localeHint),
+        field: serializeClinicalField(field, localeHint, {
+          includeAudit: true,
+        }),
       });
     }
 
-    if (body.labels && typeof body.labels === "object") {
-      const raw = body.labels as Record<string, unknown>;
+    if (body.labels) {
       const labels: Partial<Record<"es" | "en", string>> = {};
-      if (typeof raw.es === "string") labels.es = raw.es;
-      if (typeof raw.en === "string") labels.en = raw.en;
+      if (typeof body.labels.es === "string") labels.es = body.labels.es;
+      if (typeof body.labels.en === "string") labels.en = body.labels.en;
       const field = await repo.updateLabels(auth.uid, auth.uid, fieldId, labels);
-      return NextResponse.json({
+      return jsonOk(ctx, {
         ok: true,
-        field: serializeField(field, localeHint),
+        field: serializeClinicalField(field, localeHint, {
+          includeAudit: true,
+        }),
       });
     }
 
-    const label = typeof body.label === "string" ? body.label : "";
-    if (!isClinicalFieldLocale(body.locale)) {
-      return NextResponse.json(
-        { error: "locale must be es or en" },
-        { status: 400 },
-      );
+    if (!body.locale || !body.label) {
+      return jsonError(ctx, 400, "locale and label required");
     }
     const field = await repo.setLabel(
       auth.uid,
       auth.uid,
       fieldId,
       body.locale,
-      label,
+      body.label,
     );
-    return NextResponse.json({
+    return jsonOk(ctx, {
       ok: true,
-      field: serializeField(field, body.locale),
+      field: serializeClinicalField(field, body.locale, { includeAudit: true }),
     });
   } catch (error) {
     const message =
       error instanceof Error ? error.message : "Failed to update field";
-    return NextResponse.json({ error: message }, { status: 400 });
+    return jsonError(ctx, 400, message);
   }
 }
 
 export async function DELETE(request: Request) {
   const auth = await requireAuth(request);
   if (isAuthError(auth)) return auth;
-  const denied = await assertActiveSpecialist(auth.uid, auth.role);
+  const denied = await denyUnlessActiveSpecialist(auth.uid, auth.role);
   if (denied) return denied;
 
   const fieldId =

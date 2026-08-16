@@ -2,6 +2,7 @@ import { randomBytes } from "crypto";
 import { NextResponse } from "next/server";
 import { getAdminAuth } from "@/lib/firebase/admin";
 import { isAuthError, requireAuth } from "@/lib/auth/requireAuth";
+import { denyUnlessActiveSpecialist } from "@/lib/auth/requireActiveSpecialist";
 import { AdminUserRepository } from "@/repositories/firestore/AdminUserRepository";
 import { AdminClinicalHistoryRepository } from "@/repositories/firestore/AdminClinicalHistoryRepository";
 import { AdminNotificationRepository } from "@/repositories/firestore/AdminNotificationRepository";
@@ -16,15 +17,6 @@ interface CreatePatientBody {
   timezone?: unknown;
 }
 
-async function assertActiveSpecialist(uid: string, role: string) {
-  if (role === "admin") return;
-  const users = new AdminUserRepository();
-  const specialist = await users.getSpecialistByUserId(uid);
-  if (!specialist || specialist.status !== "active") {
-    throw new Error("SPECIALIST_NOT_ACTIVE");
-  }
-}
-
 /**
  * GET /api/specialists/patients — list bookable patients (active specialist / admin).
  */
@@ -32,8 +24,10 @@ export async function GET(request: Request) {
   const auth = await requireAuth(request, ["especialista", "admin"]);
   if (isAuthError(auth)) return auth;
 
+  const denied = await denyUnlessActiveSpecialist(auth.uid, auth.role);
+  if (denied) return denied;
+
   try {
-    await assertActiveSpecialist(auth.uid, auth.role);
     const users = new AdminUserRepository();
     const patients = await users.listBookablePatients();
     return NextResponse.json({
@@ -47,12 +41,6 @@ export async function GET(request: Request) {
       })),
     });
   } catch (error) {
-    if (error instanceof Error && error.message === "SPECIALIST_NOT_ACTIVE") {
-      return NextResponse.json(
-        { error: "Specialist must be active" },
-        { status: 403 },
-      );
-    }
     const message =
       error instanceof Error ? error.message : "Failed to list patients";
     return NextResponse.json({ error: message }, { status: 500 });
@@ -65,6 +53,9 @@ export async function GET(request: Request) {
 export async function POST(request: Request) {
   const auth = await requireAuth(request, ["especialista", "admin"]);
   if (isAuthError(auth)) return auth;
+
+  const denied = await denyUnlessActiveSpecialist(auth.uid, auth.role);
+  if (denied) return denied;
 
   let body: CreatePatientBody;
   try {
@@ -95,7 +86,6 @@ export async function POST(request: Request) {
   }
 
   try {
-    await assertActiveSpecialist(auth.uid, auth.role);
     const users = new AdminUserRepository();
     const existing = await users.findByEmail(email);
     if (existing) {
@@ -110,7 +100,6 @@ export async function POST(request: Request) {
       email,
       password,
       displayName,
-      // Clinic vouchsafes the contact; self-signup still requires email verification.
       emailVerified: true,
     });
     await adminAuth.setCustomUserClaims(created.uid, { role: "paciente" });
@@ -159,12 +148,6 @@ export async function POST(request: Request) {
       temporaryPassword: password,
     });
   } catch (error) {
-    if (error instanceof Error && error.message === "SPECIALIST_NOT_ACTIVE") {
-      return NextResponse.json(
-        { error: "Specialist must be active" },
-        { status: 403 },
-      );
-    }
     const message =
       error instanceof Error ? error.message : "Failed to create patient";
     const code = message.includes("email-already-exists") ? 409 : 500;

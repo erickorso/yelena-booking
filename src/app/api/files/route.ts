@@ -5,9 +5,9 @@ import { VercelBlobFileStorage } from "@/lib/storage/vercelBlobStorage";
 import { FileUploadService } from "@/services/fileUploadService";
 import { AdminEhrRepository } from "@/repositories/firestore/AdminEhrRepository";
 import { AdminAppointmentRepository } from "@/repositories/firestore/AdminAppointmentRepository";
-import { AdminUserRepository } from "@/repositories/firestore/AdminUserRepository";
 import { MEDICAL_FILE_SCOPES, type MedicalFileScope } from "@/types/domain";
 import { canActAsSpecialist } from "@/types/domain";
+import { denyUnlessActiveSpecialist } from "@/lib/auth/requireActiveSpecialist";
 
 export const runtime = "nodejs";
 
@@ -135,16 +135,8 @@ export async function POST(request: Request) {
     let appointmentId: string | null = null;
 
     if (scope === "specialist_profile") {
-      if (!canActAsSpecialist(auth.role)) {
-        return NextResponse.json({ error: "Forbidden" }, { status: 403 });
-      }
-      const me = await new AdminUserRepository().getSpecialistByUserId(auth.uid);
-      if (!me || me.status !== "active") {
-        return NextResponse.json(
-          { error: "Specialist must be active" },
-          { status: 403 },
-        );
-      }
+      const denied = await denyUnlessActiveSpecialist(auth.uid, auth.role);
+      if (denied) return denied;
       specialistProfileId = auth.uid;
     } else {
       patientId =
@@ -155,13 +147,8 @@ export async function POST(request: Request) {
       if (patientId === auth.uid) {
         // patient uploading to self — ok for paciente / especialista / admin
       } else if (canActAsSpecialist(auth.role) || auth.role === "admin") {
-        const me = await new AdminUserRepository().getSpecialistByUserId(auth.uid);
-        if (auth.role === "especialista" && (!me || me.status !== "active")) {
-          return NextResponse.json(
-            { error: "Specialist must be active" },
-            { status: 403 },
-          );
-        }
+        const denied = await denyUnlessActiveSpecialist(auth.uid, auth.role);
+        if (denied) return denied;
       } else {
         return NextResponse.json({ error: "Forbidden" }, { status: 403 });
       }

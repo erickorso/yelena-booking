@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import { isAuthError, requireAuth } from "@/lib/auth/requireAuth";
+import { denyUnlessActiveSpecialist } from "@/lib/auth/requireActiveSpecialist";
 import { isAppTimezone } from "@/lib/timezones";
 import { AdminUserRepository } from "@/repositories/firestore/AdminUserRepository";
 import { canActAsSpecialist } from "@/types/domain";
@@ -42,14 +43,9 @@ export async function PATCH(
       return NextResponse.json({ error: "Forbidden" }, { status: 403 });
     }
 
-    if (auth.uid !== id && auth.role === "especialista") {
-      const me = await new AdminUserRepository().getSpecialistByUserId(auth.uid);
-      if (!me || me.status !== "active") {
-        return NextResponse.json(
-          { error: "Specialist must be active" },
-          { status: 403 },
-        );
-      }
+    if (auth.uid !== id) {
+      const denied = await denyUnlessActiveSpecialist(auth.uid, auth.role);
+      if (denied) return denied;
     }
 
     const profile = await new AdminUserRepository().updateTimezone(id, timezone);

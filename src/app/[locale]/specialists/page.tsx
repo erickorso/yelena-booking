@@ -1,6 +1,10 @@
 import { getTranslations, setRequestLocale } from "next-intl/server";
 import { MarketingShell } from "@/components/templates/MarketingShell";
 import { SpecialistDirectory } from "@/components/organisms/SpecialistDirectory";
+import { listDirectorySpecialists } from "@/lib/specialists/listDirectorySpecialists";
+
+/** Revalidate public directory every minute (ISR). */
+export const revalidate = 60;
 
 export default async function SpecialistsPage({
   params,
@@ -10,6 +14,14 @@ export default async function SpecialistsPage({
   const { locale } = await params;
   setRequestLocale(locale);
   const t = await getTranslations("Directory");
+
+  let specialists: Awaited<ReturnType<typeof listDirectorySpecialists>> = [];
+  let errorMessage: string | null = null;
+  try {
+    specialists = await listDirectorySpecialists();
+  } catch (err) {
+    errorMessage = err instanceof Error ? err.message : t("error");
+  }
 
   return (
     <MarketingShell>
@@ -22,7 +34,10 @@ export default async function SpecialistsPage({
             {t("subtitle")}
           </p>
         </div>
-        <SpecialistDirectory />
+        <SpecialistDirectory
+          specialists={specialists}
+          errorMessage={errorMessage}
+        />
       </section>
     </MarketingShell>
   );

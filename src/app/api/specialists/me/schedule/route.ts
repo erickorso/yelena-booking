@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server";
 import { isAuthError, requireAuth } from "@/lib/auth/requireAuth";
+import { denyUnlessActiveSpecialist } from "@/lib/auth/requireActiveSpecialist";
 import { AdminAvailabilityRepository } from "@/repositories/firestore/AdminAvailabilityRepository";
-import { AdminUserRepository } from "@/repositories/firestore/AdminUserRepository";
 import {
   DEFAULT_SCHEDULE,
   hmToMinutes,
@@ -12,14 +12,6 @@ import {
   isSlotDurationMinutes,
 } from "@/types/domain";
 
-async function assertActiveSpecialist(uid: string, role: string) {
-  if (role === "admin") return;
-  const specialist = await new AdminUserRepository().getSpecialistByUserId(uid);
-  if (!specialist || specialist.status !== "active") {
-    throw new Error("SPECIALIST_NOT_ACTIVE");
-  }
-}
-
 /**
  * GET /api/specialists/me/schedule
  */
@@ -27,8 +19,10 @@ export async function GET(request: Request) {
   const auth = await requireAuth(request, ["especialista", "admin"]);
   if (isAuthError(auth)) return auth;
 
+  const denied = await denyUnlessActiveSpecialist(auth.uid, auth.role);
+  if (denied) return denied;
+
   try {
-    await assertActiveSpecialist(auth.uid, auth.role);
     const saved = await new AdminAvailabilityRepository().getBySpecialistId(
       auth.uid,
     );
@@ -49,9 +43,6 @@ export async function GET(request: Request) {
           },
     });
   } catch (error) {
-    if (error instanceof Error && error.message === "SPECIALIST_NOT_ACTIVE") {
-      return NextResponse.json({ error: "Specialist must be active" }, { status: 403 });
-    }
     const message =
       error instanceof Error ? error.message : "Failed to load schedule";
     return NextResponse.json({ error: message }, { status: 500 });
@@ -65,6 +56,9 @@ export async function GET(request: Request) {
 export async function PUT(request: Request) {
   const auth = await requireAuth(request, ["especialista", "admin"]);
   if (isAuthError(auth)) return auth;
+
+  const denied = await denyUnlessActiveSpecialist(auth.uid, auth.role);
+  if (denied) return denied;
 
   let body: {
     workdays?: unknown;
@@ -133,7 +127,6 @@ export async function PUT(request: Request) {
     : DEFAULT_SLOT_MINUTES;
 
   try {
-    await assertActiveSpecialist(auth.uid, auth.role);
     const saved = await new AdminAvailabilityRepository().upsert({
       specialistId: auth.uid,
       timezone,
@@ -151,9 +144,6 @@ export async function PUT(request: Request) {
       },
     });
   } catch (error) {
-    if (error instanceof Error && error.message === "SPECIALIST_NOT_ACTIVE") {
-      return NextResponse.json({ error: "Specialist must be active" }, { status: 403 });
-    }
     const message =
       error instanceof Error ? error.message : "Failed to save schedule";
     return NextResponse.json({ error: message }, { status: 500 });
