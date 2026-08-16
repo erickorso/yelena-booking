@@ -263,7 +263,7 @@
     "refresh": "Refresh",
     "search": "Search",
     "searchPlaceholder": "Name or email…",
-    "meta": "Locale {locale} · Timezone {timezone} · Joined {date}",
+    "meta": "Locale {lang} · Timezone {timezone} · Joined {date}",
     "promoteCta": "Make specialist",
     "alreadySpecialist": "Already has specialist profile ({status})",
     "promoteTitle": "Promote {name}",

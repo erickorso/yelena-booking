@@ -263,7 +263,7 @@
     "refresh": "Actualizar",
     "search": "Buscar",
     "searchPlaceholder": "Nombre o correo…",
-    "meta": "Idioma {locale} · Zona {timezone} · Alta {date}",
+    "meta": "Idioma {lang} · Zona {timezone} · Alta {date}",
     "promoteCta": "Hacer especialista",
     "alreadySpecialist": "Ya tiene perfil especialista ({status})",
     "promoteTitle": "Promover a {name}",

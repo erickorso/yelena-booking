@@ -192,7 +192,7 @@ export function AdminPatientsPanel() {
                 </p>
                 <p className="mt-1 text-xs text-stone-500 dark:text-slate-400">
                   {t("meta", {
-                    locale: p.locale.toUpperCase(),
+                    lang: p.locale.toUpperCase(),
                     timezone: p.timezone ?? "—",
                     date: new Date(p.createdAt).toLocaleDateString(),
                   })}
