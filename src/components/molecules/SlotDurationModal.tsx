@@ -32,37 +32,43 @@ export function SlotDurationModal({
   const t = useTranslations("SlotModal");
   const titleId = useId();
   const dialogRef = useRef<HTMLDialogElement>(null);
+  const confirmedRef = useRef(false);
   const [minutes, setMinutes] = useState(defaultMinutes);
   const endsPreview = new Date(startsAt.getTime() + minutes * 60_000);
 
   useEffect(() => {
     const el = dialogRef.current;
     if (!el) return;
-    if (open && !el.open) el.showModal();
+    if (open && !el.open) {
+      confirmedRef.current = false;
+      el.showModal();
+    }
     if (!open && el.open) el.close();
   }, [open]);
 
   if (!open) return null;
 
+  function handleConfirm() {
+    confirmedRef.current = true;
+    onConfirm(minutes);
+  }
+
   return (
     <dialog
       ref={dialogRef}
       aria-labelledby={titleId}
-      className="w-[min(100%,24rem)] rounded-md border border-stone-200 bg-white p-0 text-stone-900 shadow-lg backdrop:bg-stone-950/40 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-50"
-      onClose={onCancel}
+      className="fixed left-1/2 top-1/2 z-50 m-0 w-[min(100%,24rem)] -translate-x-1/2 -translate-y-1/2 rounded-md border border-stone-200 bg-white p-0 text-stone-900 shadow-lg backdrop:bg-stone-950/40 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-50"
+      onClose={() => {
+        // Ignore close after successful confirm (parent clears `open`).
+        if (confirmedRef.current) return;
+        onCancel();
+      }}
       onCancel={(e) => {
         e.preventDefault();
         onCancel();
       }}
     >
-      <form
-        method="dialog"
-        className="space-y-4 p-4"
-        onSubmit={(e) => {
-          e.preventDefault();
-          onConfirm(minutes);
-        }}
-      >
+      <div className="space-y-4 p-4">
         <div>
           <h2
             id={titleId}
@@ -120,9 +126,11 @@ export function SlotDurationModal({
           <Button type="button" variant="secondary" onClick={onCancel}>
             {t("cancel")}
           </Button>
-          <Button type="submit">{t("confirm")}</Button>
+          <Button type="button" onClick={handleConfirm}>
+            {t("confirm")}
+          </Button>
         </div>
-      </form>
+      </div>
     </dialog>
   );
 }
