@@ -7,6 +7,7 @@ import { CollapsibleSection } from "@/components/molecules/CollapsibleSection";
 import { ClinicalHistoryForm } from "@/components/organisms/ClinicalHistoryForm";
 import { MedicalFilesPanel } from "@/components/organisms/MedicalFilesPanel";
 import type { ClinicPatientOption } from "@/components/organisms/clinic/clinicTypes";
+import { patientSearchBlob } from "@/lib/patients/patientSearch";
 
 type ClinicFilesTabProps = {
   patients: ClinicPatientOption[];
@@ -43,7 +44,7 @@ export function ClinicFilesTab({
           options={patients.map((p) => ({
             id: p.id,
             label: `${p.displayName} · ${p.email}`,
-            searchText: `${p.displayName} ${p.email}`,
+            searchText: patientSearchBlob(p),
           }))}
         />
         {selected ? (

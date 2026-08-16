@@ -10,6 +10,7 @@ import {
   DEFAULT_PATIENT_TIMEZONE,
   resolvePatientTimezone,
 } from "@/lib/timezones";
+import { matchesPatientQuery } from "@/lib/patients/patientSearch";
 
 type ClinicPatientsTabProps = {
   patients: ClinicPatientOption[];
@@ -53,13 +54,9 @@ export function ClinicPatientsTab({
   const [savingId, setSavingId] = useState<string | null>(null);
 
   const filtered = useMemo(() => {
-    const q = query.trim().toLowerCase();
+    const q = query.trim();
     if (!q) return patients;
-    return patients.filter(
-      (p) =>
-        p.displayName.toLowerCase().includes(q) ||
-        p.email.toLowerCase().includes(q),
-    );
+    return patients.filter((p) => matchesPatientQuery(q, p));
   }, [patients, query]);
 
   function zoneLabel(value: string): string {
@@ -115,6 +112,7 @@ export function ClinicPatientsTab({
                       </p>
                       <p className="text-sm text-stone-500 dark:text-slate-400">
                         {p.email}
+                        {p.patientNumber ? ` · ${p.patientNumber}` : ""}
                       </p>
                     </div>
                     <label className="flex max-w-md flex-col gap-1 text-sm">

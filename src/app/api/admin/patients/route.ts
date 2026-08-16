@@ -4,6 +4,7 @@ import {
   paginateSlice,
   parseListPagination,
 } from "@/lib/admin/listPagination";
+import { matchesPatientQuery } from "@/lib/patients/patientSearch";
 import { AdminUserRepository } from "@/repositories/firestore/AdminUserRepository";
 
 /**
@@ -33,6 +34,7 @@ export async function GET(request: Request) {
         id: p.id,
         email: p.email,
         displayName: p.displayName,
+        patientNumber: p.patientNumber,
         locale: p.locale,
         timezone: p.timezone,
         createdAt: p.createdAt.toISOString(),
@@ -43,11 +45,7 @@ export async function GET(request: Request) {
     });
 
     if (q) {
-      rows = rows.filter(
-        (p) =>
-          p.displayName.toLowerCase().includes(q) ||
-          p.email.toLowerCase().includes(q),
-      );
+      rows = rows.filter((p) => matchesPatientQuery(q, p));
     }
 
     const result = paginateSlice(rows, page, pageSize);

@@ -23,6 +23,7 @@ import {
   zonedYmd,
 } from "@/lib/availability/scheduleTimeZone";
 import { resolvePatientTimezone } from "@/lib/timezones";
+import { patientSearchBlob } from "@/lib/patients/patientSearch";
 import { getIdToken } from "@/services/authService";
 import type {
   ClinicAppointmentRow,
@@ -289,7 +290,7 @@ export function ClinicAgendaTab({
           .map((p) => ({
             id: p.id,
             label: `${p.displayName} · ${p.email}`,
-            searchText: `${p.displayName} ${p.email}`,
+            searchText: patientSearchBlob(p),
           }))}
       />
       {showHint && missingPatient && !rescheduleId ? (

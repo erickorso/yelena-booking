@@ -8,6 +8,7 @@ import type {
   ClinicPatientOption,
   ClinicPeerOption,
 } from "@/components/organisms/clinic/clinicTypes";
+import { patientSearchBlob } from "@/lib/patients/patientSearch";
 
 type ClinicTransferTabProps = {
   patients: ClinicPatientOption[];
@@ -62,7 +63,11 @@ export function ClinicTransferTab({
             return {
               id: a.id,
               label: `${patient?.displayName ?? a.patientId.slice(0, 6)} · ${new Date(a.startsAt).toLocaleString()}`,
-              searchText: `${patient?.displayName ?? ""} ${a.startsAt}`,
+              searchText: `${patientSearchBlob({
+                displayName: patient?.displayName ?? "",
+                email: patient?.email ?? "",
+                patientNumber: patient?.patientNumber,
+              })} ${a.startsAt}`,
             };
           })}
       />

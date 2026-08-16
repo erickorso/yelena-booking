@@ -20,6 +20,7 @@ import {
   MAX_MEDICAL_FILE_BYTES,
   MAX_MEDICAL_FILE_MB,
 } from "@/lib/storage/medicalUploadPolicy";
+import { patientSearchBlob } from "@/lib/patients/patientSearch";
 
 type FileRow = {
   id: string;
@@ -38,6 +39,7 @@ type PatientOption = {
   id: string;
   displayName: string;
   email: string;
+  patientNumber?: string;
 };
 
 type AppointmentOption = {
@@ -371,7 +373,7 @@ export function MedicalFilesPanel({
             options={patients.map((p) => ({
               id: p.id,
               label: `${p.displayName} · ${p.email}`,
-              searchText: `${p.displayName} ${p.email}`,
+              searchText: patientSearchBlob(p),
             }))}
           />
         ) : null}

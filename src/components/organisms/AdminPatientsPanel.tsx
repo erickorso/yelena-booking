@@ -14,6 +14,7 @@ type AdminPatientRow = {
   id: string;
   email: string;
   displayName: string;
+  patientNumber?: string;
   locale: string;
   timezone: string | null;
   createdAt: string;
@@ -192,6 +193,11 @@ export function AdminPatientsPanel() {
                 <p className="text-sm text-stone-600 dark:text-slate-300">
                   {p.email}
                 </p>
+                {p.patientNumber ? (
+                  <p className="text-sm text-stone-500 dark:text-slate-400">
+                    {p.patientNumber}
+                  </p>
+                ) : null}
                 <p className="mt-1 text-xs text-stone-500 dark:text-slate-400">
                   {t("meta", {
                     language: p.locale.toUpperCase(),
