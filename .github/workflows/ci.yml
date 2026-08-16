@@ -63,4 +63,8 @@ jobs:
       - name: Smoke against production
         env:
           E2E_BASE_URL: https://yelena-booking.vercel.app
+          E2E_ADMIN_PASSWORD: ${{ secrets.E2E_ADMIN_PASSWORD }}
+          E2E_PATIENT_PASSWORD: ${{ secrets.E2E_PATIENT_PASSWORD }}
+          E2E_SPECIALIST_PASSWORD: ${{ secrets.E2E_SPECIALIST_PASSWORD }}
+          E2E_PENDING_SPECIALIST_PASSWORD: ${{ secrets.E2E_PENDING_SPECIALIST_PASSWORD }}
         run: npm run test:e2e

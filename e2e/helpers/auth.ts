@@ -1,27 +1,54 @@
 import { expect, type Page } from "@playwright/test";
 
+function env(name: string): string {
+  const value = process.env[name]?.trim();
+  if (!value) {
+    throw new Error(
+      `Missing ${name}. Set E2E_* credentials in the environment (never commit passwords).`,
+    );
+  }
+  return value;
+}
+
+/** Demo logins — passwords only from env (no defaults in the public repo). */
 export const accounts = {
-  admin: {
-    email: process.env.E2E_ADMIN_EMAIL ?? "admin@yelena.app",
-    password: process.env.E2E_ADMIN_PASSWORD ?? "YelenaAdmin123!",
+  get admin() {
+    return {
+      email: process.env.E2E_ADMIN_EMAIL?.trim() || "admin@yelena.app",
+      password: env("E2E_ADMIN_PASSWORD"),
+    };
   },
-  patient: {
-    email: process.env.E2E_PATIENT_EMAIL ?? "paciente@yelena.app",
-    password: process.env.E2E_PATIENT_PASSWORD ?? "YelenaPatient123!",
+  get patient() {
+    return {
+      email: process.env.E2E_PATIENT_EMAIL?.trim() || "paciente@yelena.app",
+      password: env("E2E_PATIENT_PASSWORD"),
+    };
   },
-  specialist: {
-    email: process.env.E2E_SPECIALIST_EMAIL ?? "especialista@yelena.app",
-    password:
-      process.env.E2E_SPECIALIST_PASSWORD ?? "YelenaSpecialist123!",
+  get specialist() {
+    return {
+      email:
+        process.env.E2E_SPECIALIST_EMAIL?.trim() || "especialista@yelena.app",
+      password: env("E2E_SPECIALIST_PASSWORD"),
+    };
   },
-  pendingSpecialist: {
-    email:
-      process.env.E2E_PENDING_SPECIALIST_EMAIL ??
-      "especialista.pending@yelena.app",
-    password:
-      process.env.E2E_PENDING_SPECIALIST_PASSWORD ?? "YelenaSpecialist123!",
+  get pendingSpecialist() {
+    return {
+      email:
+        process.env.E2E_PENDING_SPECIALIST_EMAIL?.trim() ||
+        "especialista.pending@yelena.app",
+      password: env("E2E_PENDING_SPECIALIST_PASSWORD"),
+    };
   },
 } as const;
+
+export function hasE2eAuthSecrets(): boolean {
+  return Boolean(
+    process.env.E2E_ADMIN_PASSWORD?.trim() &&
+      process.env.E2E_PATIENT_PASSWORD?.trim() &&
+      process.env.E2E_SPECIALIST_PASSWORD?.trim() &&
+      process.env.E2E_PENDING_SPECIALIST_PASSWORD?.trim(),
+  );
+}
 
 export async function login(page: Page, email: string, password: string) {
   await page.goto("/es/login");

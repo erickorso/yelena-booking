@@ -83,9 +83,9 @@ Domain lives in `src/types/domain/` with **invariants as pure functions** (guard
 - `specialists/{uid}` — onboarding (`pending`|`active`|`rejected`)
 - `appointments/{id}`, `ehrNotes/{id}`, `medicalFiles/{id}`
 - `availabilityRules/{id}`, `availabilityOverrides/{id}`
-- `_meta/seed` — seed marker
+- `_meta/seed` — optional ops marker
 
-Seed: `npm run seed` (demo users in script output).
+Create Auth users + Firestore profiles locally via Firebase console / Admin SDK (do not commit demo passwords).
 
 ## 6. Security Principles
 

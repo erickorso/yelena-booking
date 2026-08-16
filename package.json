@@ -13,8 +13,7 @@
     "test:coverage": "vitest run --coverage",
     "test:e2e": "playwright test --project=chromium",
     "screenshots": "playwright test --project=screenshots",
-    "format": "prettier --write .",
-    "seed": "node --env-file=.env.local scripts/seed.mjs"
+    "format": "prettier --write ."
   },
   "dependencies": {
     "@vercel/blob": "^2.8.0",

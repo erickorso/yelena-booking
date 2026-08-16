@@ -31,7 +31,7 @@ By [Erick Vargas](https://github.com/erickorso) · Live: [yelena-booking.vercel.
 
 <img src="docs/screenshots/mobile.png" alt="Mobile landing" width="320">
 
-Screenshots are regenerated with `npm run screenshots` (Playwright against the live seed app), so they stay aligned with the UI reviewers see.
+Screenshots are regenerated with `npm run screenshots` (Playwright against a deployed app + `E2E_*` credentials in env), so they stay aligned with the UI reviewers see.
 
 ---
 
@@ -247,7 +247,7 @@ erDiagram
 | _(guest)_ | Landing + public directory |
 | `paciente` | Book / own history & files |
 | `especialista` | Agenda, chart, custom clinical fields (`pending` until admin approves) |
-| `admin` | Approvals & governance (seed only) |
+| `admin` | Approvals & governance |
 
 **TE code** search (with/without dashes) across clinic, admin, archives, and transfer flows.
 
@@ -283,22 +283,10 @@ Next.js 16 · React 19 · TypeScript strict · Tailwind v4 · Firebase Auth/Fire
 ```bash
 npm install
 cp .env.example .env.local   # fill Firebase, Blob, optional Google/Resend
-npm run seed
 npm run dev
 ```
 
-Open [http://localhost:3000/es](http://localhost:3000/es).
-
-### Demo accounts (seed)
-
-| Role | Email | Password |
-| --- | --- | --- |
-| Admin | `admin@yelena.app` | `YelenaAdmin123!` |
-| Patient | `paciente@yelena.app` | `YelenaPatient123!` |
-| Specialist (active) | `especialista@yelena.app` | `YelenaSpecialist123!` |
-| Specialist (pending) | `especialista.pending@yelena.app` | `YelenaSpecialist123!` |
-
-Also listed in [`SEED_ACCOUNTS.md`](./SEED_ACCOUNTS.md).
+Open [http://localhost:3000/es](http://localhost:3000/es). Create users in Firebase Auth (and matching Firestore profiles / claims via your Admin tooling) — **no demo passwords are published in this repo**.
 
 ### Required env (summary)
 
@@ -321,7 +309,6 @@ Paste [`firestore.rules`](./firestore.rules) into the Firebase console. Google O
 | `npm test` / `test:coverage` | Vitest (+ gate) |
 | `npm run test:e2e` | Playwright (chromium smoke) |
 | `npm run screenshots` | Regenerate README images |
-| `npm run seed` | Demo users + claims + docs |
 
 ---
 

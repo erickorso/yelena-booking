@@ -3,8 +3,9 @@ import { accounts, login } from "./helpers/auth";
 import fs from "node:fs";
 
 /**
- * Regenerates README images from the live app (seed accounts).
+ * Regenerates README images from the live app.
  * Run: `npm run screenshots` — excluded from default `npm run test:e2e`.
+ * Clinic booking shot needs E2E_SPECIALIST_PASSWORD.
  */
 const OUT = "docs/screenshots";
 
@@ -29,6 +30,10 @@ test("@screenshots directory", async ({ page }) => {
 });
 
 test("@screenshots clinic booking", async ({ page }) => {
+  test.skip(
+    !process.env.E2E_SPECIALIST_PASSWORD?.trim(),
+    "Missing E2E_SPECIALIST_PASSWORD",
+  );
   await login(page, accounts.specialist.email, accounts.specialist.password);
   await page.goto("/es/dashboard/specialist");
   await expect(page.getByRole("tab", { name: /agenda/i })).toBeVisible({

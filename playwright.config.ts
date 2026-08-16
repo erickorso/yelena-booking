@@ -4,7 +4,8 @@ const baseURL =
   process.env.E2E_BASE_URL?.trim() || "https://yelena-booking.vercel.app";
 
 /**
- * Smoke E2E against deployed (or local) app with seed accounts.
+ * Smoke E2E against deployed (or local) app.
+ * Auth journeys need E2E_*_PASSWORD secrets (no passwords in the repo).
  * Skip locally without network if E2E_SKIP=1.
  */
 export default defineConfig({

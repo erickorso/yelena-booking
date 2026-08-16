@@ -1,11 +1,14 @@
 import { test, expect } from "@playwright/test";
-import { accounts, login } from "./helpers/auth";
+import { accounts, hasE2eAuthSecrets, login } from "./helpers/auth";
 
 /**
  * Soft booking: pick patient via combobox; select day if calendar markers exist (post-deploy).
  */
 test.describe("booking attempt", () => {
-  test.skip(!!process.env.E2E_SKIP, "E2E_SKIP=1");
+  test.skip(
+    !!process.env.E2E_SKIP || !hasE2eAuthSecrets(),
+    "E2E_SKIP=1 or missing E2E_* passwords",
+  );
 
   test("specialist can select patient and use the week calendar", async ({
     page,
