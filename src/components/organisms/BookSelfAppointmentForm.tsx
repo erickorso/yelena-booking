@@ -1,14 +1,17 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import { useTranslations } from "next-intl";
 import { Button } from "@/components/atoms/Button";
 import { SearchableSelect } from "@/components/molecules/SearchableSelect";
-import { SlotPicker, type SlotIso } from "@/components/molecules/SlotPicker";
+import {
+  PatientAvailabilityCalendar,
+  type AggregatedCalendarSlot,
+} from "@/components/molecules/PatientAvailabilityCalendar";
+import { SpecialistSlotModal } from "@/components/molecules/SpecialistSlotModal";
 import { useAuth } from "@/components/providers/AuthProvider";
 import { useToast } from "@/components/providers/ToastProvider";
 import { getIdToken } from "@/services/authService";
-import { toDateInputValue } from "@/lib/availability/defaultSlots";
 
 type SpecialistOption = {
   id: string;
@@ -25,8 +28,13 @@ type AppointmentRow = {
   rescheduledToId?: string | null;
 };
 
+type SlotIso = {
+  startsAt: string;
+  endsAt: string;
+};
+
 /**
- * Any authenticated patient-capable user books for themselves.
+ * Patient self-booking: week calendar of free slots + specialist modal when shared.
  */
 export function BookSelfAppointmentForm() {
   const t = useTranslations("PatientBooking");
@@ -34,16 +42,22 @@ export function BookSelfAppointmentForm() {
   const { success, error: toastError } = useToast();
   const [specialists, setSpecialists] = useState<SpecialistOption[]>([]);
   const [appointments, setAppointments] = useState<AppointmentRow[]>([]);
+  const [preferredSpecialistId, setPreferredSpecialistId] = useState("");
   const [specialistId, setSpecialistId] = useState("");
   const [selectedSlot, setSelectedSlot] = useState<SlotIso | null>(null);
-  const [remoteSlots, setRemoteSlots] = useState<SlotIso[] | null>(null);
+  const [weekSlots, setWeekSlots] = useState<AggregatedCalendarSlot[]>([]);
+  const [weekRange, setWeekRange] = useState<{ from: string; to: string } | null>(
+    null,
+  );
   const [slotsLoading, setSlotsLoading] = useState(false);
-  const [dateYmd, setDateYmd] = useState(() => toDateInputValue(new Date()));
   const [pending, setPending] = useState(false);
   const [actionId, setActionId] = useState<string | null>(null);
   const [rebookId, setRebookId] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [info, setInfo] = useState<string | null>(null);
+  const [modalSlot, setModalSlot] = useState<AggregatedCalendarSlot | null>(
+    null,
+  );
 
   const activeAppointments = useMemo(
     () =>
@@ -62,6 +76,22 @@ export function BookSelfAppointmentForm() {
         ),
     [appointments],
   );
+
+  const filterSpecialistId = rebookId
+    ? specialistId
+    : preferredSpecialistId;
+
+  const visibleSlots = useMemo(() => {
+    if (!filterSpecialistId) return weekSlots;
+    return weekSlots
+      .map((slot) => ({
+        ...slot,
+        specialists: slot.specialists.filter(
+          (s) => s.id === filterSpecialistId,
+        ),
+      }))
+      .filter((slot) => slot.specialists.length > 0);
+  }, [weekSlots, filterSpecialistId]);
 
   async function reloadAppointments(token: string) {
     const apptRes = await fetch("/api/appointments?as=patient", {
@@ -105,24 +135,25 @@ export function BookSelfAppointmentForm() {
   }, [user, t]);
 
   useEffect(() => {
-    if (!user || !specialistId) {
-      return;
-    }
+    if (!user || !weekRange) return;
     let cancelled = false;
     void (async () => {
       setSlotsLoading(true);
       try {
         const token = await getIdToken(user);
         const res = await fetch(
-          `/api/specialists/${specialistId}/slots?date=${dateYmd}`,
+          `/api/slots?from=${weekRange.from}&to=${weekRange.to}`,
           { headers: { Authorization: `Bearer ${token}` } },
         );
-        const data = (await res.json()) as { slots?: SlotIso[]; error?: string };
+        const data = (await res.json()) as {
+          slots?: AggregatedCalendarSlot[];
+          error?: string;
+        };
         if (!cancelled) {
-          setRemoteSlots(res.ok ? (data.slots ?? []) : []);
+          setWeekSlots(res.ok ? (data.slots ?? []) : []);
         }
       } catch {
-        if (!cancelled) setRemoteSlots([]);
+        if (!cancelled) setWeekSlots([]);
       } finally {
         if (!cancelled) setSlotsLoading(false);
       }
@@ -130,11 +161,48 @@ export function BookSelfAppointmentForm() {
     return () => {
       cancelled = true;
     };
-  }, [user, specialistId, dateYmd]);
+  }, [user, weekRange]);
+
+  const onWeekChange = useCallback((from: string, to: string) => {
+    setWeekRange((prev) =>
+      prev && prev.from === from && prev.to === to ? prev : { from, to },
+    );
+  }, []);
+
+  function applySlotChoice(slot: AggregatedCalendarSlot, chosenId: string) {
+    setSpecialistId(chosenId);
+    if (!rebookId) setPreferredSpecialistId(chosenId);
+    setSelectedSlot({ startsAt: slot.startsAt, endsAt: slot.endsAt });
+    setModalSlot(null);
+  }
+
+  function handleSelectSlot(slot: AggregatedCalendarSlot) {
+    if (rebookId) {
+      const only = slot.specialists.find((s) => s.id === specialistId);
+      if (!only) {
+        toastError(t("slotNotForSpecialist"));
+        return;
+      }
+      applySlotChoice(slot, specialistId);
+      return;
+    }
+
+    if (slot.specialists.length === 1) {
+      applySlotChoice(slot, slot.specialists[0]!.id);
+      return;
+    }
+
+    if (slot.specialists.length > 1) {
+      setModalSlot(slot);
+      return;
+    }
+
+    toastError(t("noSlots"));
+  }
 
   async function onSubmit(event: React.FormEvent) {
     event.preventDefault();
-    if (!user || !selectedSlot) return;
+    if (!user || !selectedSlot || !specialistId) return;
     setPending(true);
     setError(null);
     setInfo(null);
@@ -188,6 +256,9 @@ export function BookSelfAppointmentForm() {
       success(t("bookSuccess"));
       setSelectedSlot(null);
       await reloadAppointments(token);
+      if (weekRange) {
+        setWeekRange({ ...weekRange });
+      }
     } catch (err) {
       const msg = err instanceof Error ? err.message : t("bookError");
       setError(msg);
@@ -214,6 +285,7 @@ export function BookSelfAppointmentForm() {
       if (!res.ok) throw new Error(data.error ?? t("cancelError"));
       success(t("cancelSuccess"));
       await reloadAppointments(token);
+      if (weekRange) setWeekRange({ ...weekRange });
     } catch (err) {
       toastError(err instanceof Error ? err.message : t("cancelError"));
     } finally {
@@ -224,6 +296,7 @@ export function BookSelfAppointmentForm() {
   function startRebook(a: AppointmentRow) {
     setRebookId(a.id);
     setSpecialistId(a.specialistId);
+    setPreferredSpecialistId(a.specialistId);
     setSelectedSlot(null);
     setInfo(t("rebookHint"));
   }
@@ -231,12 +304,18 @@ export function BookSelfAppointmentForm() {
   function startMove(a: AppointmentRow) {
     setRebookId(a.id);
     setSpecialistId(a.specialistId);
+    setPreferredSpecialistId(a.specialistId);
     setSelectedSlot(null);
     setInfo(t("rescheduleHint"));
   }
 
   const specialistName = (id: string) =>
     specialists.find((s) => s.id === id)?.displayName ?? id.slice(0, 8);
+
+  const selectedSummary =
+    selectedSlot && specialistId
+      ? `${new Date(selectedSlot.startsAt).toLocaleString()} · ${specialistName(specialistId)}`
+      : null;
 
   return (
     <div className="space-y-6">
@@ -250,45 +329,70 @@ export function BookSelfAppointmentForm() {
         <p className="text-sm text-stone-600 dark:text-slate-300">
           {rebookId ? t("rebookSubtitle") : t("subtitle")}
         </p>
-        <SearchableSelect
-          label={t("specialist")}
-          placeholder={t("specialistPlaceholder")}
-          searchPlaceholder={t("specialistSearch")}
-          emptyLabel={t("specialistEmpty")}
-          value={specialistId}
-          onChange={(id) => {
-            if (rebookId) return;
-            setSpecialistId(id);
-            setSelectedSlot(null);
-            setRemoteSlots(null);
+
+        {!rebookId ? (
+          <div className="space-y-2">
+            <SearchableSelect
+              label={t("specialistFilter")}
+              placeholder={t("specialistFilterPlaceholder")}
+              searchPlaceholder={t("specialistSearch")}
+              emptyLabel={t("specialistEmpty")}
+              value={preferredSpecialistId}
+              onChange={(id) => {
+                setPreferredSpecialistId(id);
+                setSelectedSlot(null);
+                setSpecialistId(id);
+              }}
+              options={specialists
+                .filter((s) => s.id !== user?.uid)
+                .map((s) => ({
+                  id: s.id,
+                  label: `${s.displayName} · ${s.specialty}`,
+                  searchText: `${s.displayName} ${s.specialty}`,
+                }))}
+            />
+            {preferredSpecialistId ? (
+              <Button
+                type="button"
+                size="sm"
+                variant="ghost"
+                onClick={() => {
+                  setPreferredSpecialistId("");
+                  setSelectedSlot(null);
+                  setSpecialistId("");
+                }}
+              >
+                {t("specialistFilterClear")}
+              </Button>
+            ) : null}
+          </div>
+        ) : (
+          <p className="text-sm text-stone-700 dark:text-slate-200">
+            {t("rebookSpecialist", {
+              name: specialistName(specialistId),
+            })}
+          </p>
+        )}
+
+        <PatientAvailabilityCalendar
+          slots={visibleSlots}
+          loading={slotsLoading}
+          selectedStartsAt={selectedSlot?.startsAt ?? null}
+          onWeekChange={onWeekChange}
+          onSelectSlot={handleSelectSlot}
+          labels={{
+            today: t("calToday"),
+            weekOf: t("calWeekOf", { date: "{date}" }),
+            loading: t("calLoading"),
+            empty: t("calEmpty"),
+            multiSpecialists: t("calMulti", { count: "{count}" }),
+            selected: selectedSummary
+              ? t("calSelected", { summary: selectedSummary })
+              : t("calPickHint"),
+            hint: t("calHint"),
           }}
-          options={specialists
-            .filter((s) => s.id !== user?.uid)
-            .map((s) => ({
-              id: s.id,
-              label: `${s.displayName} · ${s.specialty}`,
-              searchText: `${s.displayName} ${s.specialty}`,
-            }))}
         />
-        {specialistId ? (
-          <SlotPicker
-            labelDate={t("pickDate")}
-            labelSlots={t("pickSlot")}
-            emptyLabel={t("noSlots")}
-            weekendLabel={t("weekend")}
-            pastLabel={t("pastDay")}
-            busy={[]}
-            remoteSlots={remoteSlots}
-            remoteLoading={slotsLoading}
-            value={selectedSlot?.startsAt ?? null}
-            onChange={setSelectedSlot}
-            onDateChange={(d) => {
-              setDateYmd(d);
-              setSelectedSlot(null);
-            }}
-          />
-        ) : null}
-        <p className="text-xs text-stone-500 dark:text-slate-400">{t("hoursHint")}</p>
+
         {error ? (
           <p role="alert" className="text-sm text-red-600 dark:text-red-400">
             {error}
@@ -328,6 +432,20 @@ export function BookSelfAppointmentForm() {
           ) : null}
         </div>
       </form>
+
+      <SpecialistSlotModal
+        key={modalSlot ? `${modalSlot.startsAt}-${modalSlot.endsAt}` : "closed"}
+        open={Boolean(modalSlot)}
+        startsAt={modalSlot?.startsAt ?? ""}
+        endsAt={modalSlot?.endsAt ?? ""}
+        specialists={modalSlot?.specialists ?? []}
+        preferredSpecialistId={preferredSpecialistId || specialistId}
+        onCancel={() => setModalSlot(null)}
+        onConfirm={(id) => {
+          if (!modalSlot) return;
+          applySlotChoice(modalSlot, id);
+        }}
+      />
 
       <section className="space-y-2">
         <h3 className="font-medium text-stone-800 dark:text-slate-100">
