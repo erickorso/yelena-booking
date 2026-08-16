@@ -1,4 +1,5 @@
 import { NextResponse } from "next/server";
+import { getAdminAuth } from "@/lib/firebase/admin";
 import { isAuthError, requireAuth } from "@/lib/auth/requireAuth";
 import { AdminClinicalHistoryRepository } from "@/repositories/firestore/AdminClinicalHistoryRepository";
 import { AdminUserRepository } from "@/repositories/firestore/AdminUserRepository";
@@ -132,11 +133,17 @@ export async function GET(
   if (denied) return denied;
 
   try {
-    const history =
-      await new AdminClinicalHistoryRepository().getByPatientId(patientId);
+    const users = new AdminUserRepository();
+    const [history, patient] = await Promise.all([
+      new AdminClinicalHistoryRepository().getByPatientId(patientId),
+      users.getById(patientId),
+    ]);
     return NextResponse.json({
       history: serialize(history),
       incomplete: isClinicalHistoryIncomplete(history),
+      displayName: patient?.displayName ?? null,
+      email: patient?.email ?? null,
+      patientNumber: patient?.patientNumber ?? null,
     });
   } catch (error) {
     const message =
@@ -160,9 +167,11 @@ export async function PUT(
   const denied = await assertCanAccessPatient(auth, patientId);
   if (denied) return denied;
 
+  let rawBody: Record<string, unknown>;
   let input: PatientClinicalHistoryInput;
   try {
-    input = parseBody(await request.json());
+    rawBody = (await request.json()) as Record<string, unknown>;
+    input = parseBody(rawBody);
   } catch (error) {
     const message =
       error instanceof Error ? error.message : "Invalid body";
@@ -170,6 +179,25 @@ export async function PUT(
   }
 
   try {
+    const users = new AdminUserRepository();
+    const displayNameRaw =
+      typeof rawBody.displayName === "string" ? rawBody.displayName.trim() : "";
+    let displayName: string | null = null;
+    if (displayNameRaw) {
+      const updated = await users.updateDisplayName(patientId, displayNameRaw);
+      displayName = updated.displayName;
+      try {
+        await (await getAdminAuth()).updateUser(patientId, {
+          displayName: updated.displayName,
+        });
+      } catch (err) {
+        console.error("[clinical-history] Auth displayName sync failed", err);
+      }
+    } else {
+      const patient = await users.getById(patientId);
+      displayName = patient?.displayName ?? null;
+    }
+
     const history = await new AdminClinicalHistoryRepository().upsert(
       patientId,
       input,
@@ -179,6 +207,7 @@ export async function PUT(
       ok: true,
       history: serialize(history),
       incomplete: isClinicalHistoryIncomplete(history),
+      displayName,
     });
   } catch (error) {
     const message =

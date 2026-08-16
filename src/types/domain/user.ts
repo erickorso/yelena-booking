@@ -23,6 +23,8 @@ export interface UserProfile {
    * Optional until dual patient/specialist TZ lands fully.
    */
   timezone: string | null;
+  /** Unique non-editable patient file number (assigned at creation). */
+  patientNumber: string;
   createdAt: Date;
   updatedAt: Date;
 }

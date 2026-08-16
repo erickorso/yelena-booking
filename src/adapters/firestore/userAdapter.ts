@@ -1,5 +1,6 @@
 import type { UserProfile, AuthRole } from "@/types/domain";
 import { isAuthRole } from "@/types/domain";
+import { derivePatientNumber } from "@/lib/patients/patientNumber";
 import { optionalString, requireString, toDate } from "./helpers";
 
 export interface UserProfileDoc {
@@ -9,6 +10,7 @@ export interface UserProfileDoc {
   role?: unknown;
   locale?: unknown;
   timezone?: unknown;
+  patientNumber?: unknown;
   createdAt?: unknown;
   updatedAt?: unknown;
 }
@@ -26,6 +28,7 @@ export function adaptUserProfile(
   }
 
   const locale = data.locale === "en" || data.locale === "es" ? data.locale : "es";
+  const storedNumber = optionalString(data.patientNumber ?? null);
 
   return {
     id,
@@ -35,6 +38,7 @@ export function adaptUserProfile(
     role: role as AuthRole,
     locale,
     timezone: optionalString(data.timezone ?? null),
+    patientNumber: storedNumber ?? derivePatientNumber(id),
     createdAt: toDate(data.createdAt),
     updatedAt: toDate(data.updatedAt),
   };

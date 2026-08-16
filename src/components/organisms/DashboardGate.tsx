@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect } from "react";
+import { useEffect, useState } from "react";
 import { useTranslations } from "next-intl";
 import { useRequireAuth } from "@/hooks/useRequireAuth";
 import { useRouter } from "@/i18n/navigation";
@@ -8,6 +8,7 @@ import type { AuthRole } from "@/types/domain";
 import { Button } from "@/components/atoms/Button";
 import { PanelSkeleton } from "@/components/atoms/Skeleton";
 import { ProfilePhotoControl } from "@/components/molecules/ProfilePhotoControl";
+import { getIdToken } from "@/services/authService";
 
 type DashboardGateProps = {
   allowed: AuthRole[];
@@ -19,6 +20,9 @@ export function DashboardGate({ allowed, title, children }: DashboardGateProps) 
   const t = useTranslations("Auth");
   const router = useRouter();
   const { status, role, isAllowed, isLoading, user } = useRequireAuth(allowed);
+  const [profileName, setProfileName] = useState<string | null>(null);
+  const [patientNumber, setPatientNumber] = useState<string | null>(null);
+  const displayName = profileName ?? user?.displayName ?? null;
 
   useEffect(() => {
     if (isLoading) return;
@@ -34,6 +38,39 @@ export function DashboardGate({ allowed, title, children }: DashboardGateProps) 
       router.replace("/register");
     }
   }, [isLoading, status, role, router]);
+
+  useEffect(() => {
+    if (!user) return;
+    let cancelled = false;
+    void (async () => {
+      try {
+        const token = await getIdToken(user);
+        const res = await fetch("/api/me", {
+          headers: { Authorization: `Bearer ${token}` },
+        });
+        const data = (await res.json()) as {
+          displayName?: string;
+          patientNumber?: string;
+        };
+        if (!cancelled && res.ok) {
+          if (data.displayName) setProfileName(data.displayName);
+          if (data.patientNumber) setPatientNumber(data.patientNumber);
+        }
+      } catch {
+        // Keep Firebase displayName fallback.
+      }
+    })();
+
+    function onProfileUpdated(event: Event) {
+      const detail = (event as CustomEvent<{ displayName?: string }>).detail;
+      if (detail?.displayName) setProfileName(detail.displayName);
+    }
+    window.addEventListener("yelena:profile-updated", onProfileUpdated);
+    return () => {
+      cancelled = true;
+      window.removeEventListener("yelena:profile-updated", onProfileUpdated);
+    };
+  }, [user]);
 
   if (isLoading || status === "anonymous") {
     return <PanelSkeleton />;
@@ -59,7 +96,17 @@ export function DashboardGate({ allowed, title, children }: DashboardGateProps) 
           <h1 className="font-serif text-3xl text-teal-800 dark:text-teal-300">
             {title}
           </h1>
-          <p className="mt-1 text-sm text-stone-600 dark:text-slate-300">
+          {displayName ? (
+            <p className="mt-1 text-lg font-medium text-stone-900 dark:text-slate-50">
+              {displayName}
+            </p>
+          ) : null}
+          {patientNumber ? (
+            <p className="mt-0.5 font-mono text-xs tracking-wide text-stone-500 dark:text-slate-400">
+              {t("patientNumber", { number: patientNumber })}
+            </p>
+          ) : null}
+          <p className="mt-0.5 text-sm text-stone-600 dark:text-slate-300">
             {user?.email} · {role}
           </p>
         </div>

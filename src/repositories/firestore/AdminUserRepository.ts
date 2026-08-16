@@ -9,6 +9,7 @@ import type {
   IUserRepository,
 } from "@/repositories/IUserRepository";
 import type { CreateSpecialistProfileInput } from "@/repositories/specialistTypes";
+import { derivePatientNumber } from "@/lib/patients/patientNumber";
 
 const USERS = "users";
 const SPECIALISTS = "specialists";
@@ -21,14 +22,36 @@ export class AdminUserRepository implements IUserRepository {
     return getAdminFirestore();
   }
 
+  private async hydrateUser(
+    id: string,
+    data: Record<string, unknown>,
+  ): Promise<UserProfile> {
+    const profile = adaptUserProfile(id, data);
+    const stored =
+      typeof data.patientNumber === "string" && data.patientNumber.trim();
+    if (!stored) {
+      try {
+        await (await this.db()).collection(USERS).doc(id).update({
+          patientNumber: profile.patientNumber,
+          updatedAt: FieldValue.serverTimestamp(),
+        });
+      } catch (err) {
+        console.error("[users] backfill patientNumber failed", id, err);
+      }
+    }
+    return profile;
+  }
+
   async getById(id: string): Promise<UserProfile | null> {
     const snap = await (await this.db()).collection(USERS).doc(id).get();
     if (!snap.exists) return null;
-    return adaptUserProfile(snap.id, snap.data() ?? {});
+    return this.hydrateUser(snap.id, (snap.data() ?? {}) as Record<string, unknown>);
   }
 
   async create(input: CreateUserProfileInput): Promise<UserProfile> {
     const ref = (await this.db()).collection(USERS).doc(input.id);
+    const patientNumber =
+      input.patientNumber?.trim() || derivePatientNumber(input.id);
     const payload = {
       email: input.email.trim().toLowerCase(),
       displayName: input.displayName,
@@ -36,6 +59,7 @@ export class AdminUserRepository implements IUserRepository {
       role: input.role,
       locale: input.locale ?? "es",
       timezone: input.timezone ?? null,
+      patientNumber,
       createdAt: FieldValue.serverTimestamp(),
       updatedAt: FieldValue.serverTimestamp(),
     };
@@ -80,6 +104,26 @@ export class AdminUserRepository implements IUserRepository {
     const ref = (await this.db()).collection(USERS).doc(id);
     await ref.update({
       timezone,
+      updatedAt: FieldValue.serverTimestamp(),
+    });
+    const snap = await ref.get();
+    if (!snap.exists) {
+      throw new Error(`User not found: ${id}`);
+    }
+    return adaptUserProfile(snap.id, snap.data() ?? {});
+  }
+
+  async updateDisplayName(
+    id: string,
+    displayName: string,
+  ): Promise<UserProfile> {
+    const name = displayName.trim();
+    if (!name) {
+      throw new Error("displayName is required");
+    }
+    const ref = (await this.db()).collection(USERS).doc(id);
+    await ref.update({
+      displayName: name,
       updatedAt: FieldValue.serverTimestamp(),
     });
     const snap = await ref.get();
@@ -153,9 +197,15 @@ export class AdminUserRepository implements IUserRepository {
         .get(),
     ]);
     const byId = new Map<string, UserProfile>();
-    for (const doc of [...pacientes.docs, ...especialistas.docs]) {
-      byId.set(doc.id, adaptUserProfile(doc.id, doc.data()));
-    }
+    await Promise.all(
+      [...pacientes.docs, ...especialistas.docs].map(async (doc) => {
+        const profile = await this.hydrateUser(
+          doc.id,
+          (doc.data() ?? {}) as Record<string, unknown>,
+        );
+        byId.set(doc.id, profile);
+      }),
+    );
     return [...byId.values()].sort((a, b) =>
       a.displayName.localeCompare(b.displayName, "es"),
     );
@@ -168,9 +218,14 @@ export class AdminUserRepository implements IUserRepository {
       .where("role", "==", "paciente")
       .limit(limit)
       .get();
-    return snap.docs
-      .map((doc) => adaptUserProfile(doc.id, doc.data()))
-      .sort((a, b) => a.displayName.localeCompare(b.displayName, "es"));
+    const profiles = await Promise.all(
+      snap.docs.map((doc) =>
+        this.hydrateUser(doc.id, (doc.data() ?? {}) as Record<string, unknown>),
+      ),
+    );
+    return profiles.sort((a, b) =>
+      a.displayName.localeCompare(b.displayName, "es"),
+    );
   }
 
   /** All specialist profiles (any status) — used to know who already applied. */
@@ -190,7 +245,7 @@ export class AdminUserRepository implements IUserRepository {
       .get();
     if (query.empty) return null;
     const doc = query.docs[0]!;
-    return adaptUserProfile(doc.id, doc.data());
+    return this.hydrateUser(doc.id, (doc.data() ?? {}) as Record<string, unknown>);
   }
 
   async setSpecialistStatus(

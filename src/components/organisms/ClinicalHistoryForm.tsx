@@ -72,6 +72,9 @@ export function ClinicalHistoryForm({
   const { success, error: toastError } = useToast();
   const patientId = patientIdProp ?? user?.uid ?? "";
   const [form, setForm] = useState<HistoryForm>(EMPTY);
+  const [displayName, setDisplayName] = useState("");
+  const [patientNumber, setPatientNumber] = useState("");
+  const [canEditName, setCanEditName] = useState(true);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [updatedAt, setUpdatedAt] = useState<string | null>(null);
@@ -89,6 +92,8 @@ export function ClinicalHistoryForm({
         );
         const data = (await res.json()) as {
           history?: Record<string, unknown>;
+          displayName?: string | null;
+          patientNumber?: string | null;
           error?: string;
         };
         if (cancelled) return;
@@ -97,6 +102,13 @@ export function ClinicalHistoryForm({
           return;
         }
         const h = data.history ?? {};
+        setDisplayName(
+          typeof data.displayName === "string" ? data.displayName : "",
+        );
+        setPatientNumber(
+          typeof data.patientNumber === "string" ? data.patientNumber : "",
+        );
+        setCanEditName(!readOnly);
         setForm({
           birthDate: typeof h.birthDate === "string" ? h.birthDate : "",
           sex: typeof h.sex === "string" ? (h.sex as PatientSex) : "",
@@ -138,7 +150,7 @@ export function ClinicalHistoryForm({
     return () => {
       cancelled = true;
     };
-  }, [user, patientId, toastError, t]);
+  }, [user, patientId, toastError, t, readOnly]);
 
   function patch<K extends keyof HistoryForm>(key: K, value: HistoryForm[K]) {
     setForm((prev) => ({ ...prev, [key]: value }));
@@ -160,17 +172,29 @@ export function ClinicalHistoryForm({
           ...form,
           sex: form.sex || null,
           birthDate: form.birthDate || null,
+          ...(canEditName ? { displayName: displayName.trim() } : {}),
         }),
       });
       const data = (await res.json()) as {
         history?: { updatedAt?: string };
         incomplete?: boolean;
+        displayName?: string | null;
         error?: string;
       };
       if (!res.ok) throw new Error(data.error ?? t("saveError"));
       setUpdatedAt(data.history?.updatedAt ?? new Date().toISOString());
+      if (typeof data.displayName === "string") {
+        setDisplayName(data.displayName);
+      }
       onSaved?.(Boolean(data.incomplete));
       success(t("saveSuccess"));
+      if (canEditName && typeof window !== "undefined") {
+        window.dispatchEvent(
+          new CustomEvent("yelena:profile-updated", {
+            detail: { displayName: data.displayName ?? displayName },
+          }),
+        );
+      }
     } catch (err) {
       toastError(err instanceof Error ? err.message : t("saveError"));
     } finally {
@@ -202,6 +226,29 @@ export function ClinicalHistoryForm({
           defaultOpen
         >
           <fieldset className="space-y-3" disabled={readOnly}>
+            {patientNumber ? (
+              <div className="flex flex-col gap-1.5 text-sm text-stone-800 dark:text-slate-100">
+                <span className="font-medium">{t("patientNumber")}</span>
+                <p
+                  className="flex h-10 items-center rounded-md border border-dashed border-stone-300 bg-stone-50 px-3 font-mono text-sm tracking-wide text-stone-800 dark:border-slate-600 dark:bg-slate-950 dark:text-slate-100"
+                  aria-readonly="true"
+                >
+                  {patientNumber}
+                </p>
+                <span className="text-xs text-stone-500 dark:text-slate-400">
+                  {t("patientNumberHint")}
+                </span>
+              </div>
+            ) : null}
+            <Input
+              label={t("displayName")}
+              name="displayName"
+              value={displayName}
+              onChange={(e) => setDisplayName(e.target.value)}
+              required={canEditName}
+              disabled={readOnly || !canEditName}
+              autoComplete="name"
+            />
             <div className="grid gap-3 sm:grid-cols-2">
               <Input
                 label={t("birthDate")}

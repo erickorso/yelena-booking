@@ -8,6 +8,7 @@ import type {
   IUserRepository,
 } from "../IUserRepository";
 import type { CreateSpecialistProfileInput } from "../specialistTypes";
+import { derivePatientNumber } from "@/lib/patients/patientNumber";
 
 /**
  * In-memory stub for UI / tests until Firestore credentials are wired.
@@ -30,6 +31,7 @@ export class StubUserRepository implements IUserRepository {
       role: input.role,
       locale: input.locale ?? "es",
       timezone: input.timezone ?? null,
+      patientNumber: input.patientNumber ?? derivePatientNumber(input.id),
       createdAt: now,
       updatedAt: now,
     };
@@ -75,6 +77,27 @@ export class StubUserRepository implements IUserRepository {
     const updated: UserProfile = {
       ...existing,
       timezone,
+      updatedAt: new Date(),
+    };
+    this.users.set(id, updated);
+    return updated;
+  }
+
+  async updateDisplayName(
+    id: string,
+    displayName: string,
+  ): Promise<UserProfile> {
+    const existing = this.users.get(id);
+    if (!existing) {
+      throw new Error(`User not found: ${id}`);
+    }
+    const name = displayName.trim();
+    if (!name) {
+      throw new Error("displayName is required");
+    }
+    const updated: UserProfile = {
+      ...existing,
+      displayName: name,
       updatedAt: new Date(),
     };
     this.users.set(id, updated);
