@@ -11,6 +11,7 @@ import {
   isActiveSpecialist,
   isAuthRole,
   isLocale,
+  isMedicalFileScope,
   isSpecialistStatus,
   isValidTimeRange,
   type Appointment,
@@ -111,6 +112,10 @@ describe("availability domain", () => {
 
 describe("ehr + user domain", () => {
   it("checks medical file ownership by scope", () => {
+    expect(isMedicalFileScope("patient_general")).toBe(true);
+    expect(isMedicalFileScope("nope")).toBe(false);
+    expect(isMedicalFileScope(1)).toBe(false);
+
     expect(() =>
       assertMedicalFileOwnership({
         scope: "patient_general",
@@ -119,6 +124,23 @@ describe("ehr + user domain", () => {
         appointmentId: null,
       }),
     ).not.toThrow();
+    expect(() =>
+      assertMedicalFileOwnership({
+        scope: "appointment",
+        patientId: "p1",
+        specialistProfileId: null,
+        appointmentId: "a1",
+      }),
+    ).not.toThrow();
+    expect(() =>
+      assertMedicalFileOwnership({
+        scope: "specialist_profile",
+        patientId: null,
+        specialistProfileId: "s1",
+        appointmentId: null,
+      }),
+    ).not.toThrow();
+
     expect(() =>
       assertMedicalFileOwnership({
         scope: "appointment",
@@ -135,6 +157,46 @@ describe("ehr + user domain", () => {
         appointmentId: null,
       }),
     ).toThrow(/patientId must be null/);
+    expect(() =>
+      assertMedicalFileOwnership({
+        scope: "specialist_profile",
+        patientId: null,
+        specialistProfileId: null,
+        appointmentId: null,
+      }),
+    ).toThrow(/specialistProfileId is required/);
+    expect(() =>
+      assertMedicalFileOwnership({
+        scope: "specialist_profile",
+        patientId: null,
+        specialistProfileId: "s1",
+        appointmentId: "a1",
+      }),
+    ).toThrow(/appointmentId must be null/);
+    expect(() =>
+      assertMedicalFileOwnership({
+        scope: "patient_general",
+        patientId: null,
+        specialistProfileId: null,
+        appointmentId: null,
+      }),
+    ).toThrow(/patientId is required/);
+    expect(() =>
+      assertMedicalFileOwnership({
+        scope: "patient_general",
+        patientId: "p1",
+        specialistProfileId: "s1",
+        appointmentId: null,
+      }),
+    ).toThrow(/specialistProfileId must be null/);
+    expect(() =>
+      assertMedicalFileOwnership({
+        scope: "patient_general",
+        patientId: "p1",
+        specialistProfileId: null,
+        appointmentId: "a1",
+      }),
+    ).toThrow(/appointmentId must be null for patient_general/);
   });
 
   it("guards locale and specialist status", () => {

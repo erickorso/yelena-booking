@@ -17,6 +17,8 @@ export default defineConfig({
         "src/lib/mail/templates.ts",
         "src/lib/availability/defaultSlots.ts",
         "src/lib/storage/medicalUploadPolicy.ts",
+        "src/lib/patients/patientSearch.ts",
+        "src/lib/patients/patientNumber.ts",
         "src/adapters/firestore/appointmentAdapter.ts",
         "src/repositories/stubs/StubAppointmentRepository.ts",
         "src/repositories/stubs/StubEhrRepository.ts",
@@ -25,6 +27,7 @@ export default defineConfig({
         "src/types/domain/ehr.ts",
         "src/types/domain/user.ts",
         "src/types/domain/roles.ts",
+        "src/types/domain/clinicalCustomFields.ts",
       ],
       thresholds: {
         lines: 80,

@@ -38,4 +38,34 @@ describe("mail templates", () => {
     expect(mail.subject).toMatch(/transferencia/i);
     expect(mail.html).toContain("Paciente");
   });
+
+  it("builds EN appointment with Meet link and escapes HTML", () => {
+    const mail = buildAppointmentBookedEmail({
+      patientName: `Ana <script>`,
+      specialistName: `Dr. "X"`,
+      startsAt: new Date("2026-08-20T10:00:00.000Z"),
+      endsAt: new Date("2026-08-20T10:30:00.000Z"),
+      locale: "en",
+      dashboardUrl: "https://example.com/en/dashboard/patient",
+      meetLink: "https://meet.google.com/abc-defg-hij",
+    });
+    expect(mail.subject).toMatch(/confirmed/i);
+    expect(mail.html).toContain("Google Meet");
+    expect(mail.html).toContain("meet.google.com");
+    expect(mail.html).not.toContain("<script>");
+    expect(mail.text).toContain("Meet:");
+  });
+
+  it("builds EN transfer without Meet", () => {
+    const mail = buildTransferRequestEmail({
+      toName: "Dr. B",
+      fromName: "Dr. A",
+      patientName: "Pat",
+      startsAt: new Date("2026-08-21T15:00:00.000Z"),
+      dashboardUrl: "https://example.com/en/dashboard",
+      locale: "en",
+    });
+    expect(mail.subject).toMatch(/transfer request/i);
+    expect(mail.text).toMatch(/offers you/i);
+  });
 });

@@ -66,4 +66,75 @@ describe("AppointmentService", () => {
       /Cannot transition/,
     );
   });
+
+  it("reschedules open appointments and blocks terminal ones", async () => {
+    const repo = new StubAppointmentRepository();
+    const service = new AppointmentService(repo);
+    const appt = await service.book({
+      patientId: "p1",
+      specialistId: "s1",
+      startsAt: new Date("2026-09-01T10:00:00.000Z"),
+      endsAt: new Date("2026-09-01T10:30:00.000Z"),
+    });
+    const nextStart = new Date("2026-09-02T10:00:00.000Z");
+    const nextEnd = new Date("2026-09-02T10:30:00.000Z");
+    const moved = await service.reschedule(appt.id, nextStart, nextEnd);
+    expect(moved.startsAt.toISOString()).toBe(nextStart.toISOString());
+
+    await expect(
+      service.reschedule("missing", nextStart, nextEnd),
+    ).rejects.toThrow(/not found/i);
+
+    await service.transitionStatus(appt.id, "cancelled");
+    await expect(
+      service.reschedule(appt.id, nextStart, nextEnd),
+    ).rejects.toThrow(/Cannot reschedule/);
+  });
+
+  it("rebooks from cancelled ghost and rejects non-cancelled", async () => {
+    const repo = new StubAppointmentRepository();
+    const service = new AppointmentService(repo);
+    const appt = await service.book({
+      patientId: "p1",
+      specialistId: "s1",
+      startsAt: new Date("2026-09-01T10:00:00.000Z"),
+      endsAt: new Date("2026-09-01T10:30:00.000Z"),
+      notes: "nota",
+    });
+    await expect(
+      service.rebookFromCancelled(
+        appt.id,
+        new Date("2026-09-03T10:00:00.000Z"),
+        new Date("2026-09-03T10:30:00.000Z"),
+        "s1",
+      ),
+    ).rejects.toThrow(/Only cancelled/);
+
+    await service.transitionStatus(appt.id, "cancelled");
+    const { ghost, appointment } = await service.rebookFromCancelled(
+      appt.id,
+      new Date("2026-09-03T10:00:00.000Z"),
+      new Date("2026-09-03T10:30:00.000Z"),
+      "s1",
+    );
+    expect(appointment.rescheduledFromId).toBe(appt.id);
+    expect(ghost.rescheduledToId).toBe(appointment.id);
+    expect(appointment.notes).toBe("nota");
+
+    await expect(
+      service.rebookFromCancelled(
+        "missing",
+        new Date("2026-09-03T10:00:00.000Z"),
+        new Date("2026-09-03T10:30:00.000Z"),
+        null,
+      ),
+    ).rejects.toThrow(/not found/i);
+  });
+
+  it("transitionStatus rejects missing appointment", async () => {
+    const service = new AppointmentService(new StubAppointmentRepository());
+    await expect(service.transitionStatus("x", "completed")).rejects.toThrow(
+      /not found/i,
+    );
+  });
 });
