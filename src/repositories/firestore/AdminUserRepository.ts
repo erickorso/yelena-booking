@@ -129,6 +129,27 @@ export class AdminUserRepository implements IUserRepository {
     );
   }
 
+  /** Patients only (public profile fields for admin review). */
+  async listPatients(limit = 200): Promise<UserProfile[]> {
+    const snap = await (await this.db())
+      .collection(USERS)
+      .where("role", "==", "paciente")
+      .limit(limit)
+      .get();
+    return snap.docs
+      .map((doc) => adaptUserProfile(doc.id, doc.data()))
+      .sort((a, b) => a.displayName.localeCompare(b.displayName, "es"));
+  }
+
+  /** All specialist profiles (any status) — used to know who already applied. */
+  async listAllSpecialists(limit = 500): Promise<SpecialistProfile[]> {
+    const snap = await (await this.db())
+      .collection(SPECIALISTS)
+      .limit(limit)
+      .get();
+    return snap.docs.map((doc) => adaptSpecialistProfile(doc.id, doc.data()));
+  }
+
   async findByEmail(email: string): Promise<UserProfile | null> {
     const query = await (await this.db())
       .collection(USERS)

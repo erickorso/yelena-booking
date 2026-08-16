@@ -83,7 +83,7 @@
     "rejectedBody": "Your specialist application was rejected. Contact an admin if you think this is a mistake.",
     "activeBody": "Account active · {specialty}. You can register patients and book on their behalf.",
     "adminTitle": "Admin dashboard",
-    "adminBody": "Approve or reject specialist applications. Only active specialists appear in the public directory.",
+    "adminBody": "Review patients, approve specialist applications, and test emails. The «admin» button in the header opens this panel.",
     "goPatient": "Go to patient panel (my appointments)",
     "goSpecialist": "Go to specialist panel"
   },
@@ -243,6 +243,9 @@
     "loadError": "Could not load directory."
   },
   "Admin": {
+    "tabPatients": "Patients",
+    "tabQueue": "Pending applications",
+    "tabMail": "Email",
     "queueTitle": "Pending specialists",
     "loading": "Loading queue…",
     "empty": "No pending applications.",
@@ -251,6 +254,34 @@
     "reject": "Reject",
     "loadError": "Could not load the queue.",
     "actionError": "Could not update status."
+  },
+  "AdminPatients": {
+    "title": "Patients",
+    "subtitle": "Public patient account data. You can promote someone to specialist from here.",
+    "loading": "Loading patients…",
+    "empty": "No patients registered.",
+    "refresh": "Refresh",
+    "search": "Search",
+    "searchPlaceholder": "Name or email…",
+    "meta": "Locale {locale} · Timezone {timezone} · Joined {date}",
+    "promoteCta": "Make specialist",
+    "alreadySpecialist": "Already has specialist profile ({status})",
+    "promoteTitle": "Promote {name}",
+    "promoteHint": "Enter specialty and license number. Activate now or send to the approval queue.",
+    "specialty": "Specialty",
+    "licenseNumber": "License / collegiate number",
+    "promoteAndActivate": "Promote and activate",
+    "promotePending": "Send to queue (pending)",
+    "promoting": "Saving…",
+    "cancel": "Cancel",
+    "promoteActiveSuccess": "Patient promoted and activated as specialist.",
+    "promotePendingSuccess": "Application created — pending approval.",
+    "promoteError": "Could not promote the patient.",
+    "loadError": "Could not load the patient list.",
+    "paginationLabel": "Patient list pagination",
+    "pageInfo": "Page {page} of {totalPages} · {total} results",
+    "prev": "Previous",
+    "next": "Next"
   },
   "AdminMail": {
     "title": "Test emails",
