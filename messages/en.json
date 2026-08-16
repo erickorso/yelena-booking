@@ -496,6 +496,9 @@
     "open": "Open",
     "openError": "Could not open the document.",
     "opening": "Opening…",
+    "download": "Download",
+    "closePreview": "Close",
+    "downloadStarted": "Download started.",
     "appendOnly": "Append-only archive: documents cannot be removed.",
     "loadError": "Could not load files.",
     "apptRef": "appt {id}"

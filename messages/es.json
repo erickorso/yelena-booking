@@ -496,6 +496,9 @@
     "open": "Abrir",
     "openError": "No se pudo abrir el documento.",
     "opening": "Abriendo…",
+    "download": "Descargar",
+    "closePreview": "Cerrar",
+    "downloadStarted": "Descarga iniciada.",
     "appendOnly": "Archivo solo-añadir: no se pueden eliminar documentos.",
     "loadError": "No se pudieron cargar los archivos.",
     "apptRef": "cita {id}"

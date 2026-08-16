@@ -6,6 +6,11 @@ import { Button } from "@/components/atoms/Button";
 import { Input } from "@/components/atoms/Input";
 import { ListSkeleton } from "@/components/atoms/Skeleton";
 import { CollapsibleSection } from "@/components/molecules/CollapsibleSection";
+import {
+  MedicalFileViewerModal,
+  medicalFilePreviewKind,
+  type MedicalFilePreviewKind,
+} from "@/components/molecules/MedicalFileViewerModal";
 import { SearchableSelect } from "@/components/molecules/SearchableSelect";
 import { useAuth } from "@/components/providers/AuthProvider";
 import { useToast } from "@/components/providers/ToastProvider";
@@ -80,6 +85,19 @@ export function MedicalFilesPanel({
   const [uploading, setUploading] = useState(false);
   const [openingId, setOpeningId] = useState<string | null>(null);
   const [reloadKey, setReloadKey] = useState(0);
+  const [preview, setPreview] = useState<{
+    title: string;
+    kind: MedicalFilePreviewKind;
+    objectUrl: string;
+    fileName: string;
+  } | null>(null);
+
+  function closePreview() {
+    setPreview((current) => {
+      if (current?.objectUrl) URL.revokeObjectURL(current.objectUrl);
+      return null;
+    });
+  }
 
   const targetPatientId =
     mode === "specialist_library"
@@ -265,17 +283,38 @@ export function MedicalFilesPanel({
       }
       const blob = await res.blob();
       const objectUrl = URL.createObjectURL(blob);
-      const opened = window.open(objectUrl, "_blank", "noopener,noreferrer");
-      if (!opened) {
-        // Popup blocked — fall back to same-tab navigation.
-        window.location.assign(objectUrl);
+      const kind = medicalFilePreviewKind(f.contentType, f.fileName);
+      const title = f.label?.trim() || f.fileName;
+
+      if (kind) {
+        setPreview((current) => {
+          if (current?.objectUrl) URL.revokeObjectURL(current.objectUrl);
+          return { title, kind, objectUrl, fileName: f.fileName };
+        });
+        return;
       }
+
+      const a = document.createElement("a");
+      a.href = objectUrl;
+      a.download = f.fileName;
+      a.rel = "noopener";
+      a.click();
       window.setTimeout(() => URL.revokeObjectURL(objectUrl), 60_000);
+      success(t("downloadStarted"));
     } catch (err) {
       toastError(err instanceof Error ? err.message : t("openError"));
     } finally {
       setOpeningId(null);
     }
+  }
+
+  function downloadPreview() {
+    if (!preview) return;
+    const a = document.createElement("a");
+    a.href = preview.objectUrl;
+    a.download = preview.fileName;
+    a.rel = "noopener";
+    a.click();
   }
 
   function formatSize(bytes: number): string {
@@ -481,6 +520,15 @@ export function MedicalFilesPanel({
           </ul>
         )}
       </div>
+
+      <MedicalFileViewerModal
+        open={Boolean(preview)}
+        title={preview?.title ?? ""}
+        kind={preview?.kind ?? "image"}
+        objectUrl={preview?.objectUrl ?? null}
+        onClose={closePreview}
+        onDownload={downloadPreview}
+      />
     </CollapsibleSection>
   );
 }
