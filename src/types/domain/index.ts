@@ -8,3 +8,4 @@ export * from "./clinicalHistory";
 export * from "./clinicalCustomFields";
 export * from "./notification";
 export * from "./googleCalendar";
+export * from "./outbox";

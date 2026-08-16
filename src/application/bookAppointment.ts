@@ -2,7 +2,6 @@ import "server-only";
 
 import { AppointmentService } from "@/services/appointmentService";
 import { GoogleCalendarService } from "@/services/googleCalendarService";
-import { MailService } from "@/services/mailService";
 import { AdminAppointmentRepository } from "@/repositories/firestore/AdminAppointmentRepository";
 import { AdminAvailabilityRepository } from "@/repositories/firestore/AdminAvailabilityRepository";
 import { AdminUserRepository } from "@/repositories/firestore/AdminUserRepository";
@@ -15,14 +14,18 @@ import {
   isWithinSchedule,
   resolveScheduleTimezone,
 } from "@/lib/availability/defaultSlots";
-import { formatGoogleDateTime } from "@/lib/availability/scheduleTimeZone";
 import { evaluatePatientBooking } from "@/lib/appointments/patientBookingRules";
-import { resolvePatientTimezone } from "@/lib/timezones";
+import { resolveClinicId } from "@/lib/clinic/constants";
 import { logServer } from "@/lib/observability/logger";
 import type { Appointment } from "@/types/domain";
+import {
+  enqueueBookingSideEffects,
+  processOutboxBatch,
+} from "@/application/processOutbox";
+import { AdminOutboxRepository } from "@/repositories/firestore/AdminOutboxRepository";
 
 export type BookAppointmentCommand = {
-  actor: { uid: string; role: AuthRole };
+  actor: { uid: string; role: AuthRole; clinicId?: string | null };
   patientId: string;
   specialistId: string;
   startsAt: Date;
@@ -36,6 +39,7 @@ export type BookAppointmentResult = {
   googleSynced: boolean;
   mailSent: boolean;
   mailSkipped: string | null;
+  outboxEnqueued: boolean;
 };
 
 export class BookAppointmentError extends Error {
@@ -51,13 +55,14 @@ export class BookAppointmentError extends Error {
 
 /**
  * Use-case: validate authz + schedule + conflicts, persist booking,
- * then best-effort Google Calendar + Resend (see docs/ARCHITECTURE.md).
+ * enqueue Calendar/mail on outbox (saga + retries via cron).
  */
 export async function bookAppointment(
   cmd: BookAppointmentCommand,
 ): Promise<BookAppointmentResult> {
   const users = new AdminUserRepository();
   const { actor, patientId, specialistId, startsAt, endsAt, notes } = cmd;
+  const clinicId = resolveClinicId(actor.clinicId);
   const isSelf = patientId === actor.uid;
 
   if (isSelf) {
@@ -95,15 +100,16 @@ export async function bookAppointment(
   const schedule = await new AdminAvailabilityRepository().getConfigOrDefault(
     specialistId,
   );
-  const scheduleTz = resolveScheduleTimezone(schedule);
   if (!isWithinSchedule(startsAt, endsAt, schedule)) {
     throw new BookAppointmentError("Outside specialist working hours", 400);
   }
 
+  const scheduleTz = resolveScheduleTimezone(schedule);
   const repo = new AdminAppointmentRepository();
   const existing = await repo.list({ specialistId });
   const conflict = existing.some((a) => {
     if (a.status === "cancelled") return false;
+    if (a.clinicId && a.clinicId !== clinicId) return false;
     return startsAt < a.endsAt && a.startsAt < endsAt;
   });
   if (conflict) {
@@ -152,71 +158,34 @@ export async function bookAppointment(
     endsAt,
     notes,
     bookedById: actor.uid,
+    clinicId,
   });
 
-  // Side-effects: best-effort (saga). Booking row is source of truth.
-  let googleSynced = false;
-  try {
-    const patientTz = resolvePatientTimezone(patient.timezone);
-    const patientLocal = `${formatGoogleDateTime(appointment.startsAt, patientTz)}–${formatGoogleDateTime(appointment.endsAt, patientTz).slice(11)} (${patientTz})`;
-    const specialistLocal = `${formatGoogleDateTime(appointment.startsAt, scheduleTz)}–${formatGoogleDateTime(appointment.endsAt, scheduleTz).slice(11)} (${scheduleTz})`;
-    const event = await gcal.createAppointmentEvent({
-      specialistId,
-      appointmentId: appointment.id,
-      summary: `Thaydee Elena · ${patient.displayName}`,
-      description: [
-        notes?.trim() || null,
-        `Paciente: ${patientLocal}`,
-        `Especialista: ${specialistLocal}`,
-      ]
-        .filter(Boolean)
-        .join("\n"),
-      startsAt: appointment.startsAt,
-      endsAt: appointment.endsAt,
-      timeZone: scheduleTz,
-      attendeeEmail: patient.email,
-    });
-    if (event) {
-      googleSynced = true;
-      appointment = await repo.updateFields(appointment.id, {
-        googleEventId: event.eventId,
-        googleCalendarId: event.calendarId,
-        meetLink: event.meetLink,
-      });
-    }
-  } catch (err) {
-    logServer("error", "gcal_create_failed", {
-      requestId: cmd.requestId,
-      appointmentId: appointment.id,
-      message: err instanceof Error ? err.message : "unknown",
-    });
-  }
-
-  const specialistUser = await users.getById(specialistId);
-  const mailResult = await new MailService().sendAppointmentBooked({
-    to: patient.email,
-    patientName: patient.displayName,
-    specialistName: specialistUser?.displayName ?? specialist.specialty,
-    startsAt: appointment.startsAt,
-    endsAt: appointment.endsAt,
-    locale: patient.locale === "en" ? "en" : "es",
-    meetLink: appointment.meetLink,
+  await enqueueBookingSideEffects({
+    clinicId,
+    appointmentId: appointment.id,
   });
 
-  const mailSent =
-    mailResult.ok && !("skipped" in mailResult && mailResult.skipped);
+  // Inline drain for UX (Meet link / mail); cron retries leftovers.
+  await processOutboxBatch(10);
+  appointment = (await repo.getById(appointment.id)) ?? appointment;
+
+  const outbox = new AdminOutboxRepository();
+  const mailJob = await outbox.getById(`mail_${appointment.id}`);
+  const googleSynced = Boolean(appointment.googleEventId);
+  const mailSent = mailJob?.status === "done";
   const mailSkipped =
-    mailResult.ok && "skipped" in mailResult && mailResult.skipped
-      ? mailResult.reason
-      : null;
+    mailJob?.status === "pending" || mailJob?.status === "processing"
+      ? "queued"
+      : mailJob?.status === "dead"
+        ? mailJob.lastError
+        : null;
 
-  if (!mailResult.ok) {
-    logServer("error", "mail_booked_failed", {
-      requestId: cmd.requestId,
-      appointmentId: appointment.id,
-      error: mailResult.error,
-    });
-  }
-
-  return { appointment, googleSynced, mailSent, mailSkipped };
+  return {
+    appointment,
+    googleSynced,
+    mailSent,
+    mailSkipped,
+    outboxEnqueued: true,
+  };
 }

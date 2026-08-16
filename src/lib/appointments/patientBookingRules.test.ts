@@ -11,6 +11,7 @@ function appt(
 ): Appointment {
   return {
     patientId: "p1",
+    clinicId: "yelena",
     bookedById: null,
     notes: null,
     transfer: {

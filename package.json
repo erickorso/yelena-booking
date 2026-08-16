@@ -13,6 +13,7 @@
     "test:coverage": "vitest run --coverage",
     "test:e2e": "playwright test --project=chromium",
     "screenshots": "playwright test --project=screenshots",
+    "migrate": "node --env-file=.env.local scripts/migrations/run.mjs",
     "format": "prettier --write ."
   },
   "dependencies": {

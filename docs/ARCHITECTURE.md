@@ -13,27 +13,31 @@ UI (organisms) → BFF route handlers → application use-cases → services →
 - **Services** wrap single aggregates (appointments FSM, mail templates, uploads).
 - **Repositories** are the only place that touch Firestore Admin.
 
-## Consistency policy (side-effects)
+## Consistency policy (booking saga + outbox)
 
-Booking is intentionally a **saga**, not a distributed transaction:
+1. **Commit** appointment row in Firestore (source of truth) with `clinicId`.
+2. **Enqueue** `outboxJobs` (`appointment.google_sync`, `appointment.mail_booked`) with dedupe keys.
+3. **Inline drain** a few jobs for UX (Meet link), then **Vercel Cron** retries with exponential backoff → **dead letter** after max attempts.
+4. **Reconcile cron** re-queues confirmed appointments missing Google event / unfinished mail.
 
-1. **Commit** appointment row in Firestore (source of truth).
-2. **Best-effort** Google Calendar event + Meet.
-3. **Best-effort** Resend email.
+`POST /api/appointments` accepts **`Idempotency-Key`**: same key + body replays the stored response; different body → 409.
 
-If (2) or (3) fail, the API still returns `200` with `googleSynced` / `mailSent` flags so the UI can warn. Retry is idempotent enough for Calendar (keyed by appointment id in description/metadata) and mail is informational.
+Custom clinical fields use a **soft-delete → purge values → hard-remove** saga in the DELETE handler.
 
-Custom clinical fields use a **soft-delete → purge values → hard-remove** saga documented in the DELETE handler.
+## Multi-tenant (light)
+
+Default `clinicId = yelena`. Optional claim `clinicId` on the ID token; appointments are stamped and list endpoints filter by actor clinic. Migrations live in `scripts/migrations/` + `_meta/schemaVersion`.
 
 ## Capabilities (“acting as”)
 
-See `src/types/domain/capabilities.ts`. One Firebase user may be patient + specialist; checks use explicit capabilities (`book_self`, `book_on_behalf`, …) instead of ad-hoc role `if`s where possible.
+See `src/types/domain/capabilities.ts`. One Firebase user may be patient + specialist; checks use explicit capabilities (`book_self`, `book_on_behalf`, …).
 
 ## Observability
 
 - Every API response should echo `x-request-id`.
 - Server logs are single JSON lines (`logServer`) for Vercel drains.
 - `reportError` on the client is the hook point for Sentry (`SENTRY_DSN`).
+- Cron: `/api/cron/outbox` (*/5), `/api/cron/reconcile` (hourly) — `Authorization: Bearer CRON_SECRET`.
 
 ## Edge middleware
 

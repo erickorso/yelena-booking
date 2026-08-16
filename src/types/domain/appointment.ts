@@ -30,6 +30,8 @@ export interface Appointment {
   id: string;
   patientId: string;
   specialistId: string;
+  /** Multi-tenant light (default clinic when omitted in legacy docs). */
+  clinicId: string;
   /** Who created the booking (patient self-serve or specialist/admin on behalf). */
   bookedById: string | null;
   startsAt: Date;

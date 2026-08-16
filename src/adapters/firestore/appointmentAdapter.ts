@@ -10,6 +10,7 @@ import { optionalString, requireString, toDate } from "./helpers";
 export interface AppointmentDoc {
   patientId?: unknown;
   specialistId?: unknown;
+  clinicId?: unknown;
   bookedById?: unknown;
   startsAt?: unknown;
   endsAt?: unknown;
@@ -88,6 +89,10 @@ export function adaptAppointment(
     id,
     patientId: requireString(data.patientId, "patientId"),
     specialistId: requireString(data.specialistId, "specialistId"),
+    clinicId:
+      typeof data.clinicId === "string" && data.clinicId.trim()
+        ? data.clinicId.trim()
+        : "yelena",
     bookedById: optionalString(data.bookedById),
     startsAt: toDate(data.startsAt),
     endsAt: toDate(data.endsAt),

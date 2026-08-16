@@ -53,6 +53,7 @@ describe("requireAuth", () => {
     if (!isAuthError(ok)) {
       expect(ok.uid).toBe("u1");
       expect(ok.role).toBe("paciente");
+      expect(ok.clinicId).toBe("yelena");
     }
 
     const denied = await requireAuth(

@@ -81,11 +81,13 @@ flowchart LR
 
 ### Consistency (booking saga)
 
-1. **Commit** appointment in Firestore (source of truth).
-2. **Best-effort** Google Calendar + Meet.
-3. **Best-effort** confirmation email.
+1. **Commit** appointment in Firestore (`clinicId` stamped).
+2. **Outbox** jobs for Google Calendar + Resend (deduped; retry / dead-letter via cron).
+3. Inline drain for UX; leftovers → `/api/cron/outbox` + `/api/cron/reconcile`.
 
-API returns `200` with `googleSynced` / `mailSent` flags when side-effects fail — no fake distributed transaction.
+`Idempotency-Key` on `POST /api/appointments` replays safe responses. Details: [`docs/ARCHITECTURE.md`](./docs/ARCHITECTURE.md).
+
+API returns `googleSynced` / `mailSent` / `outboxEnqueued` so the UI can warn without faking a distributed transaction.
 
 ### Layers (folder map)
 
@@ -119,6 +121,8 @@ erDiagram
   users ||--o| patientClinicalHistories : chart
   users ||--o{ appointments : books
   specialists ||--o{ appointments : hosts
+  appointments ||--o{ outboxJobs : side_effects
+  users ||--o{ idempotencyKeys : booking_keys
   specialists ||--o| availabilitySchedules : schedule
   specialists ||--o| googleCalendarConnections : oauth
   specialists ||--o| specialistClinicalFieldSchemas : schema
@@ -153,6 +157,7 @@ erDiagram
     string id PK
     string patientId FK
     string specialistId FK
+    string clinicId
     string bookedById
     timestamp startsAt
     timestamp endsAt
@@ -160,6 +165,23 @@ erDiagram
     map transfer
     string meetLink
     string googleEventId
+  }
+  outboxJobs {
+    string id PK
+    string clinicId
+    string type
+    string appointmentId FK
+    string status
+    number attempts
+    timestamp nextRunAt
+  }
+  idempotencyKeys {
+    string id PK
+    string uid FK
+    string clinicId
+    string requestHash
+    string status
+    string appointmentId
   }
   availabilitySchedules {
     string specialistId PK
@@ -216,7 +238,9 @@ erDiagram
 | `users` | Auth uid | `email`, `displayName`, `role`, `locale`, `timezone`, `patientNumber` (TE code) |
 | `specialists` | usually = uid | `userId`, `specialty`, `bio`, `location`, `status` (`pending`\|`active`\|`rejected`), `licenseNumber`, `timezone` |
 | `specialties` | auto | Catalog labels for the directory / promote flow |
-| `appointments` | auto | `patientId`, `specialistId`, `bookedById`, `startsAt`/`endsAt`, `status` FSM, `notes`, `transfer{}`, `googleEventId`, `meetLink`, reschedule links |
+| `appointments` | auto | `patientId`, `specialistId`, `clinicId`, `bookedById`, `startsAt`/`endsAt`, `status` FSM, `notes`, `transfer{}`, `googleEventId`, `meetLink`, reschedule links |
+| `outboxJobs` | dedupe key | Side-effect queue: `type`, `appointmentId`, `status` pending→processing→done\|dead, `attempts`, `nextRunAt` |
+| `idempotencyKeys` | hash(uid+key) | `Idempotency-Key` store: request hash + cached response |
 | `availabilitySchedules` | specialist uid | `workdays`, `ranges[]`, `timezone`, `slotMinutes` |
 | `googleCalendarConnections` | specialist uid | OAuth tokens / calendar id (server-only) |
 | `patientClinicalHistories` | patient uid | Demographics + allergies/meds/… + `customValues` / `customValuesMeta` keyed by field id |
@@ -292,7 +316,7 @@ Open [http://localhost:3000/es](http://localhost:3000/es). Create users in Fireb
 
 - `NEXT_PUBLIC_FIREBASE_*` + `FIREBASE_ADMIN_*` (service account)
 - `BLOB_READ_WRITE_TOKEN` (+ store id if used)
-- Optional: `GOOGLE_CLIENT_ID` / `GOOGLE_CLIENT_SECRET`, Resend keys, `SENTRY_DSN`
+- Optional: `GOOGLE_CLIENT_ID` / `GOOGLE_CLIENT_SECRET`, Resend keys, `SENTRY_DSN`, `CRON_SECRET`
 
 Paste [`firestore.rules`](./firestore.rules) into the Firebase console. Google OAuth redirect: `https://<host>/api/integrations/google/callback` (and localhost in dev).
 
@@ -309,6 +333,7 @@ Paste [`firestore.rules`](./firestore.rules) into the Firebase console. Google O
 | `npm test` / `test:coverage` | Vitest (+ gate) |
 | `npm run test:e2e` | Playwright (chromium smoke) |
 | `npm run screenshots` | Regenerate README images |
+| `npm run migrate` | Run Firestore migrations (`_meta/schemaVersion`) |
 
 ---
 

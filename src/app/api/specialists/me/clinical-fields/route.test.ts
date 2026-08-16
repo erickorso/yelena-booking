@@ -50,6 +50,7 @@ describe("GET/POST /api/specialists/me/clinical-fields", () => {
       uid: "spec1",
       role: "especialista",
       email: "s@x.com",
+      clinicId: "yelena",
     });
     list.mockResolvedValue([
       {
@@ -82,6 +83,7 @@ describe("GET/POST /api/specialists/me/clinical-fields", () => {
       uid: "spec1",
       role: "especialista",
       email: "s@x.com",
+      clinicId: "yelena",
     });
     addField.mockResolvedValue({
       id: "f2",

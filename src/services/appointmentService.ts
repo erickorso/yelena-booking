@@ -69,6 +69,7 @@ export class AppointmentService {
       notes: current.notes,
       bookedById,
       rescheduledFromId: cancelledId,
+      clinicId: current.clinicId,
     });
     const ghost = await this.appointments.updateFields(cancelledId, {
       rescheduledToId: appointment.id,

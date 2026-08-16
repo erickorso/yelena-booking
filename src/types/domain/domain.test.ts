@@ -25,6 +25,7 @@ function sampleAppointment(
     id: "a1",
     patientId: "p1",
     specialistId: "s1",
+    clinicId: "yelena",
     bookedById: "s1",
     startsAt,
     endsAt: new Date(startsAt.getTime() + 30 * 60_000),

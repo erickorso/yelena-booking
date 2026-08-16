@@ -17,6 +17,7 @@ describe("adaptAppointment", () => {
     expect(appointment.id).toBe("a1");
     expect(appointment.status).toBe("pending");
     expect(appointment.bookedById).toBeNull();
+    expect(appointment.clinicId).toBe("yelena");
     expect(appointment.transfer.status).toBe("none");
     expect(appointment.meetLink).toBeNull();
     expect(appointment.googleEventId).toBeNull();

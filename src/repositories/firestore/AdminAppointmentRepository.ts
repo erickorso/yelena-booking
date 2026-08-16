@@ -55,6 +55,7 @@ export class AdminAppointmentRepository implements IAppointmentRepository {
     await ref.set({
       patientId: input.patientId,
       specialistId: input.specialistId,
+      clinicId: input.clinicId ?? "yelena",
       bookedById: input.bookedById ?? null,
       startsAt: input.startsAt,
       endsAt: input.endsAt,

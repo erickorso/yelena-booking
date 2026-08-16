@@ -14,6 +14,10 @@ import {
   readJsonBody,
   zodErrorResponse,
 } from "@/lib/http/apiResponse";
+import {
+  AdminIdempotencyRepository,
+  hashIdempotencyRequest,
+} from "@/repositories/firestore/AdminIdempotencyRepository";
 
 /**
  * GET /api/appointments?as=patient|specialist
@@ -33,10 +37,18 @@ export async function GET(request: Request) {
       const patientId = url.searchParams.get("patientId")?.trim();
       if (patientId) {
         const list = await service.list({ patientId });
-        return jsonOk(ctx, { appointments: list.map(serializeAppointment) });
+        return jsonOk(ctx, {
+          appointments: list
+            .filter((a) => a.clinicId === auth.clinicId)
+            .map(serializeAppointment),
+        });
       }
       const list = await service.list({ specialistId: auth.uid });
-      return jsonOk(ctx, { appointments: list.map(serializeAppointment) });
+      return jsonOk(ctx, {
+        appointments: list
+          .filter((a) => a.clinicId === auth.clinicId)
+          .map(serializeAppointment),
+      });
     }
 
     if (auth.role !== "paciente" && auth.role !== "especialista" && auth.role !== "admin") {
@@ -44,7 +56,11 @@ export async function GET(request: Request) {
     }
 
     const list = await service.list({ patientId: auth.uid });
-    return jsonOk(ctx, { appointments: list.map(serializeAppointment) });
+    return jsonOk(ctx, {
+      appointments: list
+        .filter((a) => a.clinicId === auth.clinicId)
+        .map(serializeAppointment),
+    });
   } catch (error) {
     const message =
       error instanceof Error ? error.message : "Failed to list appointments";
@@ -53,7 +69,7 @@ export async function GET(request: Request) {
 }
 
 /**
- * POST /api/appointments — thin BFF over bookAppointment use-case.
+ * POST /api/appointments — idempotent booking (Idempotency-Key) + outbox side-effects.
  */
 export async function POST(request: Request) {
   const ctx = beginApiRequest(request);
@@ -72,9 +88,50 @@ export async function POST(request: Request) {
     return jsonError(ctx, 400, "Invalid dates");
   }
 
+  const idempotencyKey = request.headers.get("idempotency-key")?.trim() || null;
+  const idem = new AdminIdempotencyRepository();
+  const requestHash = hashIdempotencyRequest(parsed.data);
+
+  if (idempotencyKey) {
+    if (idempotencyKey.length > 128) {
+      return jsonError(ctx, 400, "Idempotency-Key too long");
+    }
+    const existing = await idem.get(auth.uid, idempotencyKey);
+    if (existing?.status === "completed" && existing.response) {
+      if (existing.requestHash !== requestHash) {
+        return jsonError(ctx, 409, "Idempotency-Key reuse with different body");
+      }
+      return jsonOk(ctx, existing.response as Record<string, unknown>);
+    }
+    if (existing?.status === "pending") {
+      return jsonError(ctx, 409, "Booking already in progress for this key", {
+        code: "idempotency_in_progress",
+      });
+    }
+    const began = await idem.begin({
+      uid: auth.uid,
+      key: idempotencyKey,
+      clinicId: auth.clinicId,
+      requestHash,
+    });
+    if (began === "exists") {
+      const again = await idem.get(auth.uid, idempotencyKey);
+      if (again?.status === "completed" && again.response) {
+        return jsonOk(ctx, again.response as Record<string, unknown>);
+      }
+      return jsonError(ctx, 409, "Booking already in progress for this key", {
+        code: "idempotency_in_progress",
+      });
+    }
+  }
+
   try {
     const result = await bookAppointment({
-      actor: { uid: auth.uid, role: auth.role },
+      actor: {
+        uid: auth.uid,
+        role: auth.role,
+        clinicId: auth.clinicId,
+      },
       patientId: parsed.data.patientId,
       specialistId: parsed.data.specialistId,
       startsAt,
@@ -82,13 +139,18 @@ export async function POST(request: Request) {
       notes: parsed.data.notes ?? null,
       requestId: ctx.requestId,
     });
-    return jsonOk(ctx, {
-      ok: true,
+    const body = {
+      ok: true as const,
       googleSynced: result.googleSynced,
       mailSent: result.mailSent,
       mailSkipped: result.mailSkipped,
+      outboxEnqueued: result.outboxEnqueued,
       appointment: serializeAppointment(result.appointment),
-    });
+    };
+    if (idempotencyKey) {
+      await idem.complete(auth.uid, idempotencyKey, result.appointment.id, body);
+    }
+    return jsonOk(ctx, body);
   } catch (error) {
     if (error instanceof BookAppointmentError) {
       return jsonError(ctx, error.status, error.message, {

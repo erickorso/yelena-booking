@@ -6,6 +6,7 @@ export function serializeAppointment(appointment: Appointment) {
     id: appointment.id,
     patientId: appointment.patientId,
     specialistId: appointment.specialistId,
+    clinicId: appointment.clinicId,
     bookedById: appointment.bookedById,
     startsAt: appointment.startsAt.toISOString(),
     endsAt: appointment.endsAt.toISOString(),

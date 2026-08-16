@@ -2,11 +2,13 @@ import "server-only";
 
 import { getAdminAuth, isFirebaseAdminConfigured } from "@/lib/firebase/admin";
 import { isAuthRole, type AuthRole } from "@/types/domain";
+import { resolveClinicId } from "@/lib/clinic/constants";
 
 export type AuthedUser = {
   uid: string;
   role: AuthRole;
   email: string | null;
+  clinicId: string;
 };
 
 /**
@@ -49,6 +51,9 @@ export async function requireAuth(
       uid: decoded.uid,
       role,
       email: typeof decoded.email === "string" ? decoded.email : null,
+      clinicId: resolveClinicId(
+        typeof decoded.clinicId === "string" ? decoded.clinicId : null,
+      ),
     };
   } catch (error) {
     const message =

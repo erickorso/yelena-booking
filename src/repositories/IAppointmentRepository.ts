@@ -8,6 +8,7 @@ export interface CreateAppointmentInput {
   notes?: string | null;
   bookedById?: string | null;
   rescheduledFromId?: string | null;
+  clinicId?: string;
 }
 
 export interface AppointmentFilters {
