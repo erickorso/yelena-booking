@@ -72,6 +72,7 @@ type WeekCalendarProps = {
     legendGoogle?: string;
     legendGhost?: string;
     legendPatientOther?: string;
+    ghostBadge?: string;
   };
 };
 
@@ -603,7 +604,12 @@ export function WeekCalendar({
                       )}
                       style={{ top, height }}
                     >
-                      <span className="font-medium">{ev.title}</span>
+                      <span className="block truncate font-medium">{ev.title}</span>
+                      {isGhost && labels.ghostBadge ? (
+                        <span className="block truncate text-[10px] opacity-80">
+                          {labels.ghostBadge}
+                        </span>
+                      ) : null}
                     </div>
                   );
                 })}

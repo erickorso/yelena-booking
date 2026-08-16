@@ -3,6 +3,7 @@
 import { useCallback, useEffect, useState } from "react";
 import { useTranslations } from "next-intl";
 import { Button } from "@/components/atoms/Button";
+import { ListSkeleton } from "@/components/atoms/Skeleton";
 import { useAuth } from "@/components/providers/AuthProvider";
 import { getIdToken } from "@/services/authService";
 
@@ -118,7 +119,9 @@ export function AdminSpecialistQueue() {
         </p>
       ) : null}
 
-      {items.length === 0 ? (
+      {loading ? (
+        <ListSkeleton rows={3} />
+      ) : items.length === 0 ? (
         <p className="text-sm text-stone-600 dark:text-slate-300">{t("empty")}</p>
       ) : (
         <ul className="space-y-4">

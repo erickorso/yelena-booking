@@ -3,6 +3,8 @@
 import { useEffect, useState } from "react";
 import { useTranslations } from "next-intl";
 import { Button } from "@/components/atoms/Button";
+import { FormSkeleton } from "@/components/atoms/Skeleton";
+import { CollapsibleSection } from "@/components/molecules/CollapsibleSection";
 import { useAuth } from "@/components/providers/AuthProvider";
 import { useToast } from "@/components/providers/ToastProvider";
 import { getIdToken } from "@/services/authService";
@@ -148,23 +150,28 @@ export function SpecialistScheduleForm({ onSaved }: SpecialistScheduleFormProps)
 
   if (loading) {
     return (
-      <p className="text-sm text-stone-600 dark:text-slate-300">{t("loading")}</p>
+      <CollapsibleSection
+        title={t("title")}
+        subtitle={t("subtitle")}
+        defaultOpen
+        loading
+        skeleton={<FormSkeleton />}
+      >
+        {null}
+      </CollapsibleSection>
     );
   }
 
   return (
+    <CollapsibleSection
+      title={t("title")}
+      subtitle={t("subtitle")}
+      defaultOpen
+    >
     <form
       onSubmit={(e) => void onSave(e)}
-      className="space-y-4 rounded-md border border-stone-200 p-4 dark:border-slate-700"
+      className="space-y-4"
     >
-      <div>
-        <h2 className="font-serif text-xl text-teal-800 dark:text-teal-300">
-          {t("title")}
-        </h2>
-        <p className="mt-1 text-sm text-stone-600 dark:text-slate-300">
-          {t("subtitle")}
-        </p>
-      </div>
 
       <fieldset>
         <legend className="text-sm font-medium text-stone-800 dark:text-slate-100">
@@ -287,5 +294,6 @@ export function SpecialistScheduleForm({ onSaved }: SpecialistScheduleFormProps)
         {saving ? t("saving") : t("save")}
       </Button>
     </form>
+    </CollapsibleSection>
   );
 }

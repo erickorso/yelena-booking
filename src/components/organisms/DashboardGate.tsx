@@ -6,6 +6,7 @@ import { useRequireAuth } from "@/hooks/useRequireAuth";
 import { useRouter } from "@/i18n/navigation";
 import type { AuthRole } from "@/types/domain";
 import { Button } from "@/components/atoms/Button";
+import { PanelSkeleton } from "@/components/atoms/Skeleton";
 import { ProfilePhotoControl } from "@/components/molecules/ProfilePhotoControl";
 
 type DashboardGateProps = {
@@ -35,9 +36,7 @@ export function DashboardGate({ allowed, title, children }: DashboardGateProps) 
   }, [isLoading, status, role, router]);
 
   if (isLoading || status === "anonymous") {
-    return (
-      <p className="text-sm text-stone-600 dark:text-slate-300">{t("loading")}</p>
-    );
+    return <PanelSkeleton />;
   }
 
   if (!isAllowed) {

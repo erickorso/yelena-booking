@@ -183,6 +183,7 @@
     "calLegendPatientOther": "Otra cita del paciente",
     "calGoogleBusy": "Google Calendar",
     "ghostPrefix": "Cancelada ·",
+    "ghostBadge": "Cancelada",
     "patientTimezone": "Zona horaria del paciente",
     "patientTimezoneHint": "Las citas se muestran y reservan en esta zona. Tú las verás convertidas a la tuya.",
     "timezoneSaveSuccess": "Zona horaria actualizada.",

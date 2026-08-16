@@ -183,6 +183,7 @@
     "calLegendPatientOther": "Patient's other appointment",
     "calGoogleBusy": "Google Calendar",
     "ghostPrefix": "Cancelled ·",
+    "ghostBadge": "Cancelled",
     "patientTimezone": "Patient timezone",
     "patientTimezoneHint": "Bookings are shown in this zone. You will see them converted to yours.",
     "timezoneSaveSuccess": "Timezone updated.",

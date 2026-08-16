@@ -8,11 +8,13 @@ import { PromoteToSpecialistForm } from "@/components/organisms/PromoteToSpecial
 import { BookSelfAppointmentForm } from "@/components/organisms/BookSelfAppointmentForm";
 import { ClinicalHistoryForm } from "@/components/organisms/ClinicalHistoryForm";
 import { MedicalFilesPanel } from "@/components/organisms/MedicalFilesPanel";
+import { AsyncBoundary } from "@/components/molecules/AsyncBoundary";
 import { PanelTabs } from "@/components/molecules/PanelTabs";
 import { MarketingShell } from "@/components/templates/MarketingShell";
 import { Link } from "@/i18n/navigation";
 import { useAuth } from "@/components/providers/AuthProvider";
 import { buttonVariants, Button } from "@/components/atoms/Button";
+import { PanelSkeleton } from "@/components/atoms/Skeleton";
 import { getIdToken } from "@/services/authService";
 import { clsx } from "clsx";
 
@@ -99,13 +101,23 @@ function PatientDashboardInner() {
       ) : null}
 
       <PanelTabs tabs={tabs} activeId={tab} onChange={setTab}>
-        {tab === "booking" ? <BookSelfAppointmentForm /> : null}
-        {tab === "history" ? (
-          <ClinicalHistoryForm
-            onSaved={(incomplete) => setHistoryIncomplete(incomplete)}
-          />
+        {tab === "booking" ? (
+          <AsyncBoundary>
+            <BookSelfAppointmentForm />
+          </AsyncBoundary>
         ) : null}
-        {tab === "files" ? <MedicalFilesPanel mode="patient_chart" /> : null}
+        {tab === "history" ? (
+          <AsyncBoundary>
+            <ClinicalHistoryForm
+              onSaved={(incomplete) => setHistoryIncomplete(incomplete)}
+            />
+          </AsyncBoundary>
+        ) : null}
+        {tab === "files" ? (
+          <AsyncBoundary>
+            <MedicalFilesPanel mode="patient_chart" />
+          </AsyncBoundary>
+        ) : null}
         {tab === "promote" && role === "paciente" ? (
           <PromoteToSpecialistForm />
         ) : null}
@@ -117,7 +129,7 @@ function PatientDashboardInner() {
 export default function PatientDashboardPage() {
   return (
     <MarketingShell>
-      <Suspense fallback={null}>
+      <Suspense fallback={<PanelSkeleton />}>
         <PatientDashboardInner />
       </Suspense>
     </MarketingShell>

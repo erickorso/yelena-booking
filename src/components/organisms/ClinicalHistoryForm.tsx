@@ -4,6 +4,8 @@ import { useEffect, useState } from "react";
 import { useTranslations } from "next-intl";
 import { Button } from "@/components/atoms/Button";
 import { Input } from "@/components/atoms/Input";
+import { FormSkeleton } from "@/components/atoms/Skeleton";
+import { CollapsibleSection } from "@/components/molecules/CollapsibleSection";
 import { useAuth } from "@/components/providers/AuthProvider";
 import { useToast } from "@/components/providers/ToastProvider";
 import { getIdToken } from "@/services/authService";
@@ -52,15 +54,18 @@ type ClinicalHistoryFormProps = {
   /** Specialist editing another patient's chart. */
   readOnly?: boolean;
   onSaved?: (incomplete: boolean) => void;
+  /** Outer panel starts collapsed. */
+  defaultOpen?: boolean;
 };
 
 /**
- * Standard clinical history form (demographics + antecedents).
+ * Standard clinical history form (demographics + antecedents), collapsible.
  */
 export function ClinicalHistoryForm({
   patientId: patientIdProp,
   readOnly = false,
   onSaved,
+  defaultOpen = true,
 }: ClinicalHistoryFormProps) {
   const t = useTranslations("ClinicalHistory");
   const { user } = useAuth();
@@ -173,141 +178,138 @@ export function ClinicalHistoryForm({
     }
   }
 
-  if (loading) {
-    return (
-      <p className="text-sm text-stone-600 dark:text-slate-300">{t("loading")}</p>
-    );
-  }
+  const meta = updatedAt
+    ? t("lastUpdated", { date: new Date(updatedAt).toLocaleString() })
+    : null;
 
   return (
-    <form
-      onSubmit={(e) => void onSubmit(e)}
-      className="space-y-6"
-      noValidate
+    <CollapsibleSection
+      title={t("title")}
+      subtitle={t("subtitle")}
+      meta={meta}
+      defaultOpen={defaultOpen}
+      loading={loading}
+      skeleton={<FormSkeleton />}
     >
-      <div>
-        <h2 className="font-serif text-xl text-teal-800 dark:text-teal-300">
-          {t("title")}
-        </h2>
-        <p className="mt-1 text-sm text-stone-600 dark:text-slate-300">
-          {t("subtitle")}
-        </p>
-        {updatedAt ? (
-          <p className="mt-1 text-xs text-stone-500 dark:text-slate-400">
-            {t("lastUpdated", {
-              date: new Date(updatedAt).toLocaleString(),
-            })}
-          </p>
-        ) : null}
-      </div>
-
-      <fieldset className="space-y-3" disabled={readOnly}>
-        <legend className="text-sm font-medium text-stone-800 dark:text-slate-100">
-          {t("sectionDemographics")}
-        </legend>
-        <div className="grid gap-3 sm:grid-cols-2">
-          <Input
-            label={t("birthDate")}
-            name="birthDate"
-            type="date"
-            value={form.birthDate}
-            onChange={(e) => patch("birthDate", e.target.value)}
-          />
-          <label className="flex flex-col gap-1.5 text-sm text-stone-800 dark:text-slate-100">
-            <span className="font-medium">{t("sex")}</span>
-            <select
-              name="sex"
-              value={form.sex}
-              onChange={(e) =>
-                patch("sex", e.target.value as PatientSex | "")
-              }
-              className="h-10 rounded-md border border-stone-300 bg-white px-3 dark:border-slate-600 dark:bg-slate-900"
-            >
-              <option value="">{t("sexUnspecified")}</option>
-              {PATIENT_SEX_OPTIONS.filter((s) => s !== "unspecified").map(
-                (s) => (
-                  <option key={s} value={s}>
-                    {t(`sex_${s}`)}
-                  </option>
-                ),
-              )}
-            </select>
-          </label>
-          <Input
-            label={t("phone")}
-            name="phone"
-            type="tel"
-            value={form.phone}
-            onChange={(e) => patch("phone", e.target.value)}
-          />
-          <Input
-            label={t("bloodType")}
-            name="bloodType"
-            value={form.bloodType}
-            onChange={(e) => patch("bloodType", e.target.value)}
-            placeholder={t("bloodTypePlaceholder")}
-          />
-        </div>
-        <Input
-          label={t("address")}
-          name="address"
-          value={form.address}
-          onChange={(e) => patch("address", e.target.value)}
-        />
-        <div className="grid gap-3 sm:grid-cols-2">
-          <Input
-            label={t("emergencyName")}
-            name="emergencyContactName"
-            value={form.emergencyContactName}
-            onChange={(e) => patch("emergencyContactName", e.target.value)}
-          />
-          <Input
-            label={t("emergencyPhone")}
-            name="emergencyContactPhone"
-            type="tel"
-            value={form.emergencyContactPhone}
-            onChange={(e) => patch("emergencyContactPhone", e.target.value)}
-          />
-        </div>
-      </fieldset>
-
-      <fieldset className="space-y-3" disabled={readOnly}>
-        <legend className="text-sm font-medium text-stone-800 dark:text-slate-100">
-          {t("sectionClinical")}
-        </legend>
-        {(
-          [
-            ["allergies", "allergies"],
-            ["chronicConditions", "chronicConditions"],
-            ["currentMedications", "currentMedications"],
-            ["surgicalHistory", "surgicalHistory"],
-            ["familyHistory", "familyHistory"],
-            ["habits", "habits"],
-            ["generalNotes", "generalNotes"],
-          ] as const
-        ).map(([key, labelKey]) => (
-          <label
-            key={key}
-            className="flex flex-col gap-1.5 text-sm text-stone-800 dark:text-slate-100"
-          >
-            <span className="font-medium">{t(labelKey)}</span>
-            <textarea
-              name={key}
-              rows={3}
-              value={form[key]}
-              onChange={(e) => patch(key, e.target.value)}
-              placeholder={t(`${labelKey}Hint`)}
-              className="rounded-md border border-stone-300 bg-white px-3 py-2 dark:border-slate-600 dark:bg-slate-900"
+      <form
+        onSubmit={(e) => void onSubmit(e)}
+        className="space-y-4"
+        noValidate
+      >
+        <CollapsibleSection
+          nested
+          title={t("sectionDemographics")}
+          defaultOpen
+        >
+          <fieldset className="space-y-3" disabled={readOnly}>
+            <div className="grid gap-3 sm:grid-cols-2">
+              <Input
+                label={t("birthDate")}
+                name="birthDate"
+                type="date"
+                value={form.birthDate}
+                onChange={(e) => patch("birthDate", e.target.value)}
+              />
+              <label className="flex flex-col gap-1.5 text-sm text-stone-800 dark:text-slate-100">
+                <span className="font-medium">{t("sex")}</span>
+                <select
+                  name="sex"
+                  value={form.sex}
+                  onChange={(e) =>
+                    patch("sex", e.target.value as PatientSex | "")
+                  }
+                  className="h-10 rounded-md border border-stone-300 bg-white px-3 dark:border-slate-600 dark:bg-slate-900"
+                >
+                  <option value="">{t("sexUnspecified")}</option>
+                  {PATIENT_SEX_OPTIONS.filter((s) => s !== "unspecified").map(
+                    (s) => (
+                      <option key={s} value={s}>
+                        {t(`sex_${s}`)}
+                      </option>
+                    ),
+                  )}
+                </select>
+              </label>
+              <Input
+                label={t("phone")}
+                name="phone"
+                type="tel"
+                value={form.phone}
+                onChange={(e) => patch("phone", e.target.value)}
+              />
+              <Input
+                label={t("bloodType")}
+                name="bloodType"
+                value={form.bloodType}
+                onChange={(e) => patch("bloodType", e.target.value)}
+                placeholder={t("bloodTypePlaceholder")}
+              />
+            </div>
+            <Input
+              label={t("address")}
+              name="address"
+              value={form.address}
+              onChange={(e) => patch("address", e.target.value)}
             />
-          </label>
-        ))}
-      </fieldset>
+            <div className="grid gap-3 sm:grid-cols-2">
+              <Input
+                label={t("emergencyName")}
+                name="emergencyContactName"
+                value={form.emergencyContactName}
+                onChange={(e) => patch("emergencyContactName", e.target.value)}
+              />
+              <Input
+                label={t("emergencyPhone")}
+                name="emergencyContactPhone"
+                type="tel"
+                value={form.emergencyContactPhone}
+                onChange={(e) => patch("emergencyContactPhone", e.target.value)}
+              />
+            </div>
+          </fieldset>
+        </CollapsibleSection>
 
-      {!readOnly ? (
-        <Button type="submit" disabled={saving}>
-          {saving ? t("saving") : t("save")}
-        </Button>
-      ) : null}
-    </form>
+        <CollapsibleSection
+          nested
+          title={t("sectionClinical")}
+          defaultOpen={false}
+        >
+          <fieldset className="space-y-3" disabled={readOnly}>
+            {(
+              [
+                ["allergies", "allergies"],
+                ["chronicConditions", "chronicConditions"],
+                ["currentMedications", "currentMedications"],
+                ["surgicalHistory", "surgicalHistory"],
+                ["familyHistory", "familyHistory"],
+                ["habits", "habits"],
+                ["generalNotes", "generalNotes"],
+              ] as const
+            ).map(([key, labelKey]) => (
+              <label
+                key={key}
+                className="flex flex-col gap-1.5 text-sm text-stone-800 dark:text-slate-100"
+              >
+                <span className="font-medium">{t(labelKey)}</span>
+                <textarea
+                  name={key}
+                  rows={3}
+                  value={form[key]}
+                  onChange={(e) => patch(key, e.target.value)}
+                  placeholder={t(`${labelKey}Hint`)}
+                  className="rounded-md border border-stone-300 bg-white px-3 py-2 dark:border-slate-600 dark:bg-slate-900"
+                />
+              </label>
+            ))}
+          </fieldset>
+        </CollapsibleSection>
+
+        {!readOnly ? (
+          <Button type="submit" disabled={saving}>
+            {saving ? t("saving") : t("save")}
+          </Button>
+        ) : null}
+      </form>
+    </CollapsibleSection>
   );
 }

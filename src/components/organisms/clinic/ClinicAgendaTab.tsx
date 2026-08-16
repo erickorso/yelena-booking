@@ -310,7 +310,7 @@ export function ClinicAgendaTab({
             patientId: a.patientId,
             startsAt: new Date(a.startsAt),
             endsAt: new Date(a.endsAt),
-            title: a.status === "cancelled" ? `${t("ghostPrefix")} ${name}` : name,
+            title: name,
             status: a.status,
             source: "yelena" as const,
           };
@@ -365,6 +365,7 @@ export function ClinicAgendaTab({
           legendGoogle: t("calLegendGoogle"),
           legendGhost: t("calLegendGhost"),
           legendPatientOther: t("calLegendPatientOther"),
+          ghostBadge: t("ghostBadge"),
         }}
       />
       {!rescheduleId ? (

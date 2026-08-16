@@ -4,6 +4,7 @@ import { useEffect, useState } from "react";
 import { useTranslations } from "next-intl";
 import { Link } from "@/i18n/navigation";
 import { buttonVariants } from "@/components/atoms/Button";
+import { ListSkeleton } from "@/components/atoms/Skeleton";
 import { clsx } from "clsx";
 
 type DirectorySpecialist = {
@@ -56,7 +57,7 @@ export function SpecialistDirectory() {
   }, [t]);
 
   if (loading) {
-    return <p className="text-sm text-stone-600 dark:text-slate-300">{t("loading")}</p>;
+    return <ListSkeleton rows={4} />;
   }
 
   if (error) {

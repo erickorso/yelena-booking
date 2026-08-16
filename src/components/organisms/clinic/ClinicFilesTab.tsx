@@ -2,6 +2,8 @@
 
 import { useTranslations } from "next-intl";
 import { SearchableSelect } from "@/components/molecules/SearchableSelect";
+import { AsyncBoundary } from "@/components/molecules/AsyncBoundary";
+import { CollapsibleSection } from "@/components/molecules/CollapsibleSection";
 import { ClinicalHistoryForm } from "@/components/organisms/ClinicalHistoryForm";
 import { MedicalFilesPanel } from "@/components/organisms/MedicalFilesPanel";
 import type { ClinicPatientOption } from "@/components/organisms/clinic/clinicTypes";
@@ -25,16 +27,12 @@ export function ClinicFilesTab({
   const selected = patients.find((p) => p.id === patientId);
 
   return (
-    <div className="space-y-8">
-      <section className="space-y-3 rounded-md border border-stone-200 p-4 dark:border-slate-700">
-        <div>
-          <h2 className="font-serif text-xl text-teal-800 dark:text-teal-300">
-            {t("filesTitle")}
-          </h2>
-          <p className="mt-1 text-sm text-stone-600 dark:text-slate-300">
-            {t("filesSubtitle")}
-          </p>
-        </div>
+    <div className="space-y-4">
+      <CollapsibleSection
+        title={t("filesTitle")}
+        subtitle={t("filesSubtitle")}
+        defaultOpen
+      >
         <SearchableSelect
           label={t("patient")}
           placeholder={t("patientPlaceholder")}
@@ -57,23 +55,20 @@ export function ClinicFilesTab({
             {t("filesPickPatient")}
           </p>
         )}
-      </section>
+      </CollapsibleSection>
 
       {patientId ? (
-        <>
-          <ClinicalHistoryForm patientId={patientId} />
-          <MedicalFilesPanel mode="patient_chart" patientId={patientId} />
-        </>
+        <AsyncBoundary>
+          <div className="space-y-4">
+            <ClinicalHistoryForm patientId={patientId} />
+            <MedicalFilesPanel mode="patient_chart" patientId={patientId} />
+          </div>
+        </AsyncBoundary>
       ) : null}
 
-      <details className="rounded-md border border-stone-200 p-4 dark:border-slate-700">
-        <summary className="cursor-pointer text-sm font-medium text-stone-800 dark:text-slate-100">
-          {t("filesLibraryToggle")}
-        </summary>
-        <div className="mt-4">
-          <MedicalFilesPanel mode="specialist_library" />
-        </div>
-      </details>
+      <AsyncBoundary>
+        <MedicalFilesPanel mode="specialist_library" />
+      </AsyncBoundary>
     </div>
   );
 }

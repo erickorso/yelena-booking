@@ -4,6 +4,8 @@ import { useEffect, useMemo, useState } from "react";
 import { useTranslations } from "next-intl";
 import { Button } from "@/components/atoms/Button";
 import { Input } from "@/components/atoms/Input";
+import { ListSkeleton } from "@/components/atoms/Skeleton";
+import { CollapsibleSection } from "@/components/molecules/CollapsibleSection";
 import { SearchableSelect } from "@/components/molecules/SearchableSelect";
 import { useAuth } from "@/components/providers/AuthProvider";
 import { useToast } from "@/components/providers/ToastProvider";
@@ -282,16 +284,11 @@ export function MedicalFilesPanel({
   }
 
   return (
-    <section className="space-y-4 rounded-md border border-stone-200 p-4 dark:border-slate-700">
-      <div>
-        <h2 className="font-serif text-xl text-teal-800 dark:text-teal-300">
-          {mode === "specialist_library" ? t("libraryTitle") : t("chartTitle")}
-        </h2>
-        <p className="mt-1 text-sm text-stone-600 dark:text-slate-300">
-          {t("subtitle")}
-        </p>
-      </div>
-
+    <CollapsibleSection
+      title={mode === "specialist_library" ? t("libraryTitle") : t("chartTitle")}
+      subtitle={t("subtitle")}
+      defaultOpen={mode !== "specialist_library"}
+    >
       <form onSubmit={(e) => void onUpload(e)} className="space-y-3">
         {allowPickPatient ? (
           <SearchableSelect
@@ -415,7 +412,7 @@ export function MedicalFilesPanel({
             {t("pickPatient")}
           </p>
         ) : loading ? (
-          <p className="text-sm text-stone-500">{t("loading")}</p>
+          <ListSkeleton rows={3} />
         ) : files.length === 0 ? (
           <p className="text-sm text-stone-600 dark:text-slate-300">
             {t("empty")}
@@ -455,6 +452,6 @@ export function MedicalFilesPanel({
           </ul>
         )}
       </div>
-    </section>
+    </CollapsibleSection>
   );
 }

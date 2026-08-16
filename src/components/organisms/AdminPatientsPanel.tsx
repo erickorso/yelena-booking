@@ -4,6 +4,7 @@ import { useEffect, useState } from "react";
 import { useTranslations } from "next-intl";
 import { Button } from "@/components/atoms/Button";
 import { Input } from "@/components/atoms/Input";
+import { ListSkeleton } from "@/components/atoms/Skeleton";
 import { SpecialtyPicker } from "@/components/molecules/SpecialtyPicker";
 import { useAuth } from "@/components/providers/AuthProvider";
 import { useToast } from "@/components/providers/ToastProvider";
@@ -174,7 +175,7 @@ export function AdminPatientsPanel() {
       ) : null}
 
       {loading ? (
-        <p className="text-sm text-stone-600 dark:text-slate-300">{t("loading")}</p>
+        <ListSkeleton rows={5} />
       ) : items.length === 0 ? (
         <p className="text-sm text-stone-600 dark:text-slate-300">{t("empty")}</p>
       ) : (
