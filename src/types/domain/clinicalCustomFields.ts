@@ -10,6 +10,8 @@ export interface ClinicalCustomFieldDef {
   labels: Partial<Record<ClinicalFieldLocale, string>>;
   createdAt: Date;
   updatedAt: Date;
+  /** Soft-delete while cascading purge of stored values; omitted when active. */
+  deletedAt?: Date;
 }
 
 export type ClinicalCustomFieldInput = {

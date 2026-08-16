@@ -1,6 +1,6 @@
 import "server-only";
 
-import { FieldValue } from "firebase-admin/firestore";
+import { FieldValue, FieldPath } from "firebase-admin/firestore";
 import { getAdminFirestore } from "@/lib/firebase/admin";
 import { adaptClinicalHistory } from "@/adapters/firestore";
 import type {
@@ -109,6 +109,7 @@ export class AdminClinicalHistoryRepository {
     let updated = 0;
     let batch = db.batch();
     let ops = 0;
+    const valuePath = new FieldPath("customValues", id);
 
     for (const doc of snap.docs) {
       const data = doc.data() ?? {};
@@ -116,10 +117,13 @@ export class AdminClinicalHistoryRepository {
       if (!cv || typeof cv !== "object" || Array.isArray(cv)) continue;
       if (!(id in (cv as Record<string, unknown>))) continue;
 
-      batch.update(doc.ref, {
-        [`customValues.${id}`]: FieldValue.delete(),
-        updatedAt: FieldValue.serverTimestamp(),
-      });
+      batch.update(
+        doc.ref,
+        valuePath,
+        FieldValue.delete(),
+        "updatedAt",
+        FieldValue.serverTimestamp(),
+      );
       ops += 1;
       updated += 1;
       if (ops >= 400) {

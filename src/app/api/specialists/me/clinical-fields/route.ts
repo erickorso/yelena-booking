@@ -175,10 +175,30 @@ export async function DELETE(request: Request) {
 
   try {
     const fieldsRepo = new AdminSpecialistClinicalFieldsRepository();
-    await fieldsRepo.deleteField(auth.uid, fieldId);
-    const purged =
-      await new AdminClinicalHistoryRepository().purgeCustomFieldValue(fieldId);
-    return NextResponse.json({ ok: true, purgedPatientCharts: purged });
+    const histories = new AdminClinicalHistoryRepository();
+    // Not one Firestore TX (N patient charts). Soft-delete → purge → hard-remove;
+    // each step is idempotent so a failed mid-flight DELETE can be retried safely.
+    const existing = await fieldsRepo.listAll(auth.uid);
+    const field = existing.find((f) => f.id === fieldId);
+    if (field && !field.deletedAt) {
+      await fieldsRepo.markFieldDeleted(auth.uid, fieldId);
+    } else if (!field) {
+      // Already fully removed: still purge orphans, then succeed.
+      const purged = await histories.purgeCustomFieldValue(fieldId);
+      return NextResponse.json({
+        ok: true,
+        deletedFieldId: fieldId,
+        purgedPatientCharts: purged,
+        alreadyDeleted: true,
+      });
+    }
+    const purged = await histories.purgeCustomFieldValue(fieldId);
+    await fieldsRepo.removeFieldHard(auth.uid, fieldId);
+    return NextResponse.json({
+      ok: true,
+      deletedFieldId: fieldId,
+      purgedPatientCharts: purged,
+    });
   } catch (error) {
     const message =
       error instanceof Error ? error.message : "Failed to delete field";

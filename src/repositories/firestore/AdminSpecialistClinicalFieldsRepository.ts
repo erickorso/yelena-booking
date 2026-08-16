@@ -17,6 +17,7 @@ type FieldDoc = {
   labels?: unknown;
   createdAt?: unknown;
   updatedAt?: unknown;
+  deletedAt?: unknown;
 };
 
 function toDate(value: unknown, fallback = new Date()): Date {
@@ -50,12 +51,17 @@ function adaptField(raw: FieldDoc): ClinicalCustomFieldDef | null {
     typeof raw.fieldKey === "string" && raw.fieldKey.trim()
       ? raw.fieldKey.trim()
       : slugifyFieldKey(labels.es || labels.en || "campo");
+  const deletedAt =
+    raw.deletedAt === undefined || raw.deletedAt === null
+      ? undefined
+      : toDate(raw.deletedAt);
   return {
     id: raw.id,
     fieldKey,
     labels,
     createdAt: toDate(raw.createdAt),
     updatedAt: toDate(raw.updatedAt),
+    ...(deletedAt ? { deletedAt } : {}),
   };
 }
 
@@ -67,7 +73,13 @@ export class AdminSpecialistClinicalFieldsRepository {
     return getAdminFirestore();
   }
 
+  /** Active fields only (excludes soft-deleted). */
   async list(specialistId: string): Promise<ClinicalCustomFieldDef[]> {
+    return (await this.listAll(specialistId)).filter((f) => !f.deletedAt);
+  }
+
+  /** Includes soft-deleted rows (cascade delete / retry). */
+  async listAll(specialistId: string): Promise<ClinicalCustomFieldDef[]> {
     const snap = await (await this.db())
       .collection(COLLECTION)
       .doc(specialistId)
@@ -176,13 +188,47 @@ export class AdminSpecialistClinicalFieldsRepository {
     return updated;
   }
 
+  /**
+   * Soft-delete (single-doc write). Field disappears from list/UI immediately;
+   * cascade purge + hardRemove complete the job (idempotent on retry).
+   */
+  async markFieldDeleted(
+    specialistId: string,
+    fieldId: string,
+  ): Promise<"marked" | "already_deleted"> {
+    const all = await this.listAll(specialistId);
+    const idx = all.findIndex((f) => f.id === fieldId);
+    if (idx < 0) throw new Error("Field not found");
+    if (all[idx].deletedAt) return "already_deleted";
+    const next = [...all];
+    next[idx] = {
+      ...all[idx],
+      deletedAt: new Date(),
+      updatedAt: new Date(),
+    };
+    await this.save(specialistId, next);
+    return "marked";
+  }
+
+  /** Remove field definition permanently (idempotent). */
+  async removeFieldHard(
+    specialistId: string,
+    fieldId: string,
+  ): Promise<boolean> {
+    const all = await this.listAll(specialistId);
+    const next = all.filter((f) => f.id !== fieldId);
+    if (next.length === all.length) return false;
+    await this.save(specialistId, next);
+    return true;
+  }
+
+  /** @deprecated Prefer markFieldDeleted + removeFieldHard for cascade. */
   async deleteField(specialistId: string, fieldId: string): Promise<void> {
-    const existing = await this.list(specialistId);
-    const next = existing.filter((f) => f.id !== fieldId);
-    if (next.length === existing.length) {
+    const all = await this.listAll(specialistId);
+    if (!all.some((f) => f.id === fieldId)) {
       throw new Error("Field not found");
     }
-    await this.save(specialistId, next);
+    await this.removeFieldHard(specialistId, fieldId);
   }
 
   private async save(
@@ -199,6 +245,7 @@ export class AdminSpecialistClinicalFieldsRepository {
           labels: f.labels,
           createdAt: f.createdAt,
           updatedAt: f.updatedAt,
+          ...(f.deletedAt ? { deletedAt: f.deletedAt } : {}),
         })),
         updatedAt: FieldValue.serverTimestamp(),
       },
