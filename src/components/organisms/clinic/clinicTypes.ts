@@ -2,6 +2,7 @@ export type ClinicPatientOption = {
   id: string;
   email: string;
   displayName: string;
+  timezone: string | null;
 };
 
 export type ClinicPeerOption = {

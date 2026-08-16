@@ -1,12 +1,21 @@
 "use client";
 
-import { useId, useState } from "react";
+import { useEffect, useId, useMemo, useState } from "react";
 import { useTranslations } from "next-intl";
 import { Button } from "@/components/atoms/Button";
 import { SearchableSelect } from "@/components/molecules/SearchableSelect";
-import { WeekCalendar, type CalendarSlot } from "@/components/molecules/WeekCalendar";
+import {
+  WeekCalendar,
+  type CalendarEvent,
+  type CalendarSlot,
+} from "@/components/molecules/WeekCalendar";
+import { useAuth } from "@/components/providers/AuthProvider";
 import { useToast } from "@/components/providers/ToastProvider";
 import type { ScheduleConfig } from "@/lib/availability/defaultSlots";
+import { resolveScheduleTimezone } from "@/lib/availability/defaultSlots";
+import { addDaysYmd, fromZonedYmdHm, zonedYmd } from "@/lib/availability/scheduleTimeZone";
+import { resolvePatientTimezone } from "@/lib/timezones";
+import { getIdToken } from "@/services/authService";
 import type {
   ClinicAppointmentRow,
   ClinicPatientOption,
@@ -38,13 +47,61 @@ export function ClinicAgendaTab({
   onSubmit,
 }: ClinicAgendaTabProps) {
   const t = useTranslations("Clinic");
+  const { user } = useAuth();
   const { error: toastError } = useToast();
   const hintId = useId();
   const [showHint, setShowHint] = useState(false);
+  const [googleBusy, setGoogleBusy] = useState<CalendarEvent[]>([]);
 
   const missingPatient = !patientId;
   const missingSlot = !selectedSlot;
   const canBook = !missingPatient && !missingSlot;
+
+  const selectedPatient = useMemo(
+    () => patients.find((p) => p.id === patientId) ?? null,
+    [patients, patientId],
+  );
+  const scheduleTz = resolveScheduleTimezone(schedule);
+  const patientTz = selectedPatient
+    ? resolvePatientTimezone(selectedPatient.timezone)
+    : scheduleTz;
+
+  useEffect(() => {
+    if (!user) return;
+    let cancelled = false;
+    void (async () => {
+      try {
+        const token = await getIdToken(user);
+        const today = zonedYmd(new Date(), scheduleTz);
+        const from = fromZonedYmdHm(addDaysYmd(today, -7), "00:00", scheduleTz);
+        const to = fromZonedYmdHm(addDaysYmd(today, 21), "00:00", scheduleTz);
+        const res = await fetch(
+          `/api/specialists/me/google-busy?timeMin=${encodeURIComponent(from.toISOString())}&timeMax=${encodeURIComponent(to.toISOString())}`,
+          { headers: { Authorization: `Bearer ${token}` } },
+        );
+        const data = (await res.json()) as {
+          busy?: { startsAt: string; endsAt: string }[];
+          connected?: boolean;
+        };
+        if (cancelled || !res.ok) return;
+        setGoogleBusy(
+          (data.busy ?? []).map((b, i) => ({
+            id: `gcal-${i}-${b.startsAt}`,
+            startsAt: new Date(b.startsAt),
+            endsAt: new Date(b.endsAt),
+            title: t("calGoogleBusy"),
+            status: "confirmed",
+            source: "google" as const,
+          })),
+        );
+      } catch {
+        if (!cancelled) setGoogleBusy([]);
+      }
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, [user, scheduleTz, t]);
 
   const hintMessage = missingPatient
     ? missingSlot
@@ -89,6 +146,7 @@ export function ClinicAgendaTab({
         value={patientId}
         onChange={(id) => {
           onPatientIdChange(id);
+          onSelectSlot(null);
           if (id) setShowHint(false);
         }}
         options={patients
@@ -108,6 +166,7 @@ export function ClinicAgendaTab({
         </p>
       ) : null}
       <WeekCalendar
+        key={`${patientTz}:${scheduleTz}:${patientId || "none"}`}
         events={appointments
           .filter((a) => a.status !== "cancelled")
           .map((a) => {
@@ -118,26 +177,32 @@ export function ClinicAgendaTab({
               endsAt: new Date(a.endsAt),
               title: patient?.displayName ?? a.patientId.slice(0, 8),
               status: a.status,
+              source: "yelena" as const,
             };
           })}
+        googleBusy={googleBusy}
         selectedSlot={selectedSlot}
         onSelectSlot={(slot) => {
           onSelectSlot(slot);
           if (slot) setShowHint(false);
         }}
         schedule={schedule}
+        displayTimeZone={patientTz}
         labels={{
           today: t("calToday"),
           weekOf: t("calWeek"),
-          hint: t("calHint"),
+          hint: selectedPatient ? t("calHintPatient") : t("calHint"),
           selected: t("calSelected"),
           pastSlot: t("calPast"),
           outsideHours: t("calOutside"),
           busySlot: t("calBusy"),
           timezone: t("calTimezone"),
+          timezonePatient: t("calTimezonePatient"),
+          timezoneSpecialist: t("calTimezoneSpecialist"),
           legendAvailable: t("calLegendAvailable"),
           legendOutside: t("calLegendOutside"),
           legendBusy: t("calLegendBusy"),
+          legendGoogle: t("calLegendGoogle"),
         }}
       />
       {!canBook ? (

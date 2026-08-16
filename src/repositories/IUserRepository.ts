@@ -8,6 +8,7 @@ export interface CreateUserProfileInput {
   photoUrl?: string | null;
   role: AuthRole;
   locale?: "en" | "es";
+  timezone?: string | null;
 }
 
 /**
@@ -18,6 +19,7 @@ export interface IUserRepository {
   create(input: CreateUserProfileInput): Promise<UserProfile>;
   updateRole(id: string, role: AuthRole): Promise<UserProfile>;
   updatePhotoUrl(id: string, photoUrl: string | null): Promise<UserProfile>;
+  updateTimezone(id: string, timezone: string | null): Promise<UserProfile>;
   createSpecialist(
     input: CreateSpecialistProfileInput,
   ): Promise<SpecialistProfile>;

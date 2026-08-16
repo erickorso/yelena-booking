@@ -7,8 +7,31 @@ import { useAuth } from "@/components/providers/AuthProvider";
 import { useToast } from "@/components/providers/ToastProvider";
 import { getIdToken } from "@/services/authService";
 
+function isVercelBlobUrl(url: string): boolean {
+  try {
+    const host = new URL(url).hostname;
+    return (
+      host.endsWith(".blob.vercel-storage.com") ||
+      host === "blob.vercel-storage.com"
+    );
+  } catch {
+    return false;
+  }
+}
+
+async function fetchPrivatePhotoObjectUrl(token: string): Promise<string | null> {
+  const fileRes = await fetch("/api/me/photo/file", {
+    headers: { Authorization: `Bearer ${token}` },
+  });
+  if (!fileRes.ok) return null;
+  const blob = await fileRes.blob();
+  return URL.createObjectURL(blob);
+}
+
 /**
  * Optional circular profile photo in dashboard header (patient + specialist).
+ * Private Vercel Blob photos are loaded via authenticated proxy → object URL.
+ * Google photos use the public Firebase photoURL.
  */
 export function ProfilePhotoControl() {
   const t = useTranslations("ProfilePhoto");
@@ -16,10 +39,46 @@ export function ProfilePhotoControl() {
   const { success, error: toastError } = useToast();
   const inputId = useId();
   const inputRef = useRef<HTMLInputElement>(null);
+  const objectUrlRef = useRef<string | null>(null);
 
-  const [photoUrl, setPhotoUrl] = useState<string | null>(null);
+  const [displayUrl, setDisplayUrl] = useState<string | null>(null);
+  const [hasStoredPhoto, setHasStoredPhoto] = useState(false);
   const [displayName, setDisplayName] = useState("");
   const [busy, setBusy] = useState(false);
+
+  function revokeObjectUrl() {
+    if (objectUrlRef.current) {
+      URL.revokeObjectURL(objectUrlRef.current);
+      objectUrlRef.current = null;
+    }
+  }
+
+  async function applyStoredPhoto(
+    storedUrl: string | null,
+    token: string,
+    googleFallback: string | null,
+  ) {
+    revokeObjectUrl();
+    if (storedUrl && isVercelBlobUrl(storedUrl)) {
+      const objectUrl = await fetchPrivatePhotoObjectUrl(token);
+      if (!objectUrl) {
+        setDisplayUrl(googleFallback);
+        setHasStoredPhoto(false);
+        return;
+      }
+      objectUrlRef.current = objectUrl;
+      setDisplayUrl(objectUrl);
+      setHasStoredPhoto(true);
+      return;
+    }
+    if (storedUrl) {
+      setDisplayUrl(storedUrl);
+      setHasStoredPhoto(true);
+      return;
+    }
+    setDisplayUrl(googleFallback);
+    setHasStoredPhoto(false);
+  }
 
   useEffect(() => {
     if (!user) return;
@@ -35,17 +94,45 @@ export function ProfilePhotoControl() {
           displayName?: string | null;
         };
         if (cancelled || !res.ok) return;
-        setPhotoUrl(data.photoUrl ?? user.photoURL ?? null);
         setDisplayName(data.displayName ?? user.displayName ?? "");
+        if (cancelled) return;
+        revokeObjectUrl();
+        const stored = data.photoUrl ?? null;
+        if (stored && isVercelBlobUrl(stored)) {
+          const objectUrl = await fetchPrivatePhotoObjectUrl(token);
+          if (cancelled) {
+            if (objectUrl) URL.revokeObjectURL(objectUrl);
+            return;
+          }
+          if (!objectUrl) {
+            setDisplayUrl(user.photoURL);
+            setHasStoredPhoto(false);
+            return;
+          }
+          objectUrlRef.current = objectUrl;
+          setDisplayUrl(objectUrl);
+          setHasStoredPhoto(true);
+          return;
+        }
+        if (cancelled) return;
+        if (stored) {
+          setDisplayUrl(stored);
+          setHasStoredPhoto(true);
+        } else {
+          setDisplayUrl(user.photoURL);
+          setHasStoredPhoto(false);
+        }
       } catch {
         if (!cancelled) {
-          setPhotoUrl(user.photoURL);
+          setDisplayUrl(user.photoURL);
           setDisplayName(user.displayName ?? "");
+          setHasStoredPhoto(false);
         }
       }
     })();
     return () => {
       cancelled = true;
+      revokeObjectUrl();
     };
   }, [user]);
 
@@ -73,7 +160,7 @@ export function ProfilePhotoControl() {
         error?: string;
       };
       if (!res.ok) throw new Error(data.error ?? t("uploadError"));
-      setPhotoUrl(data.photoUrl ?? null);
+      await applyStoredPhoto(data.photoUrl ?? null, token, user.photoURL ?? null);
       success(t("uploadSuccess"));
     } catch (err) {
       toastError(err instanceof Error ? err.message : t("uploadError"));
@@ -94,7 +181,9 @@ export function ProfilePhotoControl() {
       });
       const data = (await res.json()) as { error?: string };
       if (!res.ok) throw new Error(data.error ?? t("removeError"));
-      setPhotoUrl(null);
+      revokeObjectUrl();
+      setDisplayUrl(user.photoURL);
+      setHasStoredPhoto(false);
       success(t("removeSuccess"));
     } catch (err) {
       toastError(err instanceof Error ? err.message : t("removeError"));
@@ -114,10 +203,10 @@ export function ProfilePhotoControl() {
         )}
         title={t("hint")}
       >
-        {photoUrl ? (
-          // eslint-disable-next-line @next/next/no-img-element -- remote blob / Google URL
+        {displayUrl ? (
+          // eslint-disable-next-line @next/next/no-img-element -- blob object URL / Google
           <img
-            src={photoUrl}
+            src={displayUrl}
             alt={t("alt")}
             className="h-full w-full object-cover"
           />
@@ -150,9 +239,9 @@ export function ProfilePhotoControl() {
           disabled={busy}
           onClick={() => inputRef.current?.click()}
         >
-          {photoUrl ? t("change") : t("add")}
+          {hasStoredPhoto || displayUrl ? t("change") : t("add")}
         </button>
-        {photoUrl ? (
+        {hasStoredPhoto ? (
           <button
             type="button"
             className="text-stone-500 underline dark:text-slate-400"

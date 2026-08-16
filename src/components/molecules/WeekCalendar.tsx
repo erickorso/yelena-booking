@@ -4,13 +4,21 @@ import { useMemo, useState } from "react";
 import { clsx } from "clsx";
 import {
   checkIntervalAvailability,
-  openMinuteRangesForDay,
+  minutesFromMidnightInZone,
+  openMinuteRangesForDisplayDay,
   resolveScheduleTimezone,
   resolveSlotMinutes,
+  wallClockInstant,
+  zonedYmd,
   type BusyInterval,
   type ScheduleConfig,
   DEFAULT_SCHEDULE,
 } from "@/lib/availability/defaultSlots";
+import {
+  addDaysYmd,
+  fromZonedYmdHm,
+  startOfWeekYmd,
+} from "@/lib/availability/scheduleTimeZone";
 import { SlotDurationModal } from "@/components/molecules/SlotDurationModal";
 import { useToast } from "@/components/providers/ToastProvider";
 import type { SlotDurationMinutes } from "@/types/domain";
@@ -21,6 +29,8 @@ export type CalendarEvent = {
   endsAt: Date;
   title: string;
   status: string;
+  /** google = FreeBusy block from integrated calendar */
+  source?: "yelena" | "google";
 };
 
 export type CalendarSlot = {
@@ -30,9 +40,16 @@ export type CalendarSlot = {
 
 type WeekCalendarProps = {
   events: CalendarEvent[];
+  /** Extra busy from Google FreeBusy (shown + blocks booking). */
+  googleBusy?: CalendarEvent[];
   selectedSlot: CalendarSlot | null;
   onSelectSlot: (slot: CalendarSlot | null) => void;
   schedule?: ScheduleConfig;
+  /**
+   * Civil clock for the grid (patient TZ when booking for a patient).
+   * Specialist working hours are projected into this zone.
+   */
+  displayTimeZone?: string;
   labels: {
     today: string;
     weekOf: string;
@@ -42,9 +59,12 @@ type WeekCalendarProps = {
     outsideHours: string;
     busySlot: string;
     timezone: string;
+    timezonePatient?: string;
+    timezoneSpecialist?: string;
     legendAvailable: string;
     legendOutside: string;
     legendBusy: string;
+    legendGoogle?: string;
   };
 };
 
@@ -56,37 +76,10 @@ const GRID_HEIGHT = TOTAL_HOURS * HOUR_HEIGHT;
 const GRID_START_MIN = DAY_START_HOUR * 60;
 const GRID_END_MIN = DAY_END_HOUR * 60;
 
-function startOfWeek(d: Date): Date {
-  const day = d.getDay();
-  const diff = day === 0 ? -6 : 1 - day; // Monday start
-  const monday = new Date(d);
-  monday.setHours(0, 0, 0, 0);
-  monday.setDate(monday.getDate() + diff);
-  return monday;
-}
-
-function addDays(d: Date, n: number): Date {
-  const next = new Date(d);
-  next.setDate(next.getDate() + n);
-  return next;
-}
-
-function sameDay(a: Date, b: Date): boolean {
-  return (
-    a.getFullYear() === b.getFullYear() &&
-    a.getMonth() === b.getMonth() &&
-    a.getDate() === b.getDate()
-  );
-}
-
-function minutesFromDayStart(d: Date): number {
-  return d.getHours() * 60 + d.getMinutes() - DAY_START_HOUR * 60;
-}
-
-function bandStyle(startMin: number, endMin: number): {
-  top: number;
-  height: number;
-} | null {
+function bandStyle(
+  startMin: number,
+  endMin: number,
+): { top: number; height: number } | null {
   const clippedStart = Math.max(startMin, GRID_START_MIN);
   const clippedEnd = Math.min(endMin, GRID_END_MIN);
   if (clippedEnd <= clippedStart) return null;
@@ -100,10 +93,6 @@ function formatHour(h: number): string {
   return `${String(h).padStart(2, "0")}:00`;
 }
 
-function weekdayShort(d: Date, locale: string): string {
-  return d.toLocaleDateString(locale, { weekday: "short" });
-}
-
 function toBusy(events: CalendarEvent[]): BusyInterval[] {
   return events.map((e) => ({
     startsAt: e.startsAt,
@@ -113,34 +102,40 @@ function toBusy(events: CalendarEvent[]): BusyInterval[] {
 }
 
 /**
- * Week grid. Available bands highlighted; outside hours + busy shaded.
- * Click empty area → duration modal → validate full interval → select.
+ * Week grid in `displayTimeZone` (patient). Specialist hours projected into that zone.
+ * Click → duration modal → validate against specialist schedule (UTC) → select.
  */
 export function WeekCalendar({
   events,
+  googleBusy = [],
   selectedSlot,
   onSelectSlot,
   schedule = DEFAULT_SCHEDULE,
+  displayTimeZone,
   labels,
 }: WeekCalendarProps) {
   const { error: toastError } = useToast();
-  const [anchor, setAnchor] = useState(() => startOfWeek(new Date()));
+  const scheduleTz = resolveScheduleTimezone(schedule);
+  const timeZone = displayTimeZone?.trim() || scheduleTz;
+  const [anchorYmd, setAnchorYmd] = useState(() =>
+    startOfWeekYmd(zonedYmd(new Date(), timeZone), timeZone),
+  );
   const [draftStart, setDraftStart] = useState<Date | null>(null);
   const [modalError, setModalError] = useState<string | null>(null);
   const locale =
     typeof navigator !== "undefined" ? navigator.language : "es-VE";
-  const timeZone = resolveScheduleTimezone(schedule);
-  const today = useMemo(() => {
-    const t = new Date();
-    t.setHours(0, 0, 0, 0);
-    return t;
-  }, []);
 
+  const todayYmd = zonedYmd(new Date(), timeZone);
   const slotMinutes = resolveSlotMinutes(schedule);
 
-  const days = useMemo(
-    () => Array.from({ length: 7 }, (_, i) => addDays(anchor, i)),
-    [anchor],
+  const allBusyEvents = useMemo(
+    () => [...events, ...googleBusy],
+    [events, googleBusy],
+  );
+
+  const dayYmds = useMemo(
+    () => Array.from({ length: 7 }, (_, i) => addDaysYmd(anchorYmd, i)),
+    [anchorYmd],
   );
 
   const hours = useMemo(
@@ -149,17 +144,18 @@ export function WeekCalendar({
   );
 
   function goToday() {
-    setAnchor(startOfWeek(new Date()));
+    setAnchorYmd(startOfWeekYmd(todayYmd, timeZone));
   }
 
   function shiftWeek(delta: number) {
-    setAnchor((prev) => addDays(prev, delta * 7));
+    setAnchorYmd((prev) => addDaysYmd(prev, delta * 7));
   }
 
-  function handleColumnClick(day: Date, event: React.MouseEvent<HTMLDivElement>) {
-    const dayStart = new Date(day);
-    dayStart.setHours(0, 0, 0, 0);
-    if (dayStart < today) {
+  function handleColumnClick(
+    dayYmd: string,
+    event: React.MouseEvent<HTMLDivElement>,
+  ) {
+    if (dayYmd < todayYmd) {
       toastError(labels.pastSlot);
       return;
     }
@@ -173,8 +169,7 @@ export function WeekCalendar({
     const m = slotted % 60;
     if (h < DAY_START_HOUR || h >= DAY_END_HOUR) return;
 
-    const startsAt = new Date(day);
-    startsAt.setHours(h, m, 0, 0);
+    const startsAt = wallClockInstant(dayYmd, h, m, timeZone);
     if (startsAt <= new Date()) {
       toastError(labels.pastSlot);
       return;
@@ -184,7 +179,7 @@ export function WeekCalendar({
     const probe = checkIntervalAvailability(
       startsAt,
       probeEnd,
-      toBusy(events),
+      toBusy(allBusyEvents),
       schedule,
     );
     if (!probe.ok) {
@@ -210,7 +205,7 @@ export function WeekCalendar({
     const check = checkIntervalAvailability(
       draftStart,
       endsAt,
-      toBusy(events),
+      toBusy(allBusyEvents),
       schedule,
     );
     if (!check.ok) {
@@ -234,9 +229,11 @@ export function WeekCalendar({
     setModalError(null);
   }
 
-  const weekLabel = `${anchor.toLocaleDateString(locale, {
+  const weekLabelDate = fromZonedYmdHm(anchorYmd, "12:00", timeZone);
+  const weekLabel = `${weekLabelDate.toLocaleDateString(locale, {
     month: "long",
     year: "numeric",
+    timeZone,
   })} · ${labels.weekOf}`;
 
   const selectedDurationMin = selectedSlot
@@ -277,8 +274,17 @@ export function WeekCalendar({
           {weekLabel}
         </p>
         <span className="rounded-md bg-stone-100 px-2 py-1 text-xs text-stone-700 dark:bg-slate-800 dark:text-slate-200">
-          {labels.timezone}: {timeZone}
+          {labels.timezonePatient
+            ? `${labels.timezonePatient}: ${timeZone}`
+            : `${labels.timezone}: ${timeZone}`}
         </span>
+        {timeZone !== scheduleTz ? (
+          <span className="rounded-md bg-stone-100 px-2 py-1 text-xs text-stone-700 dark:bg-slate-800 dark:text-slate-200">
+            {labels.timezoneSpecialist
+              ? `${labels.timezoneSpecialist}: ${scheduleTz}`
+              : `Especialista: ${scheduleTz}`}
+          </span>
+        ) : null}
       </div>
       <p className="text-xs text-stone-500 dark:text-slate-400">
         {labels.hint} · {slotMinutes} min
@@ -308,6 +314,15 @@ export function WeekCalendar({
           />
           {labels.legendBusy}
         </li>
+        {labels.legendGoogle ? (
+          <li className="inline-flex items-center gap-1.5">
+            <span
+              className="inline-block h-3 w-4 rounded-sm bg-violet-700/85"
+              aria-hidden
+            />
+            {labels.legendGoogle}
+          </li>
+        ) : null}
       </ul>
 
       {selectedSlot ? (
@@ -331,6 +346,23 @@ export function WeekCalendar({
             timeZone,
           })}{" "}
           ({selectedDurationMin} min)
+          {timeZone !== scheduleTz ? (
+            <>
+              {" · "}
+              {new Date(selectedSlot.startsAt).toLocaleTimeString(locale, {
+                hour: "2-digit",
+                minute: "2-digit",
+                timeZone: scheduleTz,
+              })}
+              –
+              {new Date(selectedSlot.endsAt).toLocaleTimeString(locale, {
+                hour: "2-digit",
+                minute: "2-digit",
+                timeZone: scheduleTz,
+              })}{" "}
+              ({scheduleTz})
+            </>
+          ) : null}
         </p>
       ) : null}
 
@@ -340,19 +372,23 @@ export function WeekCalendar({
           style={{ display: "grid", gridTemplateColumns: "56px repeat(7, 1fr)" }}
         >
           <div className="border-b border-stone-200 bg-stone-50 dark:border-slate-700 dark:bg-slate-900" />
-          {days.map((day) => {
-            const isToday = sameDay(day, today);
-            const isPast = day < today;
+          {dayYmds.map((dayYmd) => {
+            const noon = fromZonedYmdHm(dayYmd, "12:00", timeZone);
+            const isToday = dayYmd === todayYmd;
+            const isPast = dayYmd < todayYmd;
             return (
               <div
-                key={day.toISOString()}
+                key={dayYmd}
                 className={clsx(
                   "border-b border-l border-stone-200 px-1 py-2 text-center dark:border-slate-700",
                   isPast && "opacity-45",
                 )}
               >
                 <p className="text-[11px] uppercase tracking-wide text-stone-500 dark:text-slate-400">
-                  {weekdayShort(day, locale)}
+                  {noon.toLocaleDateString(locale, {
+                    weekday: "short",
+                    timeZone,
+                  })}
                 </p>
                 <p
                   className={clsx(
@@ -362,7 +398,10 @@ export function WeekCalendar({
                     !isToday && "text-stone-800 dark:text-slate-100",
                   )}
                 >
-                  {day.getDate()}
+                  {noon.toLocaleDateString(locale, {
+                    day: "numeric",
+                    timeZone,
+                  })}
                 </p>
               </div>
             );
@@ -383,19 +422,25 @@ export function WeekCalendar({
             ))}
           </div>
 
-          {days.map((day) => {
-            const dayEvents = events.filter((e) => sameDay(e.startsAt, day));
-            const isPastDay = day < today;
-            const openBands = openMinuteRangesForDay(day, schedule);
+          {dayYmds.map((dayYmd) => {
+            const dayEvents = allBusyEvents.filter(
+              (e) => zonedYmd(e.startsAt, timeZone) === dayYmd,
+            );
+            const isPastDay = dayYmd < todayYmd;
+            const openBands = openMinuteRangesForDisplayDay(
+              dayYmd,
+              timeZone,
+              schedule,
+            );
             const selectedOnDay =
               selectedSlot &&
-              sameDay(new Date(selectedSlot.startsAt), day)
+              zonedYmd(new Date(selectedSlot.startsAt), timeZone) === dayYmd
                 ? selectedSlot
                 : null;
 
             return (
               <div
-                key={`col-${day.toISOString()}`}
+                key={`col-${dayYmd}`}
                 role="presentation"
                 className={clsx(
                   "relative border-l border-stone-200 dark:border-slate-700",
@@ -404,7 +449,7 @@ export function WeekCalendar({
                     : "cursor-crosshair bg-stone-100/70 dark:bg-slate-950/35",
                 )}
                 style={{ height: GRID_HEIGHT }}
-                onClick={(e) => handleColumnClick(day, e)}
+                onClick={(e) => handleColumnClick(dayYmd, e)}
               >
                 {hours.map((h) => (
                   <div
@@ -414,7 +459,6 @@ export function WeekCalendar({
                   />
                 ))}
 
-                {/* Available work windows */}
                 {!isPastDay
                   ? openBands.map((band) => {
                       const style = bandStyle(band.startMin, band.endMin);
@@ -431,8 +475,12 @@ export function WeekCalendar({
                   : null}
 
                 {dayEvents.map((ev) => {
-                  const topMin = minutesFromDayStart(ev.startsAt);
-                  const endMin = minutesFromDayStart(ev.endsAt);
+                  const topMin =
+                    minutesFromMidnightInZone(ev.startsAt, timeZone) -
+                    DAY_START_HOUR * 60;
+                  const endMin =
+                    minutesFromMidnightInZone(ev.endsAt, timeZone) -
+                    DAY_START_HOUR * 60;
                   if (endMin <= 0 || topMin >= TOTAL_HOURS * 60) return null;
                   const top = Math.max(0, (topMin / 60) * HOUR_HEIGHT);
                   const height = Math.max(
@@ -441,11 +489,15 @@ export function WeekCalendar({
                       60) *
                       HOUR_HEIGHT,
                   );
+                  const isGoogle = ev.source === "google";
                   return (
                     <div
                       key={ev.id}
                       title={`${ev.title} · ${ev.status}`}
-                      className="pointer-events-none absolute inset-x-1 z-[1] overflow-hidden rounded-md bg-rose-600/90 px-1.5 py-0.5 text-[11px] leading-tight text-white shadow-sm"
+                      className={clsx(
+                        "pointer-events-none absolute inset-x-1 z-[1] overflow-hidden rounded-md px-1.5 py-0.5 text-[11px] leading-tight text-white shadow-sm",
+                        isGoogle ? "bg-violet-700/90" : "bg-rose-600/90",
+                      )}
                       style={{ top, height }}
                     >
                       <span className="font-medium">{ev.title}</span>
@@ -458,7 +510,11 @@ export function WeekCalendar({
                     className="pointer-events-none absolute inset-x-1 z-[2] rounded-md border-2 border-dashed border-amber-500 bg-amber-400/30"
                     style={{
                       top:
-                        (minutesFromDayStart(new Date(selectedOnDay.startsAt)) /
+                        ((minutesFromMidnightInZone(
+                          new Date(selectedOnDay.startsAt),
+                          timeZone,
+                        ) -
+                          DAY_START_HOUR * 60) /
                           60) *
                         HOUR_HEIGHT,
                       height: (selectedDurationMin / 60) * HOUR_HEIGHT,

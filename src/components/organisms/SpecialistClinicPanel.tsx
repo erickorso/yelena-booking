@@ -39,6 +39,7 @@ export function SpecialistClinicPanel() {
   const [regName, setRegName] = useState("");
   const [regEmail, setRegEmail] = useState("");
   const [regPhone, setRegPhone] = useState("");
+  const [regTimezone, setRegTimezone] = useState("America/Caracas");
   const [regPending, setRegPending] = useState(false);
   const [tempPassword, setTempPassword] = useState<string | null>(null);
 
@@ -143,6 +144,7 @@ export function SpecialistClinicPanel() {
           email: regEmail,
           displayName: regName,
           phone: regPhone,
+          timezone: regTimezone,
         }),
       });
       const data = (await response.json()) as {
@@ -264,15 +266,38 @@ export function SpecialistClinicPanel() {
             name={regName}
             email={regEmail}
             phone={regPhone}
+            timezone={regTimezone}
             pending={regPending}
             tempPassword={tempPassword}
             onNameChange={setRegName}
             onEmailChange={setRegEmail}
             onPhoneChange={setRegPhone}
+            onTimezoneChange={setRegTimezone}
             onSubmit={(e) => void registerPatient(e)}
             onOpenChart={(id) => {
               setPatientId(id);
               setTab("files");
+            }}
+            onPatientTimezoneSave={async (id, timezone) => {
+              if (!user) return;
+              const token = await getIdToken(user);
+              const res = await fetch(`/api/patients/${id}/timezone`, {
+                method: "PATCH",
+                headers: {
+                  Authorization: `Bearer ${token}`,
+                  "Content-Type": "application/json",
+                },
+                body: JSON.stringify({ timezone }),
+              });
+              const data = (await res.json()) as { error?: string };
+              if (!res.ok) {
+                toastError(data.error ?? t("timezoneSaveError"));
+                return;
+              }
+              success(t("timezoneSaveSuccess"));
+              setPatients((prev) =>
+                prev.map((p) => (p.id === id ? { ...p, timezone } : p)),
+              );
             }}
           />
         ) : null}

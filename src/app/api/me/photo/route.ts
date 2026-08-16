@@ -66,7 +66,7 @@ export async function POST(request: Request) {
       path,
       data: fileEntry,
       contentType: fileEntry.type,
-      access: "public",
+      access: "private",
       allowOverwrite: true,
     });
 

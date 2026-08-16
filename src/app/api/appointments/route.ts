@@ -7,7 +7,12 @@ import { AppointmentService } from "@/services/appointmentService";
 import { enqueueMail, MailService } from "@/services/mailService";
 import { GoogleCalendarService } from "@/services/googleCalendarService";
 import { canActAsPatient } from "@/types/domain";
-import { isWithinSchedule } from "@/lib/availability/defaultSlots";
+import {
+  isWithinSchedule,
+  resolveScheduleTimezone,
+} from "@/lib/availability/defaultSlots";
+import { formatGoogleDateTime } from "@/lib/availability/scheduleTimeZone";
+import { resolvePatientTimezone } from "@/lib/timezones";
 
 interface CreateBody {
   patientId?: unknown;
@@ -164,6 +169,7 @@ export async function POST(request: Request) {
     const schedule = await new AdminAvailabilityRepository().getConfigOrDefault(
       specialistId,
     );
+    const scheduleTz = resolveScheduleTimezone(schedule);
     if (!isWithinSchedule(startsAt, endsAt, schedule)) {
       return NextResponse.json(
         { error: "Outside specialist working hours" },
@@ -186,7 +192,7 @@ export async function POST(request: Request) {
 
     const gcal = new GoogleCalendarService();
     try {
-      if (await gcal.hasConflict(specialistId, startsAt, endsAt)) {
+      if (await gcal.hasConflict(specialistId, startsAt, endsAt, scheduleTz)) {
         return NextResponse.json(
           { error: "Slot conflicts with Google Calendar" },
           { status: 409 },
@@ -207,13 +213,23 @@ export async function POST(request: Request) {
     });
 
     try {
+      const patientTz = resolvePatientTimezone(patient.timezone);
+      const patientLocal = `${formatGoogleDateTime(appointment.startsAt, patientTz)}–${formatGoogleDateTime(appointment.endsAt, patientTz).slice(11)} (${patientTz})`;
+      const specialistLocal = `${formatGoogleDateTime(appointment.startsAt, scheduleTz)}–${formatGoogleDateTime(appointment.endsAt, scheduleTz).slice(11)} (${scheduleTz})`;
       const event = await gcal.createAppointmentEvent({
         specialistId,
         appointmentId: appointment.id,
         summary: `Yelena · ${patient.displayName}`,
-        description: notes ?? undefined,
+        description: [
+          notes?.trim() || null,
+          `Paciente: ${patientLocal}`,
+          `Especialista: ${specialistLocal}`,
+        ]
+          .filter(Boolean)
+          .join("\n"),
         startsAt: appointment.startsAt,
         endsAt: appointment.endsAt,
+        timeZone: scheduleTz,
         attendeeEmail: patient.email,
       });
       if (event) {

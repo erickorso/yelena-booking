@@ -29,7 +29,7 @@ export class StubUserRepository implements IUserRepository {
       photoUrl: input.photoUrl ?? null,
       role: input.role,
       locale: input.locale ?? "es",
-      timezone: null,
+      timezone: input.timezone ?? null,
       createdAt: now,
       updatedAt: now,
     };
@@ -58,6 +58,23 @@ export class StubUserRepository implements IUserRepository {
     const updated: UserProfile = {
       ...existing,
       photoUrl,
+      updatedAt: new Date(),
+    };
+    this.users.set(id, updated);
+    return updated;
+  }
+
+  async updateTimezone(
+    id: string,
+    timezone: string | null,
+  ): Promise<UserProfile> {
+    const existing = this.users.get(id);
+    if (!existing) {
+      throw new Error(`User not found: ${id}`);
+    }
+    const updated: UserProfile = {
+      ...existing,
+      timezone,
       updatedAt: new Date(),
     };
     this.users.set(id, updated);

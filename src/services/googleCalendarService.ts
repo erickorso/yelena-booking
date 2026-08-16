@@ -16,6 +16,7 @@ import type {
   GoogleBusyInterval,
   GoogleCreatedEvent,
 } from "@/types/domain";
+import { formatGoogleDateTime } from "@/lib/availability/scheduleTimeZone";
 
 function createOAuthClient() {
   return new google.auth.OAuth2(
@@ -146,6 +147,7 @@ export class GoogleCalendarService {
     specialistId: string,
     timeMin: Date,
     timeMax: Date,
+    timeZone?: string,
   ): Promise<GoogleBusyInterval[]> {
     const auth = await this.getAuthedClient(specialistId);
     if (!auth) return [];
@@ -155,6 +157,7 @@ export class GoogleCalendarService {
       requestBody: {
         timeMin: timeMin.toISOString(),
         timeMax: timeMax.toISOString(),
+        timeZone: timeZone?.trim() || undefined,
         items: [{ id: auth.conn.calendarId }],
       },
     });
@@ -178,12 +181,14 @@ export class GoogleCalendarService {
     specialistId: string,
     startsAt: Date,
     endsAt: Date,
+    timeZone?: string,
   ): Promise<boolean> {
     const paddingMs = 60_000;
     const busy = await this.listBusy(
       specialistId,
       new Date(startsAt.getTime() - paddingMs),
       new Date(endsAt.getTime() + paddingMs),
+      timeZone,
     );
     return busy.some((b) => startsAt < b.endsAt && b.startsAt < endsAt);
   }
@@ -195,6 +200,8 @@ export class GoogleCalendarService {
     description?: string;
     startsAt: Date;
     endsAt: Date;
+    /** IANA TZ for the specialist calendar wall-clock (e.g. Europe/Madrid). */
+    timeZone: string;
     attendeeEmail?: string | null;
   }): Promise<GoogleCreatedEvent | null> {
     const auth = await this.getAuthedClient(input.specialistId);
@@ -206,6 +213,7 @@ export class GoogleCalendarService {
         ? [{ email: input.attendeeEmail }]
         : undefined;
 
+    const tz = input.timeZone.trim() || "UTC";
     const res = await calendar.events.insert({
       calendarId: auth.conn.calendarId,
       conferenceDataVersion: 1,
@@ -213,8 +221,14 @@ export class GoogleCalendarService {
       requestBody: {
         summary: input.summary,
         description: input.description ?? undefined,
-        start: { dateTime: input.startsAt.toISOString() },
-        end: { dateTime: input.endsAt.toISOString() },
+        start: {
+          dateTime: formatGoogleDateTime(input.startsAt, tz),
+          timeZone: tz,
+        },
+        end: {
+          dateTime: formatGoogleDateTime(input.endsAt, tz),
+          timeZone: tz,
+        },
         attendees,
         conferenceData: {
           createRequest: {

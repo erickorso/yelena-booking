@@ -5,6 +5,7 @@ import { isAuthError, requireAuth } from "@/lib/auth/requireAuth";
 import { AdminUserRepository } from "@/repositories/firestore/AdminUserRepository";
 import { AdminClinicalHistoryRepository } from "@/repositories/firestore/AdminClinicalHistoryRepository";
 import { AdminNotificationRepository } from "@/repositories/firestore/AdminNotificationRepository";
+import { isAppTimezone, DEFAULT_PATIENT_TIMEZONE } from "@/lib/timezones";
 
 interface CreatePatientBody {
   email?: unknown;
@@ -12,6 +13,7 @@ interface CreatePatientBody {
   phone?: unknown;
   password?: unknown;
   locale?: unknown;
+  timezone?: unknown;
 }
 
 async function assertActiveSpecialist(uid: string, role: string) {
@@ -39,6 +41,7 @@ export async function GET(request: Request) {
         id: p.id,
         email: p.email,
         displayName: p.displayName,
+        timezone: p.timezone,
         role: p.role,
       })),
     });
@@ -75,6 +78,9 @@ export async function POST(request: Request) {
     typeof body.displayName === "string" ? body.displayName.trim() : "";
   const phone = typeof body.phone === "string" ? body.phone.trim() : "";
   const locale = body.locale === "en" || body.locale === "es" ? body.locale : "es";
+  const timezone = isAppTimezone(body.timezone)
+    ? body.timezone
+    : DEFAULT_PATIENT_TIMEZONE;
   const password =
     typeof body.password === "string" && body.password.length >= 8
       ? body.password
@@ -114,6 +120,7 @@ export async function POST(request: Request) {
       displayName,
       role: "paciente",
       locale,
+      timezone,
     });
 
     await new AdminClinicalHistoryRepository().upsert(
@@ -144,6 +151,7 @@ export async function POST(request: Request) {
         id: profile.id,
         email: profile.email,
         displayName: profile.displayName,
+        timezone: profile.timezone,
         phone,
       },
       temporaryPassword: password,

@@ -6,8 +6,10 @@ import { AdminUserRepository } from "@/repositories/firestore/AdminUserRepositor
 import {
   computeFreeSlots,
   parseDateInput,
+  resolveScheduleTimezone,
   resolveSlotMinutes,
 } from "@/lib/availability/defaultSlots";
+import { fromZonedYmdHm, addDaysYmd, zonedYmd } from "@/lib/availability/scheduleTimeZone";
 import { GoogleCalendarService } from "@/services/googleCalendarService";
 
 /**
@@ -48,12 +50,17 @@ export async function GET(
     const schedule = await new AdminAvailabilityRepository().getConfigOrDefault(
       id,
     );
+    const scheduleTz = resolveScheduleTimezone(schedule);
+    const dayYmd =
+      dateParam && /^\d{4}-\d{2}-\d{2}$/.test(dateParam)
+        ? dateParam
+        : zonedYmd(day, scheduleTz);
+    const dayStart = fromZonedYmdHm(dayYmd, "00:00", scheduleTz);
+    const dayEnd = fromZonedYmdHm(addDaysYmd(dayYmd, 1), "00:00", scheduleTz);
 
     const appointments = await new AdminAppointmentRepository().list({
       specialistId: id,
     });
-    const dayStart = new Date(day.getFullYear(), day.getMonth(), day.getDate());
-    const dayEnd = new Date(dayStart.getTime() + 24 * 60 * 60 * 1000);
     const busy = appointments
       .filter((a) => a.startsAt >= dayStart && a.startsAt < dayEnd)
       .map((a) => ({
@@ -68,6 +75,7 @@ export async function GET(
         id,
         dayStart,
         dayEnd,
+        scheduleTz,
       );
       googleBusyCount = gBusy.length;
       for (const g of gBusy) {

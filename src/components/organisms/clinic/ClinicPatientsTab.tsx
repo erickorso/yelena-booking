@@ -1,44 +1,56 @@
 "use client";
 
 import { useMemo, useState } from "react";
-import { useTranslations } from "next-intl";
+import { useLocale, useTranslations } from "next-intl";
 import { Button } from "@/components/atoms/Button";
 import { Input } from "@/components/atoms/Input";
 import type { ClinicPatientOption } from "@/components/organisms/clinic/clinicTypes";
+import {
+  APP_TIMEZONES,
+  DEFAULT_PATIENT_TIMEZONE,
+  resolvePatientTimezone,
+} from "@/lib/timezones";
 
 type ClinicPatientsTabProps = {
   patients: ClinicPatientOption[];
   name: string;
   email: string;
   phone: string;
+  timezone: string;
   pending: boolean;
   tempPassword: string | null;
   onNameChange: (value: string) => void;
   onEmailChange: (value: string) => void;
   onPhoneChange: (value: string) => void;
+  onTimezoneChange: (value: string) => void;
   onSubmit: (event: React.FormEvent) => void;
-  /** Open historia + documentos for this patient */
   onOpenChart: (patientId: string) => void;
+  onPatientTimezoneSave: (patientId: string, timezone: string) => Promise<void>;
 };
 
 /**
- * Pacientes: alta + listado para abrir historia clínica y documentos.
+ * Pacientes: alta (con zona horaria) + listado con TZ editable + ficha.
  */
 export function ClinicPatientsTab({
   patients,
   name,
   email,
   phone,
+  timezone,
   pending,
   tempPassword,
   onNameChange,
   onEmailChange,
   onPhoneChange,
+  onTimezoneChange,
   onSubmit,
   onOpenChart,
+  onPatientTimezoneSave,
 }: ClinicPatientsTabProps) {
   const t = useTranslations("Clinic");
+  const locale = useLocale();
   const [query, setQuery] = useState("");
+  const [savingId, setSavingId] = useState<string | null>(null);
 
   const filtered = useMemo(() => {
     const q = query.trim().toLowerCase();
@@ -49,6 +61,21 @@ export function ClinicPatientsTab({
         p.email.toLowerCase().includes(q),
     );
   }, [patients, query]);
+
+  function zoneLabel(value: string): string {
+    const row = APP_TIMEZONES.find((z) => z.value === value);
+    if (!row) return value;
+    return locale.startsWith("en") ? row.labelEn : row.labelEs;
+  }
+
+  async function saveTimezone(patientId: string, next: string) {
+    setSavingId(patientId);
+    try {
+      await onPatientTimezoneSave(patientId, next);
+    } finally {
+      setSavingId(null);
+    }
+  }
 
   return (
     <div className="space-y-8">
@@ -74,29 +101,51 @@ export function ClinicPatientsTab({
           </p>
         ) : (
           <ul className="divide-y divide-stone-200 dark:divide-slate-700">
-            {filtered.map((p) => (
-              <li
-                key={p.id}
-                className="flex flex-wrap items-center justify-between gap-3 py-3"
-              >
-                <div>
-                  <p className="font-medium text-stone-900 dark:text-slate-50">
-                    {p.displayName}
-                  </p>
-                  <p className="text-sm text-stone-500 dark:text-slate-400">
-                    {p.email}
-                  </p>
-                </div>
-                <Button
-                  type="button"
-                  size="sm"
-                  variant="secondary"
-                  onClick={() => onOpenChart(p.id)}
+            {filtered.map((p) => {
+              const tz = resolvePatientTimezone(p.timezone);
+              return (
+                <li
+                  key={p.id}
+                  className="flex flex-wrap items-center justify-between gap-3 py-3"
                 >
-                  {t("patientsOpenChart")}
-                </Button>
-              </li>
-            ))}
+                  <div className="min-w-0 flex-1 space-y-2">
+                    <div>
+                      <p className="font-medium text-stone-900 dark:text-slate-50">
+                        {p.displayName}
+                      </p>
+                      <p className="text-sm text-stone-500 dark:text-slate-400">
+                        {p.email}
+                      </p>
+                    </div>
+                    <label className="flex max-w-md flex-col gap-1 text-sm">
+                      <span className="font-medium text-stone-800 dark:text-slate-100">
+                        {t("patientTimezone")}
+                      </span>
+                      <select
+                        value={tz}
+                        disabled={savingId === p.id}
+                        onChange={(e) => void saveTimezone(p.id, e.target.value)}
+                        className="h-10 rounded-md border border-stone-300 bg-white px-3 dark:border-slate-600 dark:bg-slate-900"
+                      >
+                        {APP_TIMEZONES.map((z) => (
+                          <option key={z.value} value={z.value}>
+                            {zoneLabel(z.value)}
+                          </option>
+                        ))}
+                      </select>
+                    </label>
+                  </div>
+                  <Button
+                    type="button"
+                    size="sm"
+                    variant="secondary"
+                    onClick={() => onOpenChart(p.id)}
+                  >
+                    {t("patientsOpenChart")}
+                  </Button>
+                </li>
+              );
+            })}
           </ul>
         )}
       </section>
@@ -135,6 +184,25 @@ export function ClinicPatientsTab({
           required
           placeholder={t("phonePlaceholder")}
         />
+        <label className="flex flex-col gap-1.5 text-sm">
+          <span className="font-medium text-stone-800 dark:text-slate-100">
+            {t("patientTimezone")}
+          </span>
+          <select
+            value={timezone || DEFAULT_PATIENT_TIMEZONE}
+            onChange={(e) => onTimezoneChange(e.target.value)}
+            className="h-10 rounded-md border border-stone-300 bg-white px-3 dark:border-slate-600 dark:bg-slate-900"
+          >
+            {APP_TIMEZONES.map((z) => (
+              <option key={z.value} value={z.value}>
+                {zoneLabel(z.value)}
+              </option>
+            ))}
+          </select>
+          <span className="text-xs text-stone-500 dark:text-slate-400">
+            {t("patientTimezoneHint")}
+          </span>
+        </label>
         <p className="text-xs text-stone-500 dark:text-slate-400">
           {t("registerPhoneHint")}
         </p>

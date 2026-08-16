@@ -35,7 +35,7 @@ export class AdminUserRepository implements IUserRepository {
       photoUrl: input.photoUrl ?? null,
       role: input.role,
       locale: input.locale ?? "es",
-      timezone: null,
+      timezone: input.timezone ?? null,
       createdAt: FieldValue.serverTimestamp(),
       updatedAt: FieldValue.serverTimestamp(),
     };
@@ -64,6 +64,22 @@ export class AdminUserRepository implements IUserRepository {
     const ref = (await this.db()).collection(USERS).doc(id);
     await ref.update({
       photoUrl,
+      updatedAt: FieldValue.serverTimestamp(),
+    });
+    const snap = await ref.get();
+    if (!snap.exists) {
+      throw new Error(`User not found: ${id}`);
+    }
+    return adaptUserProfile(snap.id, snap.data() ?? {});
+  }
+
+  async updateTimezone(
+    id: string,
+    timezone: string | null,
+  ): Promise<UserProfile> {
+    const ref = (await this.db()).collection(USERS).doc(id);
+    await ref.update({
+      timezone,
       updatedAt: FieldValue.serverTimestamp(),
     });
     const snap = await ref.get();
