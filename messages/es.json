@@ -63,6 +63,17 @@
       "network": "Problema de conexión. Comprueba tu internet e inténtalo de nuevo."
     }
   },
+  "Specialty": {
+    "label": "Especialidad / profesión",
+    "placeholder": "Selecciona o busca…",
+    "search": "Buscar especialidad…",
+    "empty": "Sin coincidencias",
+    "loading": "Cargando catálogo…",
+    "create": "Añadir «{name}»",
+    "creating": "Añadiendo…",
+    "createError": "No se pudo añadir la especialidad.",
+    "hint": "Usa el catálogo para que no se dupliquen citas de la misma profesión. Si no está, escríbela y añádela."
+  },
   "ProfilePhoto": {
     "alt": "Foto de perfil",
     "hint": "Foto de perfil (opcional)",
@@ -168,6 +179,8 @@
     "calLegendBusy": "Ocupado (Thaydee Elena)",
     "calLegendGoogle": "Ocupado (Google)",
     "calLegendGhost": "Cancelada (ghost)",
+    "calPatientOther": "Otra cita del paciente",
+    "calLegendPatientOther": "Otra cita del paciente",
     "calGoogleBusy": "Google Calendar",
     "ghostPrefix": "Cancelada ·",
     "patientTimezone": "Zona horaria del paciente",

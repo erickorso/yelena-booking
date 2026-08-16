@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import { getAdminAuth, isFirebaseAdminConfigured } from "@/lib/firebase/admin";
+import { AdminSpecialtyRepository } from "@/repositories/firestore/AdminSpecialtyRepository";
 import { AdminUserRepository } from "@/repositories/firestore/AdminUserRepository";
 import { isAuthRole, type AuthRole } from "@/types/domain";
 
@@ -130,10 +131,14 @@ export async function POST(request: Request) {
 
     let specialist = null;
     if (role === "especialista") {
+      const specialtyName = await new AdminSpecialtyRepository().ensure(
+        String(body.specialty).trim(),
+        decoded.uid,
+      );
       specialist = await users.createSpecialist({
         id: decoded.uid,
         userId: decoded.uid,
-        specialty: String(body.specialty).trim(),
+        specialty: specialtyName,
         licenseNumber: String(body.licenseNumber).trim(),
         bio: typeof body.bio === "string" ? body.bio : "",
         location: typeof body.location === "string" ? body.location : "",

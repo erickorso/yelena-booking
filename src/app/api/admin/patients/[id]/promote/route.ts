@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { getAdminAuth } from "@/lib/firebase/admin";
 import { isAuthError, requireAuth } from "@/lib/auth/requireAuth";
+import { AdminSpecialtyRepository } from "@/repositories/firestore/AdminSpecialtyRepository";
 import { AdminUserRepository } from "@/repositories/firestore/AdminUserRepository";
 
 interface PromoteBody {
@@ -73,10 +74,14 @@ export async function POST(
     }
 
     const status = activate ? "active" : "pending";
+    const specialtyName = await new AdminSpecialtyRepository().ensure(
+      specialty,
+      auth.uid,
+    );
     const specialist = await users.createSpecialist({
       id: patientId,
       userId: patientId,
-      specialty,
+      specialty: specialtyName,
       licenseNumber,
       bio: typeof body.bio === "string" ? body.bio : "",
       location: typeof body.location === "string" ? body.location : "",

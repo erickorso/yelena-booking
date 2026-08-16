@@ -14,6 +14,7 @@ export type ClinicPeerOption = {
 export type ClinicAppointmentRow = {
   id: string;
   patientId: string;
+  specialistId?: string;
   startsAt: string;
   endsAt: string;
   status: string;

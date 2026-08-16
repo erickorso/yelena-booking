@@ -63,6 +63,17 @@
       "network": "Connection problem. Check your internet and try again."
     }
   },
+  "Specialty": {
+    "label": "Specialty / profession",
+    "placeholder": "Select or search…",
+    "search": "Search specialty…",
+    "empty": "No matches",
+    "loading": "Loading catalog…",
+    "create": "Add “{name}”",
+    "creating": "Adding…",
+    "createError": "Could not add specialty.",
+    "hint": "Use the catalog so same-profession bookings don’t duplicate. If missing, type it and add it."
+  },
   "ProfilePhoto": {
     "alt": "Profile photo",
     "hint": "Profile photo (optional)",
@@ -168,6 +179,8 @@
     "calLegendBusy": "Busy (Thaydee Elena)",
     "calLegendGoogle": "Busy (Google)",
     "calLegendGhost": "Cancelled (ghost)",
+    "calPatientOther": "Patient's other appointment",
+    "calLegendPatientOther": "Patient's other appointment",
     "calGoogleBusy": "Google Calendar",
     "ghostPrefix": "Cancelled ·",
     "patientTimezone": "Patient timezone",

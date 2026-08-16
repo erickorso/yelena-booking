@@ -10,7 +10,7 @@ export function isMailConfigured(): boolean {
 export function getMailFrom(): string {
   return (
     process.env.MAIL_FROM?.trim() ||
-    "Yelena Booking <onboarding@resend.dev>"
+    "Thaydee Elena <onboarding@resend.dev>"
   );
 }
 

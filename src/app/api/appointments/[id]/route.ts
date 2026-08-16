@@ -6,6 +6,7 @@ import {
 } from "@/lib/availability/defaultSlots";
 import { formatGoogleDateTime } from "@/lib/availability/scheduleTimeZone";
 import { resolvePatientTimezone } from "@/lib/timezones";
+import { evaluatePatientBooking } from "@/lib/appointments/patientBookingRules";
 import { AdminAppointmentRepository } from "@/repositories/firestore/AdminAppointmentRepository";
 import { AdminAvailabilityRepository } from "@/repositories/firestore/AdminAvailabilityRepository";
 import { AdminUserRepository } from "@/repositories/firestore/AdminUserRepository";
@@ -170,6 +171,31 @@ export async function PATCH(
         );
       }
 
+      const users = new AdminUserRepository();
+      const specialistProfile = await users.getSpecialistByUserId(
+        current.specialistId,
+      );
+      const patientAppointments = await repo.list({
+        patientId: current.patientId,
+      });
+      const patientCheck = await evaluatePatientBooking({
+        patientAppointments,
+        targetSpecialistId: current.specialistId,
+        targetSpecialty: specialistProfile?.specialty ?? "",
+        startsAt,
+        endsAt,
+        excludeAppointmentId:
+          current.status === "cancelled" ? null : id,
+        getSpecialty: async (sid) =>
+          (await users.getSpecialistByUserId(sid))?.specialty ?? null,
+      });
+      if (!patientCheck.ok) {
+        return NextResponse.json(
+          { error: patientCheck.error, code: patientCheck.code },
+          { status: 409 },
+        );
+      }
+
       try {
         if (
           await gcal.hasConflict(
@@ -227,7 +253,6 @@ export async function PATCH(
 
       if (current.googleEventId) {
         try {
-          const users = new AdminUserRepository();
           const patient = await users.getById(current.patientId);
           const patientTz = resolvePatientTimezone(patient?.timezone ?? null);
           const patientLocal = `${formatGoogleDateTime(startsAt, patientTz)}–${formatGoogleDateTime(endsAt, patientTz).slice(11)} (${patientTz})`;

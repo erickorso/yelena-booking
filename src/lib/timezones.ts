@@ -1,4 +1,4 @@
-/** Common IANA zones for Yelena (patient + specialist). */
+/** Common IANA zones for patient + specialist. */
 export const APP_TIMEZONES = [
   {
     value: "America/Caracas",

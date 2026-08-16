@@ -3,6 +3,7 @@
 import { useState, type FormEvent } from "react";
 import { useLocale, useTranslations } from "next-intl";
 import { Button } from "@/components/atoms/Button";
+import { SpecialtyPicker } from "@/components/molecules/SpecialtyPicker";
 import { Input } from "@/components/atoms/Input";
 import { useAuth } from "@/components/providers/AuthProvider";
 import { Link, useRouter } from "@/i18n/navigation";
@@ -147,12 +148,11 @@ export function RegisterForm() {
         />
         {role === "especialista" ? (
           <>
-            <Input
-              label={t("specialty")}
+            <SpecialtyPicker
               name="specialty"
               required
               value={specialty}
-              onChange={(e) => setSpecialty(e.target.value)}
+              onChange={setSpecialty}
             />
             <Input
               label={t("licenseNumber")}

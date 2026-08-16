@@ -30,8 +30,8 @@ export type CalendarEvent = {
   title: string;
   status: string;
   patientId?: string;
-  /** google = FreeBusy block from integrated calendar */
-  source?: "yelena" | "google";
+  /** google = FreeBusy; patient_other = patient's booking with another specialist */
+  source?: "yelena" | "google" | "patient_other";
 };
 
 export type CalendarSlot = {
@@ -51,7 +51,7 @@ type WeekCalendarProps = {
    * Specialist working hours are projected into this zone.
    */
   displayTimeZone?: string;
-  /** Click a Yelena appointment block (not Google busy). */
+  /** Click a Thaydee Elena appointment block (not Google busy). */
   onEventClick?: (event: CalendarEvent) => void;
   /** Banner while picking a new slot for reschedule. */
   rescheduleHint?: string | null;
@@ -71,6 +71,7 @@ type WeekCalendarProps = {
     legendBusy: string;
     legendGoogle?: string;
     legendGhost?: string;
+    legendPatientOther?: string;
   };
 };
 
@@ -357,6 +358,15 @@ export function WeekCalendar({
             {labels.legendGhost}
           </li>
         ) : null}
+        {labels.legendPatientOther ? (
+          <li className="inline-flex items-center gap-1.5">
+            <span
+              className="inline-block h-3 w-4 rounded-sm bg-amber-700/85"
+              aria-hidden
+            />
+            {labels.legendPatientOther}
+          </li>
+        ) : null}
       </ul>
 
       {selectedSlot ? (
@@ -524,19 +534,23 @@ export function WeekCalendar({
                       HOUR_HEIGHT,
                   );
                   const isGoogle = ev.source === "google";
-                  const isGhost = !isGoogle && ev.status === "cancelled";
+                  const isPatientOther = ev.source === "patient_other";
+                  const isGhost = !isGoogle && !isPatientOther && ev.status === "cancelled";
                   const hasSplitPartner =
                     !isGoogle &&
+                    !isPatientOther &&
                     dayEvents.some(
                       (other) =>
                         other.id !== ev.id &&
                         other.source !== "google" &&
+                        other.source !== "patient_other" &&
                         intervalsOverlap(ev, other) &&
                         (isGhost
                           ? other.status !== "cancelled"
                           : other.status === "cancelled"),
                     );
-                  const clickable = !isGoogle && Boolean(onEventClick);
+                  const clickable =
+                    !isGoogle && !isPatientOther && Boolean(onEventClick);
                   return (
                     <div
                       key={ev.id}
@@ -564,18 +578,26 @@ export function WeekCalendar({
                       }
                       className={clsx(
                         "absolute z-[1] overflow-hidden rounded-md px-1.5 py-0.5 text-[11px] leading-tight shadow-sm",
-                        isGoogle && "pointer-events-none inset-x-1 bg-violet-700/90 text-white",
+                        isGoogle &&
+                          "pointer-events-none inset-x-1 bg-violet-700/90 text-white",
+                        isPatientOther &&
+                          "pointer-events-none inset-x-1 bg-amber-700/85 text-white",
                         isGhost &&
                           "border border-dashed border-stone-500 bg-stone-400/35 text-stone-800 dark:border-slate-400 dark:bg-slate-600/45 dark:text-slate-100",
                         !isGoogle &&
+                          !isPatientOther &&
                           !isGhost &&
                           "bg-rose-600/90 text-white",
                         hasSplitPartner && isGhost && "left-1 w-[calc(50%-0.35rem)]",
                         hasSplitPartner &&
                           !isGhost &&
                           !isGoogle &&
+                          !isPatientOther &&
                           "left-[50%] right-1",
-                        !hasSplitPartner && !isGoogle && "inset-x-1",
+                        !hasSplitPartner &&
+                          !isGoogle &&
+                          !isPatientOther &&
+                          "inset-x-1",
                         clickable &&
                           "cursor-pointer ring-offset-1 hover:ring-2 hover:ring-amber-400",
                       )}

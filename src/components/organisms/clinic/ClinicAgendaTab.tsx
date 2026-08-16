@@ -62,6 +62,7 @@ export function ClinicAgendaTab({
   const hintId = useId();
   const [showHint, setShowHint] = useState(false);
   const [googleBusy, setGoogleBusy] = useState<CalendarEvent[]>([]);
+  const [patientOtherBusy, setPatientOtherBusy] = useState<CalendarEvent[]>([]);
   const [managing, setManaging] = useState<ManageableAppointment | null>(null);
   const [managePending, setManagePending] = useState(false);
   const [manageError, setManageError] = useState<string | null>(null);
@@ -132,6 +133,51 @@ export function ClinicAgendaTab({
       cancelled = true;
     };
   }, [user, scheduleTz, t, appointments]);
+
+  useEffect(() => {
+    if (!user || !patientId) {
+      return;
+    }
+    let cancelled = false;
+    void (async () => {
+      try {
+        const token = await getIdToken(user);
+        const res = await fetch(
+          `/api/appointments?as=specialist&patientId=${encodeURIComponent(patientId)}`,
+          { headers: { Authorization: `Bearer ${token}` } },
+        );
+        const data = (await res.json()) as {
+          appointments?: ClinicAppointmentRow[];
+        };
+        if (cancelled || !res.ok) return;
+        setPatientOtherBusy(
+          (data.appointments ?? [])
+            .filter(
+              (a) =>
+                (a.status === "pending" || a.status === "confirmed") &&
+                Boolean(a.specialistId) &&
+                a.specialistId !== selfUid,
+            )
+            .map((a) => ({
+              id: `patient-other-${a.id}`,
+              patientId: a.patientId,
+              startsAt: new Date(a.startsAt),
+              endsAt: new Date(a.endsAt),
+              title: t("calPatientOther"),
+              status: a.status,
+              source: "patient_other" as const,
+            })),
+        );
+      } catch {
+        if (!cancelled) setPatientOtherBusy([]);
+      }
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, [user, patientId, selfUid, t, appointments]);
+
+  const patientBusyForCalendar = patientId ? patientOtherBusy : [];
 
   const hintMessage = missingPatient
     ? missingSlot
@@ -269,7 +315,7 @@ export function ClinicAgendaTab({
             source: "yelena" as const,
           };
         })}
-        googleBusy={googleBusy}
+        googleBusy={[...googleBusy, ...patientBusyForCalendar]}
         selectedSlot={selectedSlot}
         onSelectSlot={(slot) => {
           if (rescheduleId && slot) {
@@ -280,7 +326,7 @@ export function ClinicAgendaTab({
           if (slot) setShowHint(false);
         }}
         onEventClick={(ev) => {
-          if (ev.source === "google") return;
+          if (ev.source === "google" || ev.source === "patient_other") return;
           setManageError(null);
           setManaging({
             id: ev.id,
@@ -318,6 +364,7 @@ export function ClinicAgendaTab({
           legendBusy: t("calLegendBusy"),
           legendGoogle: t("calLegendGoogle"),
           legendGhost: t("calLegendGhost"),
+          legendPatientOther: t("calLegendPatientOther"),
         }}
       />
       {!rescheduleId ? (

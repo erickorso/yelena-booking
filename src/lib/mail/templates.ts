@@ -32,11 +32,11 @@ export function buildSmokeEmail(toLabel: string): {
   html: string;
   text: string;
 } {
-  const subject = "Yelena — prueba de correo";
-  const text = `Hola ${toLabel}. Este es un correo de prueba del módulo de mails de Yelena Booking.`;
+  const subject = "Thaydee Elena — prueba de correo";
+  const text = `Hola ${toLabel}. Este es un correo de prueba del módulo de mails de Thaydee Elena.`;
   const html = `<!DOCTYPE html><html><body style="font-family:Georgia,serif;background:#faf8f5;padding:24px;color:#1c1917">
   <div style="max-width:520px;margin:0 auto;background:#fff;border:1px solid #e7e5e4;border-radius:8px;padding:24px">
-    <h1 style="font-size:22px;color:#0f766e;margin:0 0 12px">Yelena Booking</h1>
+    <h1 style="font-size:22px;color:#0f766e;margin:0 0 12px">Thaydee Elena</h1>
     <p style="margin:0 0 12px">Hola <strong>${escapeHtml(toLabel)}</strong>.</p>
     <p style="margin:0 0 12px">Este es un correo de prueba del módulo de mails. Si lo recibes, Resend está bien configurado.</p>
     <p style="margin:0;font-size:12px;color:#78716c">No respondas a este mensaje automático.</p>
@@ -70,7 +70,7 @@ export function buildAppointmentBookedEmail(payload: AppointmentMailPayload): {
     <p style="margin:0 0 16px"><strong>${locale === "es" ? "Cuándo" : "When"}:</strong> ${escapeHtml(when)}</p>
     ${meetHtml}
     <p style="margin:0 0 16px"><a href="${escapeAttr(payload.dashboardUrl)}" style="color:#0f766e">${locale === "es" ? "Abrir panel" : "Open dashboard"}</a></p>
-    <p style="margin:0;font-size:12px;color:#78716c">Yelena Booking</p>
+    <p style="margin:0;font-size:12px;color:#78716c">Thaydee Elena</p>
   </div></body></html>`;
   return { subject, html, text };
 }
@@ -98,7 +98,7 @@ export function buildTransferRequestEmail(payload: TransferMailPayload): {
     <p style="margin:0 0 8px"><strong>${locale === "es" ? "Paciente" : "Patient"}:</strong> ${escapeHtml(payload.patientName)}</p>
     <p style="margin:0 0 16px"><strong>${locale === "es" ? "Cuándo" : "When"}:</strong> ${escapeHtml(when)}</p>
     <p style="margin:0 0 16px"><a href="${escapeAttr(payload.dashboardUrl)}" style="color:#0f766e">${locale === "es" ? "Confirmar en el panel" : "Confirm in dashboard"}</a></p>
-    <p style="margin:0;font-size:12px;color:#78716c">Yelena Booking</p>
+    <p style="margin:0;font-size:12px;color:#78716c">Thaydee Elena</p>
   </div></body></html>`;
   return { subject, html, text };
 }

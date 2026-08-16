@@ -19,10 +19,14 @@ type SearchableSelectProps = {
   onChange: (id: string) => void;
   required?: boolean;
   name?: string;
+  /** Return label for create row, or null to hide. */
+  getCreateOptionLabel?: (query: string) => string | null;
+  onCreateOption?: (query: string) => void;
+  createPending?: boolean;
 };
 
 /**
- * Combobox with client-side filter (name/email). Caps visible list for long catalogs.
+ * Combobox with client-side filter. Optional creatable row from current query.
  */
 export function SearchableSelect({
   label,
@@ -34,6 +38,9 @@ export function SearchableSelect({
   onChange,
   required,
   name,
+  getCreateOptionLabel,
+  onCreateOption,
+  createPending,
 }: SearchableSelectProps) {
   const listId = useId();
   const rootRef = useRef<HTMLDivElement>(null);
@@ -53,6 +60,8 @@ export function SearchableSelect({
     return source.slice(0, 50);
   }, [options, query]);
 
+  const createLabel = getCreateOptionLabel?.(query.trim()) ?? null;
+
   useEffect(() => {
     if (!open) return;
     function onDocClick(event: MouseEvent) {
@@ -71,7 +80,10 @@ export function SearchableSelect({
   }
 
   return (
-    <div ref={rootRef} className="relative flex flex-col gap-1.5 text-sm text-stone-800 dark:text-slate-100">
+    <div
+      ref={rootRef}
+      className="relative flex flex-col gap-1.5 text-sm text-stone-800 dark:text-slate-100"
+    >
       <span className="font-medium" id={`${listId}-label`}>
         {label}
       </span>
@@ -113,26 +125,41 @@ export function SearchableSelect({
             aria-labelledby={`${listId}-label`}
             className="max-h-56 overflow-y-auto py-1"
           >
-            {filtered.length === 0 ? (
+            {filtered.length === 0 && !createLabel ? (
               <li className="px-3 py-2 text-stone-500 dark:text-slate-400">
                 {emptyLabel}
               </li>
-            ) : (
-              filtered.map((o) => (
-                <li key={o.id} role="option" aria-selected={o.id === value}>
-                  <button
-                    type="button"
-                    className={clsx(
-                      "w-full px-3 py-2 text-left hover:bg-teal-50 dark:hover:bg-slate-800",
-                      o.id === value && "bg-teal-50 dark:bg-slate-800",
-                    )}
-                    onClick={() => pick(o.id)}
-                  >
-                    {o.label}
-                  </button>
-                </li>
-              ))
-            )}
+            ) : null}
+            {filtered.map((o) => (
+              <li key={o.id} role="option" aria-selected={o.id === value}>
+                <button
+                  type="button"
+                  className={clsx(
+                    "w-full px-3 py-2 text-left hover:bg-teal-50 dark:hover:bg-slate-800",
+                    o.id === value && "bg-teal-50 dark:bg-slate-800",
+                  )}
+                  onClick={() => pick(o.id)}
+                >
+                  {o.label}
+                </button>
+              </li>
+            ))}
+            {createLabel && onCreateOption ? (
+              <li role="option" aria-selected={false}>
+                <button
+                  type="button"
+                  disabled={createPending}
+                  className="w-full border-t border-stone-200 px-3 py-2 text-left font-medium text-teal-800 hover:bg-teal-50 disabled:opacity-50 dark:border-slate-700 dark:text-teal-300 dark:hover:bg-slate-800"
+                  onClick={() => {
+                    onCreateOption(query.trim());
+                    setQuery("");
+                    setOpen(false);
+                  }}
+                >
+                  {createPending ? "…" : createLabel}
+                </button>
+              </li>
+            ) : null}
           </ul>
         </div>
       ) : null}

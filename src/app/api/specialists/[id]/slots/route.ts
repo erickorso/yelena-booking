@@ -69,6 +69,21 @@ export async function GET(
         status: a.status,
       }));
 
+    // Patient cannot pick a slot that overlaps their other appointments.
+    const patientBusy = await new AdminAppointmentRepository().list({
+      patientId: auth.uid,
+    });
+    for (const a of patientBusy) {
+      if (a.specialistId === id) continue;
+      if (a.status !== "pending" && a.status !== "confirmed") continue;
+      if (a.endsAt <= dayStart || a.startsAt >= dayEnd) continue;
+      busy.push({
+        startsAt: a.startsAt,
+        endsAt: a.endsAt,
+        status: a.status,
+      });
+    }
+
     let googleBusyCount = 0;
     try {
       const gBusy = await new GoogleCalendarService().listBusy(

@@ -84,7 +84,7 @@ export async function POST(request: Request) {
   const password =
     typeof body.password === "string" && body.password.length >= 8
       ? body.password
-      : `Yelena${randomBytes(4).toString("hex")}!aA`;
+      : `Te${randomBytes(4).toString("hex")}!aA`;
 
   if (!email || !displayName || !phone) {
     return NextResponse.json(

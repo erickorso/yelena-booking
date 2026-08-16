@@ -4,6 +4,7 @@ import { useEffect, useState } from "react";
 import { useTranslations } from "next-intl";
 import { Button } from "@/components/atoms/Button";
 import { Input } from "@/components/atoms/Input";
+import { SpecialtyPicker } from "@/components/molecules/SpecialtyPicker";
 import { useAuth } from "@/components/providers/AuthProvider";
 import { useToast } from "@/components/providers/ToastProvider";
 import { getIdToken } from "@/services/authService";
@@ -263,12 +264,11 @@ export function AdminPatientsPanel() {
           <p className="text-sm text-stone-600 dark:text-slate-300">
             {t("promoteHint")}
           </p>
-          <Input
-            label={t("specialty")}
+          <SpecialtyPicker
             name="specialty"
-            value={specialty}
-            onChange={(e) => setSpecialty(e.target.value)}
             required
+            value={specialty}
+            onChange={setSpecialty}
           />
           <Input
             label={t("licenseNumber")}

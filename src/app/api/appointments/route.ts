@@ -12,6 +12,7 @@ import {
   resolveScheduleTimezone,
 } from "@/lib/availability/defaultSlots";
 import { formatGoogleDateTime } from "@/lib/availability/scheduleTimeZone";
+import { evaluatePatientBooking } from "@/lib/appointments/patientBookingRules";
 import { resolvePatientTimezone } from "@/lib/timezones";
 
 interface CreateBody {
@@ -76,6 +77,11 @@ export async function GET(request: Request) {
 
   try {
     if (as === "specialist" && (auth.role === "especialista" || auth.role === "admin")) {
+      const patientId = url.searchParams.get("patientId")?.trim();
+      if (patientId) {
+        const list = await service.list({ patientId });
+        return NextResponse.json({ appointments: list.map(serialize) });
+      }
       const list = await service.list({ specialistId: auth.uid });
       return NextResponse.json({ appointments: list.map(serialize) });
     }
@@ -190,6 +196,23 @@ export async function POST(request: Request) {
     if (conflict) {
       return NextResponse.json(
         { error: "Slot already booked" },
+        { status: 409 },
+      );
+    }
+
+    const patientAppointments = await repo.list({ patientId });
+    const patientCheck = await evaluatePatientBooking({
+      patientAppointments,
+      targetSpecialistId: specialistId,
+      targetSpecialty: specialist.specialty,
+      startsAt,
+      endsAt,
+      getSpecialty: async (id) =>
+        (await users.getSpecialistByUserId(id))?.specialty ?? null,
+    });
+    if (!patientCheck.ok) {
+      return NextResponse.json(
+        { error: patientCheck.error, code: patientCheck.code },
         { status: 409 },
       );
     }

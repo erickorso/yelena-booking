@@ -25,7 +25,7 @@ type AppointmentManageModalProps = {
 };
 
 /**
- * Manage an existing Yelena appointment: cancel or start reschedule.
+ * Manage an existing appointment: cancel or start reschedule.
  * Cancelled ghosts only offer rebook (original slot stays as ghost).
  */
 export function AppointmentManageModal({
