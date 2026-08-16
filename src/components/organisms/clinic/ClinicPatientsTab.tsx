@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useDeferredValue, useMemo, useState } from "react";
 import { useLocale, useTranslations } from "next-intl";
 import { Button } from "@/components/atoms/Button";
 import { Input } from "@/components/atoms/Input";
@@ -52,12 +52,13 @@ export function ClinicPatientsTab({
   const locale = useLocale();
   const [query, setQuery] = useState("");
   const [savingId, setSavingId] = useState<string | null>(null);
+  const deferredQuery = useDeferredValue(query);
 
   const filtered = useMemo(() => {
-    const q = query.trim();
+    const q = deferredQuery.trim();
     if (!q) return patients;
     return patients.filter((p) => matchesPatientQuery(q, p));
-  }, [patients, query]);
+  }, [patients, deferredQuery]);
 
   function zoneLabel(value: string): string {
     const row = APP_TIMEZONES.find((z) => z.value === value);
@@ -91,7 +92,12 @@ export function ClinicPatientsTab({
           value={query}
           onChange={(e) => setQuery(e.target.value)}
           placeholder={t("patientSearch")}
+          autoComplete="off"
+          aria-controls="clinic-patients-results"
         />
+        <p id="clinic-patients-results" className="sr-only" aria-live="polite">
+          {filtered.length} {t("patientsListTitle")}
+        </p>
         {filtered.length === 0 ? (
           <p className="text-sm text-stone-600 dark:text-slate-300">
             {t("patientsEmpty")}

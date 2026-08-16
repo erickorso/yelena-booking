@@ -9,7 +9,8 @@
     "themeDark": "Dark",
     "themeSystem": "System",
     "localeLabel": "Language",
-    "privacyLink": "Privacy policy"
+    "privacyLink": "Privacy policy",
+    "skipToContent": "Skip to content"
   },
   "Home": {
     "title": "Care, scheduled with clarity",

@@ -24,7 +24,7 @@ export default function AdminDashboardPage() {
     <MarketingShell>
       <DashboardGate allowed={["admin"]} title={t("adminTitle")}>
         <p className="mb-6 text-stone-600 dark:text-slate-300">{t("adminBody")}</p>
-        <PanelTabs tabs={tabs} activeId={tab} onChange={setTab}>
+        <PanelTabs tabs={tabs} activeId={tab} onChange={setTab} ariaLabel="Admin">
           {tab === "patients" ? <AdminPatientsPanel /> : null}
           {tab === "queue" ? <AdminSpecialistQueue /> : null}
           {tab === "mail" ? <AdminMailTestPanel /> : null}

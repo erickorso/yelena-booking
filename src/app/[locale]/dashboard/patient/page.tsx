@@ -100,7 +100,7 @@ function PatientDashboardInner() {
         </div>
       ) : null}
 
-      <PanelTabs tabs={tabs} activeId={tab} onChange={setTab}>
+      <PanelTabs tabs={tabs} activeId={tab} onChange={setTab} ariaLabel="Paciente">
         {tab === "booking" ? (
           <AsyncBoundary>
             <BookSelfAppointmentForm />

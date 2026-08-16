@@ -59,12 +59,14 @@ export function ToastProvider({ children }: { children: ReactNode }) {
       {children}
       <div
         aria-live="polite"
+        aria-relevant="additions text"
         className="pointer-events-none fixed bottom-4 right-4 z-[100] flex w-[min(100%-2rem,22rem)] flex-col gap-2"
       >
         {items.map((item) => (
           <div
             key={item.id}
-            role="status"
+            role={item.variant === "error" ? "alert" : "status"}
+            aria-live={item.variant === "error" ? "assertive" : "polite"}
             className={clsx(
               "pointer-events-auto rounded-md border px-4 py-3 text-sm shadow-lg",
               item.variant === "success" &&
@@ -79,9 +81,9 @@ export function ToastProvider({ children }: { children: ReactNode }) {
               <p>{item.message}</p>
               <button
                 type="button"
-                className="shrink-0 text-xs opacity-60 hover:opacity-100"
+                className="shrink-0 rounded text-xs opacity-60 hover:opacity-100 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-teal-700"
                 onClick={() => dismiss(item.id)}
-                aria-label="Close"
+                aria-label="Cerrar notificación / Close notification"
               >
                 ✕
               </button>

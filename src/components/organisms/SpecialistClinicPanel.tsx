@@ -245,7 +245,7 @@ export function SpecialistClinicPanel() {
         </p>
       ) : null}
 
-      <PanelTabs tabs={tabs} activeId={tab} onChange={setTab}>
+      <PanelTabs tabs={tabs} activeId={tab} onChange={setTab} ariaLabel="Clínica">
         {tab === "agenda" ? (
           <ClinicAgendaTab
             selfUid={user?.uid}

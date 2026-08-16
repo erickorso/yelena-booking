@@ -486,17 +486,31 @@ export function WeekCalendar({
             return (
               <div
                 key={`col-${dayYmd}`}
-                role="presentation"
+                role="button"
+                tabIndex={isPastDay ? -1 : 0}
                 data-calendar-day={dayYmd}
                 data-calendar-past={isPastDay ? "1" : "0"}
+                aria-label={`${dayYmd}${isPastDay ? "" : ` — ${labels.legendAvailable}`}`}
+                aria-disabled={isPastDay || undefined}
                 className={clsx(
                   "relative border-l border-stone-200 dark:border-slate-700",
                   isPastDay
                     ? "cursor-not-allowed bg-stone-100/90 dark:bg-slate-950/50"
-                    : "cursor-crosshair bg-stone-100/70 dark:bg-slate-950/35",
+                    : "cursor-crosshair bg-stone-100/70 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-[-2px] focus-visible:outline-teal-700 dark:bg-slate-950/35",
                 )}
                 style={{ height: GRID_HEIGHT }}
                 onClick={(e) => handleColumnClick(dayYmd, e)}
+                onKeyDown={(e) => {
+                  if (isPastDay) return;
+                  if (e.key === "Enter" || e.key === " ") {
+                    e.preventDefault();
+                    const rect = e.currentTarget.getBoundingClientRect();
+                    handleColumnClick(dayYmd, {
+                      currentTarget: e.currentTarget,
+                      clientY: rect.top + rect.height * 0.35,
+                    } as React.MouseEvent<HTMLDivElement>);
+                  }
+                }}
               >
                 {hours.map((h) => (
                   <div
