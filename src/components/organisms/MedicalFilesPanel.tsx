@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { useTranslations } from "next-intl";
 import { Button } from "@/components/atoms/Button";
 import { Input } from "@/components/atoms/Input";
@@ -29,6 +29,15 @@ type PatientOption = {
   email: string;
 };
 
+type AppointmentOption = {
+  id: string;
+  patientId?: string;
+  startsAt: string;
+  endsAt: string;
+  status: string;
+  specialistId: string;
+};
+
 type MedicalFilesPanelProps = {
   /** patient chart vs specialist personal library */
   mode: "patient_chart" | "specialist_library";
@@ -40,6 +49,7 @@ type MedicalFilesPanelProps = {
 
 /**
  * Append-only medical documents (PDF / images / Word). No delete.
+ * Patient chart can tag files to general history or a specific visit (default: latest).
  */
 export function MedicalFilesPanel({
   mode,
@@ -52,10 +62,12 @@ export function MedicalFilesPanel({
 
   const [files, setFiles] = useState<FileRow[]>([]);
   const [patients, setPatients] = useState<PatientOption[]>([]);
+  const [appointments, setAppointments] = useState<AppointmentOption[]>([]);
   const [pickedPatientId, setPickedPatientId] = useState("");
   const [scope, setScope] = useState<MedicalFileScope>(
     mode === "specialist_library" ? "specialist_profile" : "patient_general",
   );
+  const [appointmentId, setAppointmentId] = useState("");
   const [label, setLabel] = useState("");
   const [file, setFile] = useState<File | null>(null);
   const [loading, setLoading] = useState(true);
@@ -67,6 +79,27 @@ export function MedicalFilesPanel({
       ? ""
       : (fixedPatientId ||
         (allowPickPatient ? pickedPatientId : (user?.uid ?? "")));
+
+  const visitOptions = useMemo(() => {
+    if (mode !== "patient_chart" || !targetPatientId) return [];
+    return [...appointments]
+      .filter((a) => a.status !== "cancelled")
+      .filter((a) => !a.patientId || a.patientId === targetPatientId)
+      .sort(
+        (a, b) =>
+          new Date(b.startsAt).getTime() - new Date(a.startsAt).getTime(),
+      );
+  }, [appointments, mode, targetPatientId]);
+
+  const latestVisitId = visitOptions[0]?.id ?? "";
+
+  const resolvedAppointmentId = useMemo(() => {
+    if (scope !== "appointment") return "";
+    if (appointmentId && visitOptions.some((v) => v.id === appointmentId)) {
+      return appointmentId;
+    }
+    return latestVisitId;
+  }, [scope, appointmentId, visitOptions, latestVisitId]);
 
   useEffect(() => {
     if (!user) return;
@@ -126,12 +159,54 @@ export function MedicalFilesPanel({
     };
   }, [allowPickPatient, user, role]);
 
+  useEffect(() => {
+    if (!user || mode !== "patient_chart" || !targetPatientId) {
+      return;
+    }
+    let cancelled = false;
+    void (async () => {
+      try {
+        const token = await getIdToken(user);
+        const asSelf = targetPatientId === user.uid;
+        const res = await fetch(
+          asSelf
+            ? "/api/appointments?as=patient"
+            : "/api/appointments?as=specialist",
+          { headers: { Authorization: `Bearer ${token}` } },
+        );
+        const data = (await res.json()) as {
+          appointments?: AppointmentOption[];
+        };
+        if (cancelled || !res.ok) return;
+        const rows = (data.appointments ?? []).filter((a) =>
+          asSelf ? true : a.patientId === targetPatientId,
+        );
+        setAppointments(rows);
+      } catch {
+        if (!cancelled) setAppointments([]);
+      }
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, [user, mode, targetPatientId]);
+
   async function onUpload(event: React.FormEvent) {
     event.preventDefault();
     if (!user || !file) return;
     if (mode === "patient_chart" && !targetPatientId) {
       toastError(t("pickPatient"));
       return;
+    }
+    if (scope === "appointment") {
+      if (visitOptions.length === 0) {
+        toastError(t("noVisits"));
+        return;
+      }
+      if (!resolvedAppointmentId) {
+        toastError(t("pickVisit"));
+        return;
+      }
     }
     setUploading(true);
     try {
@@ -142,6 +217,9 @@ export function MedicalFilesPanel({
       if (label.trim()) body.set("label", label.trim());
       if (scope !== "specialist_profile") {
         body.set("patientId", targetPatientId);
+      }
+      if (scope === "appointment" && resolvedAppointmentId) {
+        body.set("appointmentId", resolvedAppointmentId);
       }
       const res = await fetch("/api/files", {
         method: "POST",
@@ -168,9 +246,29 @@ export function MedicalFilesPanel({
     return `${(bytes / (1024 * 1024)).toFixed(1)} MB`;
   }
 
+  function formatVisit(a: AppointmentOption, isLatest: boolean): string {
+    const when = new Date(a.startsAt).toLocaleString(undefined, {
+      dateStyle: "medium",
+      timeStyle: "short",
+    });
+    return isLatest
+      ? t("visitOptionLatest", { when })
+      : t("visitOption", { when, status: a.status });
+  }
+
+  function appointmentLabel(id: string | null): string | null {
+    if (!id) return null;
+    const a = visitOptions.find((v) => v.id === id);
+    if (!a) return t("apptRef", { id: id.slice(0, 6) });
+    return new Date(a.startsAt).toLocaleString(undefined, {
+      dateStyle: "medium",
+      timeStyle: "short",
+    });
+  }
+
   function scopeLabel(s: string): string {
     if (s === "patient_general") return t("scopeGeneral");
-    if (s === "appointment") return t("scopeLastVisit");
+    if (s === "appointment") return t("scopeVisit");
     if (s === "specialist_profile") return t("scopeLibrary");
     return s;
   }
@@ -194,7 +292,10 @@ export function MedicalFilesPanel({
             searchPlaceholder={t("patientSearch")}
             emptyLabel={t("patientEmpty")}
             value={pickedPatientId}
-            onChange={setPickedPatientId}
+            onChange={(id) => {
+              setPickedPatientId(id);
+              setAppointmentId("");
+            }}
             options={patients.map((p) => ({
               id: p.id,
               label: `${p.displayName} · ${p.email}`,
@@ -204,7 +305,7 @@ export function MedicalFilesPanel({
         ) : null}
 
         {mode === "patient_chart" ? (
-          <fieldset className="space-y-2">
+          <fieldset className="space-y-3">
             <legend className="text-sm font-medium">{t("attachTo")}</legend>
             <div className="flex flex-wrap gap-2">
               <Button
@@ -219,11 +320,45 @@ export function MedicalFilesPanel({
                 type="button"
                 size="sm"
                 variant={scope === "appointment" ? "primary" : "secondary"}
-                onClick={() => setScope("appointment")}
+                onClick={() => {
+                  setScope("appointment");
+                  if (latestVisitId) setAppointmentId(latestVisitId);
+                }}
               >
-                {t("scopeLastVisit")}
+                {t("scopeVisit")}
               </Button>
             </div>
+
+            {scope === "appointment" ? (
+              visitOptions.length === 0 ? (
+                <p role="status" className="text-sm text-amber-800 dark:text-amber-200">
+                  {t("noVisits")}
+                </p>
+              ) : (
+                <label className="flex flex-col gap-1.5 text-sm">
+                  <span className="font-medium">{t("visitLabel")}</span>
+                  <select
+                    value={resolvedAppointmentId}
+                    onChange={(e) => setAppointmentId(e.target.value)}
+                    className="h-10 rounded-md border border-stone-300 bg-white px-3 dark:border-slate-600 dark:bg-slate-900"
+                    required
+                    aria-describedby="medical-file-visit-hint"
+                  >
+                    {visitOptions.map((a, idx) => (
+                      <option key={a.id} value={a.id}>
+                        {formatVisit(a, idx === 0)}
+                      </option>
+                    ))}
+                  </select>
+                  <span
+                    id="medical-file-visit-hint"
+                    className="text-xs text-stone-500 dark:text-slate-400"
+                  >
+                    {t("visitHint")}
+                  </span>
+                </label>
+              )
+            ) : null}
           </fieldset>
         ) : null}
 
@@ -258,7 +393,11 @@ export function MedicalFilesPanel({
         <h3 className="text-sm font-medium text-stone-800 dark:text-slate-100">
           {t("listTitle")}
         </h3>
-        {loading ? (
+        {mode === "patient_chart" && !targetPatientId ? (
+          <p className="text-sm text-stone-600 dark:text-slate-300">
+            {t("pickPatient")}
+          </p>
+        ) : loading ? (
           <p className="text-sm text-stone-500">{t("loading")}</p>
         ) : files.length === 0 ? (
           <p className="text-sm text-stone-600 dark:text-slate-300">
@@ -280,7 +419,9 @@ export function MedicalFilesPanel({
                     {scopeLabel(f.scope)} · {formatSize(f.sizeBytes)} ·{" "}
                     {new Date(f.createdAt).toLocaleString()}
                     {f.appointmentId
-                      ? ` · ${t("apptRef", { id: f.appointmentId.slice(0, 6) })}`
+                      ? ` · ${t("taggedVisit", {
+                          when: appointmentLabel(f.appointmentId) ?? f.appointmentId.slice(0, 6),
+                        })}`
                       : null}
                   </p>
                 </div>

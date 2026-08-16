@@ -6,6 +6,7 @@ import { Button } from "@/components/atoms/Button";
 import { Input } from "@/components/atoms/Input";
 import { useAuth } from "@/components/providers/AuthProvider";
 import { Link, useRouter } from "@/i18n/navigation";
+import { mapFirebaseAuthErrorKey } from "@/lib/auth/firebaseAuthErrors";
 
 function dashboardPath(role: string | null): string {
   if (role === "admin") return "/dashboard/admin";
@@ -23,6 +24,10 @@ export function LoginForm() {
   const [pending, setPending] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
+  function friendlyError(err: unknown): string {
+    return t(`errors.${mapFirebaseAuthErrorKey(err)}`);
+  }
+
   async function onSubmit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
     setPending(true);
@@ -31,12 +36,11 @@ export function LoginForm() {
       const nextRole = await loginWithEmail({ email, password });
       router.push(dashboardPath(nextRole));
     } catch (err) {
-      const message = err instanceof Error ? err.message : t("errors.generic");
-      if (message === "EMAIL_NOT_VERIFIED") {
+      if (err instanceof Error && err.message === "EMAIL_NOT_VERIFIED") {
         router.push("/verify-email");
         return;
       }
-      setError(message);
+      setError(friendlyError(err));
     } finally {
       setPending(false);
     }
@@ -49,7 +53,7 @@ export function LoginForm() {
       const nextRole = await loginWithGoogle();
       router.push(dashboardPath(nextRole));
     } catch (err) {
-      setError(err instanceof Error ? err.message : t("errors.generic"));
+      setError(friendlyError(err));
     } finally {
       setPending(false);
     }
@@ -100,7 +104,7 @@ export function LoginForm() {
         variant="secondary"
         className="w-full"
         disabled={pending}
-        onClick={onGoogle}
+        onClick={() => void onGoogle()}
       >
         {t("googleCta")}
       </Button>

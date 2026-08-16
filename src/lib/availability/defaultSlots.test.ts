@@ -5,6 +5,7 @@ import {
   DEFAULT_SCHEDULE,
   hmToMinutes,
   isWithinSchedule,
+  openMinuteRangesForDay,
   parseDateInput,
   toDateInputValue,
 } from "@/lib/availability/defaultSlots";
@@ -96,6 +97,18 @@ describe("computeFreeSlots", () => {
       ranges: [{ start: "18:00", end: "09:00" }],
     });
     expect(slots).toHaveLength(0);
+  });
+});
+
+describe("openMinuteRangesForDay", () => {
+  it("maps work ranges and skips non-workdays", () => {
+    const monday = new Date(2026, 7, 17, 12, 0, 0);
+    expect(openMinuteRangesForDay(monday, DEFAULT_SCHEDULE)).toEqual([
+      { startMin: 9 * 60, endMin: 13 * 60 },
+      { startMin: 15 * 60, endMin: 18 * 60 },
+    ]);
+    const sunday = new Date(2026, 7, 16, 12, 0, 0);
+    expect(openMinuteRangesForDay(sunday, DEFAULT_SCHEDULE)).toEqual([]);
   });
 });
 

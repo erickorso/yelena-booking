@@ -3,10 +3,13 @@ import { NextResponse } from "next/server";
 import { getAdminAuth } from "@/lib/firebase/admin";
 import { isAuthError, requireAuth } from "@/lib/auth/requireAuth";
 import { AdminUserRepository } from "@/repositories/firestore/AdminUserRepository";
+import { AdminClinicalHistoryRepository } from "@/repositories/firestore/AdminClinicalHistoryRepository";
+import { AdminNotificationRepository } from "@/repositories/firestore/AdminNotificationRepository";
 
 interface CreatePatientBody {
   email?: unknown;
   displayName?: unknown;
+  phone?: unknown;
   password?: unknown;
   locale?: unknown;
 }
@@ -70,15 +73,16 @@ export async function POST(request: Request) {
     typeof body.email === "string" ? body.email.trim().toLowerCase() : "";
   const displayName =
     typeof body.displayName === "string" ? body.displayName.trim() : "";
+  const phone = typeof body.phone === "string" ? body.phone.trim() : "";
   const locale = body.locale === "en" || body.locale === "es" ? body.locale : "es";
   const password =
     typeof body.password === "string" && body.password.length >= 8
       ? body.password
       : `Yelena${randomBytes(4).toString("hex")}!aA`;
 
-  if (!email || !displayName) {
+  if (!email || !displayName || !phone) {
     return NextResponse.json(
-      { error: "email and displayName are required" },
+      { error: "email, displayName and phone are required" },
       { status: 400 },
     );
   }
@@ -112,12 +116,35 @@ export async function POST(request: Request) {
       locale,
     });
 
+    await new AdminClinicalHistoryRepository().upsert(
+      created.uid,
+      { phone },
+      auth.uid,
+    );
+
+    const historyHref = "/dashboard/patient?tab=history";
+    await new AdminNotificationRepository().create({
+      userId: created.uid,
+      kind: "generic",
+      title:
+        locale === "en"
+          ? "Complete your clinical history"
+          : "Completa tu historia clínica",
+      body:
+        locale === "en"
+          ? "Your specialist created your account. Please fill in your clinical history (birth date, allergies, medications…)."
+          : "Tu especialista creó tu cuenta. Completa tu historia clínica (fecha de nacimiento, alergias, medicación…).",
+      href: historyHref,
+      meta: { reason: "clinical_history_incomplete" },
+    });
+
     return NextResponse.json({
       ok: true,
       patient: {
         id: profile.id,
         email: profile.email,
         displayName: profile.displayName,
+        phone,
       },
       temporaryPassword: password,
     });

@@ -34,7 +34,7 @@ export const DEFAULT_SCHEDULE: ScheduleConfig = {
     { start: "09:00", end: "13:00" },
     { start: "15:00", end: "18:00" },
   ],
-  timezone: "Europe/Madrid",
+  timezone: "America/Caracas",
   slotMinutes: DEFAULT_SLOT_MINUTES,
 };
 
@@ -201,4 +201,23 @@ export function toDateInputValue(d: Date): string {
 export function hmToMinutes(hm: string): number {
   const { h, m } = parseHm(hm);
   return h * 60 + m;
+}
+
+/** Open work ranges for a calendar day as minutes from midnight (schedule TZ wall-clock). */
+export function openMinuteRangesForDay(
+  day: Date,
+  schedule: ScheduleConfig = DEFAULT_SCHEDULE,
+): { startMin: number; endMin: number }[] {
+  const weekday = day.getDay() as Weekday;
+  if (!schedule.workdays.includes(weekday)) return [];
+  return schedule.ranges.filter(isValidRange).map((r) => ({
+    startMin: hmToMinutes(r.start),
+    endMin: hmToMinutes(r.end),
+  }));
+}
+
+export function resolveScheduleTimezone(
+  schedule: ScheduleConfig = DEFAULT_SCHEDULE,
+): string {
+  return schedule.timezone?.trim() || "America/Caracas";
 }

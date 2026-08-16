@@ -43,7 +43,7 @@ export async function GET(request: Request) {
         : {
             workdays: DEFAULT_SCHEDULE.workdays,
             ranges: DEFAULT_SCHEDULE.ranges,
-            timezone: "Europe/Madrid",
+            timezone: "America/Caracas",
             slotMinutes: DEFAULT_SLOT_MINUTES,
             isDefault: true,
           },
@@ -126,7 +126,7 @@ export async function PUT(request: Request) {
   const timezone =
     typeof body.timezone === "string" && body.timezone.trim()
       ? body.timezone.trim()
-      : "Europe/Madrid";
+      : "America/Caracas";
 
   const slotMinutes = isSlotDurationMinutes(body.slotMinutes)
     ? body.slotMinutes

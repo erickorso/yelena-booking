@@ -4,6 +4,8 @@ import { useMemo, useState } from "react";
 import { clsx } from "clsx";
 import {
   checkIntervalAvailability,
+  openMinuteRangesForDay,
+  resolveScheduleTimezone,
   resolveSlotMinutes,
   type BusyInterval,
   type ScheduleConfig,
@@ -39,6 +41,10 @@ type WeekCalendarProps = {
     pastSlot: string;
     outsideHours: string;
     busySlot: string;
+    timezone: string;
+    legendAvailable: string;
+    legendOutside: string;
+    legendBusy: string;
   };
 };
 
@@ -47,6 +53,8 @@ const DAY_END_HOUR = 19;
 const HOUR_HEIGHT = 56; // px
 const TOTAL_HOURS = DAY_END_HOUR - DAY_START_HOUR;
 const GRID_HEIGHT = TOTAL_HOURS * HOUR_HEIGHT;
+const GRID_START_MIN = DAY_START_HOUR * 60;
+const GRID_END_MIN = DAY_END_HOUR * 60;
 
 function startOfWeek(d: Date): Date {
   const day = d.getDay();
@@ -75,6 +83,19 @@ function minutesFromDayStart(d: Date): number {
   return d.getHours() * 60 + d.getMinutes() - DAY_START_HOUR * 60;
 }
 
+function bandStyle(startMin: number, endMin: number): {
+  top: number;
+  height: number;
+} | null {
+  const clippedStart = Math.max(startMin, GRID_START_MIN);
+  const clippedEnd = Math.min(endMin, GRID_END_MIN);
+  if (clippedEnd <= clippedStart) return null;
+  return {
+    top: ((clippedStart - GRID_START_MIN) / 60) * HOUR_HEIGHT,
+    height: ((clippedEnd - clippedStart) / 60) * HOUR_HEIGHT,
+  };
+}
+
 function formatHour(h: number): string {
   return `${String(h).padStart(2, "0")}:00`;
 }
@@ -92,7 +113,8 @@ function toBusy(events: CalendarEvent[]): BusyInterval[] {
 }
 
 /**
- * Week grid. Click empty area → duration modal → validate full interval → select.
+ * Week grid. Available bands highlighted; outside hours + busy shaded.
+ * Click empty area → duration modal → validate full interval → select.
  */
 export function WeekCalendar({
   events,
@@ -106,7 +128,8 @@ export function WeekCalendar({
   const [draftStart, setDraftStart] = useState<Date | null>(null);
   const [modalError, setModalError] = useState<string | null>(null);
   const locale =
-    typeof navigator !== "undefined" ? navigator.language : "es-ES";
+    typeof navigator !== "undefined" ? navigator.language : "es-VE";
+  const timeZone = resolveScheduleTimezone(schedule);
   const today = useMemo(() => {
     const t = new Date();
     t.setHours(0, 0, 0, 0);
@@ -154,6 +177,26 @@ export function WeekCalendar({
     startsAt.setHours(h, m, 0, 0);
     if (startsAt <= new Date()) {
       toastError(labels.pastSlot);
+      return;
+    }
+
+    const probeEnd = new Date(startsAt.getTime() + slotMinutes * 60_000);
+    const probe = checkIntervalAvailability(
+      startsAt,
+      probeEnd,
+      toBusy(events),
+      schedule,
+    );
+    if (!probe.ok) {
+      const msg =
+        probe.reason === "past"
+          ? labels.pastSlot
+          : probe.reason === "outside_hours"
+            ? labels.outsideHours
+            : probe.reason === "busy"
+              ? labels.busySlot
+              : labels.outsideHours;
+      toastError(msg);
       return;
     }
 
@@ -233,10 +276,39 @@ export function WeekCalendar({
         <p className="text-sm font-medium capitalize text-stone-800 dark:text-slate-100">
           {weekLabel}
         </p>
+        <span className="rounded-md bg-stone-100 px-2 py-1 text-xs text-stone-700 dark:bg-slate-800 dark:text-slate-200">
+          {labels.timezone}: {timeZone}
+        </span>
       </div>
       <p className="text-xs text-stone-500 dark:text-slate-400">
         {labels.hint} · {slotMinutes} min
       </p>
+      <ul
+        className="flex flex-wrap gap-3 text-xs text-stone-600 dark:text-slate-300"
+        aria-label="Leyenda"
+      >
+        <li className="inline-flex items-center gap-1.5">
+          <span
+            className="inline-block h-3 w-4 rounded-sm bg-emerald-200/90 ring-1 ring-emerald-400/60 dark:bg-emerald-900/50"
+            aria-hidden
+          />
+          {labels.legendAvailable}
+        </li>
+        <li className="inline-flex items-center gap-1.5">
+          <span
+            className="inline-block h-3 w-4 rounded-sm bg-stone-200/90 ring-1 ring-stone-300 dark:bg-slate-800"
+            aria-hidden
+          />
+          {labels.legendOutside}
+        </li>
+        <li className="inline-flex items-center gap-1.5">
+          <span
+            className="inline-block h-3 w-4 rounded-sm bg-rose-600/85"
+            aria-hidden
+          />
+          {labels.legendBusy}
+        </li>
+      </ul>
 
       {selectedSlot ? (
         <p
@@ -250,11 +322,13 @@ export function WeekCalendar({
             month: "short",
             hour: "2-digit",
             minute: "2-digit",
+            timeZone,
           })}
           {" → "}
           {new Date(selectedSlot.endsAt).toLocaleTimeString(locale, {
             hour: "2-digit",
             minute: "2-digit",
+            timeZone,
           })}{" "}
           ({selectedDurationMin} min)
         </p>
@@ -312,6 +386,7 @@ export function WeekCalendar({
           {days.map((day) => {
             const dayEvents = events.filter((e) => sameDay(e.startsAt, day));
             const isPastDay = day < today;
+            const openBands = openMinuteRangesForDay(day, schedule);
             const selectedOnDay =
               selectedSlot &&
               sameDay(new Date(selectedSlot.startsAt), day)
@@ -325,8 +400,8 @@ export function WeekCalendar({
                 className={clsx(
                   "relative border-l border-stone-200 dark:border-slate-700",
                   isPastDay
-                    ? "cursor-not-allowed bg-stone-50/80 dark:bg-slate-950/40"
-                    : "cursor-crosshair",
+                    ? "cursor-not-allowed bg-stone-100/90 dark:bg-slate-950/50"
+                    : "cursor-crosshair bg-stone-100/70 dark:bg-slate-950/35",
                 )}
                 style={{ height: GRID_HEIGHT }}
                 onClick={(e) => handleColumnClick(day, e)}
@@ -334,10 +409,26 @@ export function WeekCalendar({
                 {hours.map((h) => (
                   <div
                     key={h}
-                    className="pointer-events-none absolute inset-x-0 border-t border-stone-100 dark:border-slate-800"
+                    className="pointer-events-none absolute inset-x-0 border-t border-stone-200/80 dark:border-slate-800"
                     style={{ top: (h - DAY_START_HOUR) * HOUR_HEIGHT }}
                   />
                 ))}
+
+                {/* Available work windows */}
+                {!isPastDay
+                  ? openBands.map((band) => {
+                      const style = bandStyle(band.startMin, band.endMin);
+                      if (!style) return null;
+                      return (
+                        <div
+                          key={`open-${band.startMin}-${band.endMin}`}
+                          aria-hidden
+                          className="pointer-events-none absolute inset-x-0 bg-emerald-200/55 dark:bg-emerald-900/35"
+                          style={style}
+                        />
+                      );
+                    })
+                  : null}
 
                 {dayEvents.map((ev) => {
                   const topMin = minutesFromDayStart(ev.startsAt);
@@ -354,7 +445,7 @@ export function WeekCalendar({
                     <div
                       key={ev.id}
                       title={`${ev.title} · ${ev.status}`}
-                      className="pointer-events-none absolute inset-x-1 overflow-hidden rounded-md bg-teal-700/85 px-1.5 py-0.5 text-[11px] leading-tight text-white shadow-sm"
+                      className="pointer-events-none absolute inset-x-1 z-[1] overflow-hidden rounded-md bg-rose-600/90 px-1.5 py-0.5 text-[11px] leading-tight text-white shadow-sm"
                       style={{ top, height }}
                     >
                       <span className="font-medium">{ev.title}</span>
@@ -364,7 +455,7 @@ export function WeekCalendar({
 
                 {selectedOnDay ? (
                   <div
-                    className="pointer-events-none absolute inset-x-1 rounded-md border-2 border-dashed border-amber-500 bg-amber-400/30"
+                    className="pointer-events-none absolute inset-x-1 z-[2] rounded-md border-2 border-dashed border-amber-500 bg-amber-400/30"
                     style={{
                       top:
                         (minutesFromDayStart(new Date(selectedOnDay.startsAt)) /

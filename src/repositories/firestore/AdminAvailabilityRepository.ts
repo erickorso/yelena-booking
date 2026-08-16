@@ -74,7 +74,7 @@ export class AdminAvailabilityRepository {
       timezone:
         typeof data.timezone === "string" && data.timezone
           ? data.timezone
-          : "Europe/Madrid",
+          : "America/Caracas",
       workdays,
       ranges,
       slotMinutes,

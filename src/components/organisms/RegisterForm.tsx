@@ -7,6 +7,7 @@ import { Input } from "@/components/atoms/Input";
 import { useAuth } from "@/components/providers/AuthProvider";
 import { Link, useRouter } from "@/i18n/navigation";
 import type { AppLocale } from "@/i18n/routing";
+import { mapFirebaseAuthErrorKey } from "@/lib/auth/firebaseAuthErrors";
 
 type RegisterRole = "paciente" | "especialista";
 
@@ -29,6 +30,10 @@ export function RegisterForm() {
   const [pending, setPending] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
+  function friendlyError(err: unknown): string {
+    return t(`errors.${mapFirebaseAuthErrorKey(err)}`);
+  }
+
   async function onSubmit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
     setPending(true);
@@ -47,7 +52,7 @@ export function RegisterForm() {
       });
       router.push("/verify-email");
     } catch (err) {
-      setError(err instanceof Error ? err.message : t("errors.generic"));
+      setError(friendlyError(err));
     } finally {
       setPending(false);
     }
@@ -70,7 +75,7 @@ export function RegisterForm() {
       });
       router.push(dashboardPath(role));
     } catch (err) {
-      setError(err instanceof Error ? err.message : t("errors.generic"));
+      setError(friendlyError(err));
     } finally {
       setPending(false);
     }

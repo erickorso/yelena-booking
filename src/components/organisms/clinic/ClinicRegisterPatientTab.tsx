@@ -7,20 +7,24 @@ import { Input } from "@/components/atoms/Input";
 type ClinicRegisterPatientTabProps = {
   name: string;
   email: string;
+  phone: string;
   pending: boolean;
   tempPassword: string | null;
   onNameChange: (value: string) => void;
   onEmailChange: (value: string) => void;
+  onPhoneChange: (value: string) => void;
   onSubmit: (event: React.FormEvent) => void;
 };
 
 export function ClinicRegisterPatientTab({
   name,
   email,
+  phone,
   pending,
   tempPassword,
   onNameChange,
   onEmailChange,
+  onPhoneChange,
   onSubmit,
 }: ClinicRegisterPatientTabProps) {
   const t = useTranslations("Clinic");
@@ -51,6 +55,18 @@ export function ClinicRegisterPatientTab({
         onChange={(e) => onEmailChange(e.target.value)}
         required
       />
+      <Input
+        label={t("phone")}
+        name="patientPhone"
+        type="tel"
+        value={phone}
+        onChange={(e) => onPhoneChange(e.target.value)}
+        required
+        placeholder={t("phonePlaceholder")}
+      />
+      <p className="text-xs text-stone-500 dark:text-slate-400">
+        {t("registerPhoneHint")}
+      </p>
       {tempPassword ? (
         <p
           role="status"

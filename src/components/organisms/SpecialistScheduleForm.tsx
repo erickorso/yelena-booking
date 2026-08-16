@@ -49,7 +49,7 @@ export function SpecialistScheduleForm({ onSaved }: SpecialistScheduleFormProps)
   const [ranges, setRanges] = useState<TimeRange[]>([
     ...DEFAULT_SCHEDULE.ranges,
   ]);
-  const [timezone, setTimezone] = useState("Europe/Madrid");
+  const [timezone, setTimezone] = useState("America/Caracas");
   const [slotMinutes, setSlotMinutes] =
     useState<SlotDurationMinutes>(DEFAULT_SLOT_MINUTES);
   const [loading, setLoading] = useState(true);
@@ -79,7 +79,7 @@ export function SpecialistScheduleForm({ onSaved }: SpecialistScheduleFormProps)
               ? data.schedule.ranges
               : [...DEFAULT_SCHEDULE.ranges],
           );
-          setTimezone(data.schedule.timezone || "Europe/Madrid");
+          setTimezone(data.schedule.timezone || "America/Caracas");
           if (data.schedule.slotMinutes) {
             setSlotMinutes(data.schedule.slotMinutes);
           }
@@ -267,14 +267,19 @@ export function SpecialistScheduleForm({ onSaved }: SpecialistScheduleFormProps)
           onChange={(e) => setTimezone(e.target.value)}
           className="h-10 rounded-md border border-stone-300 bg-white px-3 dark:border-slate-600 dark:bg-slate-900"
         >
-          <option value="Europe/Madrid">Europe/Madrid</option>
-          <option value="Europe/London">Europe/London</option>
-          <option value="America/Bogota">America/Bogota</option>
-          <option value="America/Mexico_City">America/Mexico_City</option>
-          <option value="America/Argentina/Buenos_Aires">
-            America/Argentina/Buenos_Aires
+          <option value="America/Caracas">
+            Venezuela · America/Caracas (UTC−4)
           </option>
-          <option value="America/New_York">America/New_York</option>
+          <option value="America/Bogota">Colombia · America/Bogota</option>
+          <option value="America/Mexico_City">
+            México · America/Mexico_City
+          </option>
+          <option value="America/Argentina/Buenos_Aires">
+            Argentina · America/Buenos_Aires
+          </option>
+          <option value="America/New_York">EE.UU. · America/New_York</option>
+          <option value="Europe/Madrid">España · Europe/Madrid</option>
+          <option value="Europe/London">UK · Europe/London</option>
         </select>
       </label>
 

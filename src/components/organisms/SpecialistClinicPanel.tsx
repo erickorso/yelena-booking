@@ -38,6 +38,7 @@ export function SpecialistClinicPanel() {
 
   const [regName, setRegName] = useState("");
   const [regEmail, setRegEmail] = useState("");
+  const [regPhone, setRegPhone] = useState("");
   const [regPending, setRegPending] = useState(false);
   const [tempPassword, setTempPassword] = useState<string | null>(null);
 
@@ -138,7 +139,11 @@ export function SpecialistClinicPanel() {
           Authorization: `Bearer ${token}`,
           "Content-Type": "application/json",
         },
-        body: JSON.stringify({ email: regEmail, displayName: regName }),
+        body: JSON.stringify({
+          email: regEmail,
+          displayName: regName,
+          phone: regPhone,
+        }),
       });
       const data = (await response.json()) as {
         error?: string;
@@ -150,6 +155,7 @@ export function SpecialistClinicPanel() {
       success(t("registerSuccess"));
       setRegName("");
       setRegEmail("");
+      setRegPhone("");
       setReloadKey((k) => k + 1);
       if (data.patient) setPatientId(data.patient.id);
     } catch (err) {
@@ -253,10 +259,12 @@ export function SpecialistClinicPanel() {
           <ClinicRegisterPatientTab
             name={regName}
             email={regEmail}
+            phone={regPhone}
             pending={regPending}
             tempPassword={tempPassword}
             onNameChange={setRegName}
             onEmailChange={setRegEmail}
+            onPhoneChange={setRegPhone}
             onSubmit={(e) => void registerPatient(e)}
           />
         ) : null}
