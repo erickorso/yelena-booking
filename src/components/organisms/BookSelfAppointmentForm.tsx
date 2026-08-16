@@ -248,18 +248,18 @@ export function BookSelfAppointmentForm() {
       const data = (await response.json()) as {
         error?: string;
         googleSynced?: boolean;
+        mailSent?: boolean;
         appointment?: AppointmentRow;
       };
       if (!response.ok) {
         throw new Error(data.error ?? t("bookError"));
       }
-      if (data.googleSynced) {
-        setInfo(t("bookSuccess"));
-        success(t("bookSuccess"));
-      } else {
-        setInfo(t("bookSuccessNoGoogle"));
-        success(t("bookSuccessNoGoogle"));
-      }
+      const parts: string[] = [t("bookSuccess")];
+      if (!data.googleSynced) parts.push(t("bookWarnNoGoogle"));
+      if (!data.mailSent) parts.push(t("bookWarnNoMail"));
+      const msg = parts.join(" ");
+      setInfo(msg);
+      success(msg);
       setSelectedSlot(null);
       await reloadAppointments(token);
       if (weekRange) {
@@ -317,6 +317,15 @@ export function BookSelfAppointmentForm() {
 
   const specialistName = (id: string) =>
     specialists.find((s) => s.id === id)?.displayName ?? id.slice(0, 8);
+
+  function statusLabel(status: string): string {
+    if (status === "pending") return t("statusPending");
+    if (status === "confirmed") return t("statusConfirmed");
+    if (status === "cancelled") return t("statusCancelled");
+    if (status === "completed") return t("statusCompleted");
+    if (status === "no_show") return t("statusNoShow");
+    return status;
+  }
 
   const selectedSummary =
     selectedSlot && specialistId
@@ -470,7 +479,7 @@ export function BookSelfAppointmentForm() {
               >
                 <span>
                   {new Date(a.startsAt).toLocaleString()} ·{" "}
-                  {specialistName(a.specialistId)} · {a.status}
+                  {specialistName(a.specialistId)} · {statusLabel(a.status)}
                 </span>
                 <span className="flex flex-wrap gap-2">
                   <Button

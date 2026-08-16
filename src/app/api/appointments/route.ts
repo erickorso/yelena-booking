@@ -4,7 +4,7 @@ import { AdminAvailabilityRepository } from "@/repositories/firestore/AdminAvail
 import { AdminAppointmentRepository } from "@/repositories/firestore/AdminAppointmentRepository";
 import { AdminUserRepository } from "@/repositories/firestore/AdminUserRepository";
 import { AppointmentService } from "@/services/appointmentService";
-import { enqueueMail, MailService } from "@/services/mailService";
+import { MailService } from "@/services/mailService";
 import { GoogleCalendarService } from "@/services/googleCalendarService";
 import { canActAsPatient } from "@/types/domain";
 import {
@@ -273,21 +273,31 @@ export async function POST(request: Request) {
     }
 
     const specialistUser = await users.getById(specialistId);
-    enqueueMail(() =>
-      new MailService().sendAppointmentBooked({
-        to: patient.email,
-        patientName: patient.displayName,
-        specialistName: specialistUser?.displayName ?? specialist.specialty,
-        startsAt: appointment.startsAt,
-        endsAt: appointment.endsAt,
-        locale: patient.locale === "en" ? "en" : "es",
-        meetLink: appointment.meetLink,
-      }),
-    );
+    const mailResult = await new MailService().sendAppointmentBooked({
+      to: patient.email,
+      patientName: patient.displayName,
+      specialistName: specialistUser?.displayName ?? specialist.specialty,
+      startsAt: appointment.startsAt,
+      endsAt: appointment.endsAt,
+      locale: patient.locale === "en" ? "en" : "es",
+      meetLink: appointment.meetLink,
+    });
+    if (!mailResult.ok) {
+      console.error("[mail] appointment booked", mailResult.error);
+    } else if ("skipped" in mailResult && mailResult.skipped) {
+      console.info("[mail] skipped:", mailResult.reason);
+    }
+
+    const mailSent = mailResult.ok && !("skipped" in mailResult && mailResult.skipped);
 
     return NextResponse.json({
       ok: true,
       googleSynced,
+      mailSent,
+      mailSkipped:
+        mailResult.ok && "skipped" in mailResult && mailResult.skipped
+          ? mailResult.reason
+          : null,
       appointment: serialize(appointment),
     });
   } catch (error) {

@@ -18,7 +18,7 @@ describe("AppointmentService", () => {
     });
 
     expect(appt.id).toBeTruthy();
-    expect(appt.status).toBe("pending");
+    expect(appt.status).toBe("confirmed");
     expect(await service.list({ patientId: "p1" })).toHaveLength(1);
   });
 
@@ -47,9 +47,9 @@ describe("AppointmentService", () => {
       endsAt: new Date("2026-09-01T10:30:00.000Z"),
     });
 
-    const updated = await service.transitionStatus(appt.id, "confirmed");
-    expect(updated.status).toBe("confirmed");
-    expect((await service.getById(appt.id))?.status).toBe("confirmed");
+    const updated = await service.transitionStatus(appt.id, "completed");
+    expect(updated.status).toBe("completed");
+    expect((await service.getById(appt.id))?.status).toBe("completed");
   });
 
   it("rejects illegal status transitions", async () => {

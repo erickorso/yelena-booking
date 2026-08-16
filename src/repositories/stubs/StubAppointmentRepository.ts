@@ -36,7 +36,7 @@ export class StubAppointmentRepository implements IAppointmentRepository {
       bookedById: input.bookedById ?? null,
       startsAt: input.startsAt,
       endsAt: input.endsAt,
-      status: "pending",
+      status: "confirmed",
       notes: input.notes ?? null,
       transfer: {
         status: "none",
