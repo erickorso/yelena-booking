@@ -115,18 +115,98 @@ Client [`firestore.rules`](./firestore.rules) remain as defense-in-depth for any
 
 ```mermaid
 erDiagram
-  users ||--o| specialists : "userId / usually same id"
-  users ||--o| patientClinicalHistories : "doc id = patient uid"
-  users ||--o{ appointments : "patientId"
-  specialists ||--o{ appointments : "specialistId"
-  specialists ||--o| availabilitySchedules : "doc id = specialist uid"
-  specialists ||--o| googleCalendarConnections : "doc id = specialist uid"
-  specialists ||--o| specialistClinicalFieldSchemas : "doc id = specialist uid"
-  appointments ||--o{ ehrNotes : "appointmentId"
-  appointments ||--o{ medicalFiles : "appointmentId optional"
-  users ||--o{ medicalFiles : "patientId"
-  users ||--o{ notifications : "userId"
-  specialties ||--o{ specialists : "specialty label"
+  users ||--o| specialists : profile
+  users ||--o| patientClinicalHistories : chart
+  users ||--o{ appointments : books
+  specialists ||--o{ appointments : hosts
+  specialists ||--o| availabilitySchedules : schedule
+  specialists ||--o| googleCalendarConnections : oauth
+  specialists ||--o| specialistClinicalFieldSchemas : schema
+  appointments ||--o{ ehrNotes : notes
+  appointments ||--o{ medicalFiles : files
+  users ||--o{ medicalFiles : owns
+  users ||--o{ notifications : inbox
+  specialties ||--o{ specialists : labels
+
+  users {
+    string id PK
+    string email
+    string displayName
+    string role
+    string locale
+    string timezone
+    string patientNumber UK
+  }
+  specialists {
+    string id PK
+    string userId FK
+    string specialty
+    string status
+    string licenseNumber
+    string timezone
+  }
+  specialties {
+    string id PK
+    string name
+  }
+  appointments {
+    string id PK
+    string patientId FK
+    string specialistId FK
+    string bookedById
+    timestamp startsAt
+    timestamp endsAt
+    string status
+    map transfer
+    string meetLink
+    string googleEventId
+  }
+  availabilitySchedules {
+    string specialistId PK
+    array workdays
+    array ranges
+    string timezone
+    number slotMinutes
+  }
+  googleCalendarConnections {
+    string specialistId PK
+    string calendarId
+    string refreshToken
+  }
+  patientClinicalHistories {
+    string patientId PK
+    string birthDate
+    string sex
+    string allergies
+    map customValues
+  }
+  specialistClinicalFieldSchemas {
+    string specialistId PK
+    array fields
+    array auditLog
+  }
+  ehrNotes {
+    string id PK
+    string patientId FK
+    string specialistId FK
+    string appointmentId FK
+    string body
+  }
+  medicalFiles {
+    string id PK
+    string scope
+    string patientId FK
+    string appointmentId FK
+    string url
+    string contentType
+  }
+  notifications {
+    string id PK
+    string userId FK
+    string kind
+    string title
+    string href
+  }
 ```
 
 ### Collections
