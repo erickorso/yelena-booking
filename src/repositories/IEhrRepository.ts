@@ -32,6 +32,7 @@ export interface IEhrRepository {
   createNote(input: CreateEhrNoteInput): Promise<EhrNote>;
   listFilesByPatient(patientId: string): Promise<MedicalFile[]>;
   listFilesBySpecialistProfile(specialistId: string): Promise<MedicalFile[]>;
+  getFileById(id: string): Promise<MedicalFile | null>;
   /** Append-only: never delete medical files. */
   createFileMetadata(input: CreateMedicalFileInput): Promise<MedicalFile>;
 }

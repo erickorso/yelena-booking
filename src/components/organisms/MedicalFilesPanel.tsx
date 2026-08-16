@@ -78,6 +78,7 @@ export function MedicalFilesPanel({
   const [file, setFile] = useState<File | null>(null);
   const [loading, setLoading] = useState(true);
   const [uploading, setUploading] = useState(false);
+  const [openingId, setOpeningId] = useState<string | null>(null);
   const [reloadKey, setReloadKey] = useState(0);
 
   const targetPatientId =
@@ -247,6 +248,33 @@ export function MedicalFilesPanel({
       toastError(err instanceof Error ? err.message : t("uploadError"));
     } finally {
       setUploading(false);
+    }
+  }
+
+  async function openFile(f: FileRow) {
+    if (!user) return;
+    setOpeningId(f.id);
+    try {
+      const token = await getIdToken(user);
+      const res = await fetch(`/api/files/${f.id}/content`, {
+        headers: { Authorization: `Bearer ${token}` },
+      });
+      if (!res.ok) {
+        const data = (await res.json().catch(() => ({}))) as { error?: string };
+        throw new Error(data.error ?? t("openError"));
+      }
+      const blob = await res.blob();
+      const objectUrl = URL.createObjectURL(blob);
+      const opened = window.open(objectUrl, "_blank", "noopener,noreferrer");
+      if (!opened) {
+        // Popup blocked — fall back to same-tab navigation.
+        window.location.assign(objectUrl);
+      }
+      window.setTimeout(() => URL.revokeObjectURL(objectUrl), 60_000);
+    } catch (err) {
+      toastError(err instanceof Error ? err.message : t("openError"));
+    } finally {
+      setOpeningId(null);
     }
   }
 
@@ -439,14 +467,15 @@ export function MedicalFilesPanel({
                       : null}
                   </p>
                 </div>
-                <a
-                  href={f.url}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="font-medium text-teal-800 underline dark:text-teal-300"
+                <Button
+                  type="button"
+                  size="sm"
+                  variant="secondary"
+                  disabled={openingId === f.id}
+                  onClick={() => void openFile(f)}
                 >
-                  {t("open")}
-                </a>
+                  {openingId === f.id ? t("opening") : t("open")}
+                </Button>
               </li>
             ))}
           </ul>

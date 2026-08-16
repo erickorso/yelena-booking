@@ -56,6 +56,10 @@ export class StubEhrRepository implements IEhrRepository {
       .sort((a, b) => b.createdAt.getTime() - a.createdAt.getTime());
   }
 
+  async getFileById(id: string): Promise<MedicalFile | null> {
+    return this.files.get(id) ?? null;
+  }
+
   async createFileMetadata(
     input: CreateMedicalFileInput,
   ): Promise<MedicalFile> {

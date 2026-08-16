@@ -73,6 +73,12 @@ export class AdminEhrRepository implements IEhrRepository {
       .sort((a, b) => b.createdAt.getTime() - a.createdAt.getTime());
   }
 
+  async getFileById(id: string): Promise<MedicalFile | null> {
+    const snap = await (await this.db()).collection(FILES).doc(id).get();
+    if (!snap.exists) return null;
+    return adaptMedicalFile(snap.id, snap.data() ?? {});
+  }
+
   async createFileMetadata(
     input: CreateMedicalFileInput,
   ): Promise<MedicalFile> {

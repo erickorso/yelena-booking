@@ -14,6 +14,7 @@ import type { AuthRole } from "@/types/domain";
 import {
   bootstrapSession,
   clearPendingBootstrap,
+  getIdToken,
   getRoleClaim,
   readPendingBootstrap,
   reloadUser,
@@ -28,6 +29,10 @@ import {
   type BootstrapPayload,
 } from "@/services/authService";
 import { isFirebaseClientConfigured } from "@/lib/firebase/client";
+import {
+  isPlaceholderDisplayName,
+  resolveDisplayName,
+} from "@/lib/auth/displayName";
 
 export type AuthStatus =
   | "loading"
@@ -184,10 +189,48 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     setError(null);
     const signedIn = await signInWithGoogle();
     let nextRole = await getRoleClaim(signedIn);
+    const googleName = signedIn.displayName?.trim() || "";
+
     if (!nextRole && bootstrap) {
-      await bootstrapSession(signedIn, bootstrap);
-      nextRole = bootstrap.role;
+      const payload: BootstrapPayload = {
+        ...bootstrap,
+        displayName: resolveDisplayName({
+          preferred: bootstrap.displayName,
+          googleName,
+          email: signedIn.email,
+        }),
+      };
+      await bootstrapSession(signedIn, payload);
+      nextRole = payload.role;
+    } else if (nextRole && googleName) {
+      try {
+        const token = await getIdToken(signedIn, true);
+        const meRes = await fetch("/api/me", {
+          headers: { Authorization: `Bearer ${token}` },
+        });
+        const me = (await meRes.json()) as { displayName?: string };
+        if (meRes.ok && isPlaceholderDisplayName(me.displayName ?? null)) {
+          await fetch("/api/me", {
+            method: "PATCH",
+            headers: {
+              Authorization: `Bearer ${token}`,
+              "Content-Type": "application/json",
+            },
+            body: JSON.stringify({ displayName: googleName }),
+          });
+          if (typeof window !== "undefined") {
+            window.dispatchEvent(
+              new CustomEvent("yelena:profile-updated", {
+                detail: { displayName: googleName },
+              }),
+            );
+          }
+        }
+      } catch {
+        // Non-blocking sync.
+      }
     }
+
     setUser(signedIn);
     setRole(nextRole);
     setStatus("authenticated");

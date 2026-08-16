@@ -69,7 +69,7 @@ export function RegisterForm() {
     try {
       await loginWithGoogle({
         role,
-        displayName: displayName || "Usuario Thaydee Elena",
+        displayName: displayName.trim(),
         locale,
         specialty: role === "especialista" ? specialty : undefined,
         licenseNumber: role === "especialista" ? licenseNumber : undefined,

@@ -494,6 +494,8 @@
     "loading": "Loading…",
     "empty": "No documents yet.",
     "open": "Open",
+    "openError": "Could not open the document.",
+    "opening": "Opening…",
     "appendOnly": "Append-only archive: documents cannot be removed.",
     "loadError": "Could not load files.",
     "apptRef": "appt {id}"

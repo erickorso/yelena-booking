@@ -494,6 +494,8 @@
     "loading": "Cargando…",
     "empty": "Aún no hay documentos.",
     "open": "Abrir",
+    "openError": "No se pudo abrir el documento.",
+    "opening": "Abriendo…",
     "appendOnly": "Archivo solo-añadir: no se pueden eliminar documentos.",
     "loadError": "No se pudieron cargar los archivos.",
     "apptRef": "cita {id}"

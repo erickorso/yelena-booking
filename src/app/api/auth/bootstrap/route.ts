@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import { getAdminAuth, isFirebaseAdminConfigured } from "@/lib/firebase/admin";
+import { resolveDisplayName } from "@/lib/auth/displayName";
 import { AdminSpecialtyRepository } from "@/repositories/firestore/AdminSpecialtyRepository";
 import { AdminUserRepository } from "@/repositories/firestore/AdminUserRepository";
 import { isAuthRole, type AuthRole } from "@/types/domain";
@@ -54,15 +55,9 @@ export async function POST(request: Request) {
   }
 
   const role = body.role;
-  const displayName =
-    typeof body.displayName === "string" && body.displayName.trim()
-      ? body.displayName.trim()
-      : null;
   const locale = body.locale === "en" || body.locale === "es" ? body.locale : "es";
-
-  if (!displayName) {
-    return NextResponse.json({ error: "displayName is required" }, { status: 400 });
-  }
+  const bodyDisplayName =
+    typeof body.displayName === "string" ? body.displayName.trim() : "";
 
   if (role === "especialista") {
     if (
@@ -114,6 +109,20 @@ export async function POST(request: Request) {
     if (!email) {
       return NextResponse.json(
         { error: "Authenticated user must have an email" },
+        { status: 400 },
+      );
+    }
+
+    const tokenName =
+      typeof decoded.name === "string" ? decoded.name.trim() : "";
+    const displayName = resolveDisplayName({
+      preferred: bodyDisplayName,
+      googleName: tokenName,
+      email,
+    });
+    if (!displayName) {
+      return NextResponse.json(
+        { error: "displayName is required" },
         { status: 400 },
       );
     }
