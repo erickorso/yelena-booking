@@ -524,7 +524,19 @@
     "saveTranslation": "Save translation",
     "savingTranslation": "Saving…",
     "translateSuccess": "Translation saved.",
-    "translateError": "Could not save translation."
+    "translateError": "Could not save translation.",
+    "editCta": "Edit",
+    "editLabelEs": "Label ES",
+    "editLabelEn": "Label EN",
+    "saveEdit": "Save changes",
+    "savingEdit": "Saving…",
+    "cancelEdit": "Cancel",
+    "editSuccess": "Field updated.",
+    "editError": "Could not edit field.",
+    "deleteCta": "Delete",
+    "deleteConfirm": "Delete field “{label}”? Values already saved on charts are not removed automatically.",
+    "deleteSuccess": "Field deleted.",
+    "deleteError": "Could not delete field."
   },
   "MedicalFiles": {
     "chartTitle": "Clinical documents",

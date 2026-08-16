@@ -524,7 +524,19 @@
     "saveTranslation": "Guardar traducción",
     "savingTranslation": "Guardando…",
     "translateSuccess": "Traducción guardada.",
-    "translateError": "No se pudo guardar la traducción."
+    "translateError": "No se pudo guardar la traducción.",
+    "editCta": "Editar",
+    "editLabelEs": "Label ES",
+    "editLabelEn": "Label EN",
+    "saveEdit": "Guardar cambios",
+    "savingEdit": "Guardando…",
+    "cancelEdit": "Cancelar",
+    "editSuccess": "Campo actualizado.",
+    "editError": "No se pudo editar el campo.",
+    "deleteCta": "Eliminar",
+    "deleteConfirm": "¿Eliminar el campo «{label}»? Los valores ya guardados en historias no se borran automáticamente.",
+    "deleteSuccess": "Campo eliminado.",
+    "deleteError": "No se pudo eliminar el campo."
   },
   "MedicalFiles": {
     "chartTitle": "Documentos clínicos",

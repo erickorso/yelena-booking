@@ -142,6 +142,49 @@ export class AdminSpecialistClinicalFieldsRepository {
     return updated;
   }
 
+  async updateLabels(
+    specialistId: string,
+    fieldId: string,
+    labels: Partial<Record<ClinicalFieldLocale, string>>,
+  ): Promise<ClinicalCustomFieldDef> {
+    const existing = await this.list(specialistId);
+    const idx = existing.findIndex((f) => f.id === fieldId);
+    if (idx < 0) throw new Error("Field not found");
+    const current = existing[idx]!;
+    const nextLabels: ClinicalCustomFieldDef["labels"] = { ...current.labels };
+    if (typeof labels.es === "string") {
+      const t = labels.es.trim();
+      if (t) nextLabels.es = t;
+      else delete nextLabels.es;
+    }
+    if (typeof labels.en === "string") {
+      const t = labels.en.trim();
+      if (t) nextLabels.en = t;
+      else delete nextLabels.en;
+    }
+    if (!nextLabels.es?.trim() && !nextLabels.en?.trim()) {
+      throw new Error("At least one label (es or en) is required");
+    }
+    const updated: ClinicalCustomFieldDef = {
+      ...current,
+      labels: nextLabels,
+      updatedAt: new Date(),
+    };
+    const next = [...existing];
+    next[idx] = updated;
+    await this.save(specialistId, next);
+    return updated;
+  }
+
+  async deleteField(specialistId: string, fieldId: string): Promise<void> {
+    const existing = await this.list(specialistId);
+    const next = existing.filter((f) => f.id !== fieldId);
+    if (next.length === existing.length) {
+      throw new Error("Field not found");
+    }
+    await this.save(specialistId, next);
+  }
+
   private async save(
     specialistId: string,
     fields: ClinicalCustomFieldDef[],

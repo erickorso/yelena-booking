@@ -44,7 +44,8 @@ async function assertActiveSpecialist(uid: string, role: AuthRole) {
 /**
  * GET /api/specialists/me/clinical-fields
  * POST { label, locale? } — add field
- * PATCH { fieldId, locale, label } — add/update translation
+ * PATCH { fieldId, locale, label } | { fieldId, labels: { es?, en? } }
+ * DELETE ?fieldId=
  */
 export async function GET(request: Request) {
   const auth = await requireAuth(request);
@@ -106,7 +107,12 @@ export async function PATCH(request: Request) {
   const denied = await assertActiveSpecialist(auth.uid, auth.role);
   if (denied) return denied;
 
-  let body: { fieldId?: unknown; locale?: unknown; label?: unknown };
+  let body: {
+    fieldId?: unknown;
+    locale?: unknown;
+    label?: unknown;
+    labels?: unknown;
+  };
   try {
     body = (await request.json()) as typeof body;
   } catch {
@@ -114,24 +120,35 @@ export async function PATCH(request: Request) {
   }
 
   const fieldId = typeof body.fieldId === "string" ? body.fieldId.trim() : "";
-  const label = typeof body.label === "string" ? body.label : "";
   if (!fieldId) {
     return NextResponse.json({ error: "fieldId is required" }, { status: 400 });
   }
-  if (!isClinicalFieldLocale(body.locale)) {
-    return NextResponse.json(
-      { error: "locale must be es or en" },
-      { status: 400 },
-    );
-  }
+
+  const repo = new AdminSpecialistClinicalFieldsRepository();
+  const localeHint =
+    new URL(request.url).searchParams.get("locale")?.trim() || "es";
 
   try {
-    const field = await new AdminSpecialistClinicalFieldsRepository().setLabel(
-      auth.uid,
-      fieldId,
-      body.locale,
-      label,
-    );
+    if (body.labels && typeof body.labels === "object") {
+      const raw = body.labels as Record<string, unknown>;
+      const labels: Partial<Record<"es" | "en", string>> = {};
+      if (typeof raw.es === "string") labels.es = raw.es;
+      if (typeof raw.en === "string") labels.en = raw.en;
+      const field = await repo.updateLabels(auth.uid, fieldId, labels);
+      return NextResponse.json({
+        ok: true,
+        field: serializeField(field, localeHint),
+      });
+    }
+
+    const label = typeof body.label === "string" ? body.label : "";
+    if (!isClinicalFieldLocale(body.locale)) {
+      return NextResponse.json(
+        { error: "locale must be es or en" },
+        { status: 400 },
+      );
+    }
+    const field = await repo.setLabel(auth.uid, fieldId, body.locale, label);
     return NextResponse.json({
       ok: true,
       field: serializeField(field, body.locale),
@@ -139,6 +156,31 @@ export async function PATCH(request: Request) {
   } catch (error) {
     const message =
       error instanceof Error ? error.message : "Failed to update label";
+    return NextResponse.json({ error: message }, { status: 400 });
+  }
+}
+
+export async function DELETE(request: Request) {
+  const auth = await requireAuth(request);
+  if (isAuthError(auth)) return auth;
+  const denied = await assertActiveSpecialist(auth.uid, auth.role);
+  if (denied) return denied;
+
+  const fieldId =
+    new URL(request.url).searchParams.get("fieldId")?.trim() || "";
+  if (!fieldId) {
+    return NextResponse.json({ error: "fieldId is required" }, { status: 400 });
+  }
+
+  try {
+    await new AdminSpecialistClinicalFieldsRepository().deleteField(
+      auth.uid,
+      fieldId,
+    );
+    return NextResponse.json({ ok: true });
+  } catch (error) {
+    const message =
+      error instanceof Error ? error.message : "Failed to delete field";
     return NextResponse.json({ error: message }, { status: 400 });
   }
 }
