@@ -6,6 +6,7 @@ import { useRequireAuth } from "@/hooks/useRequireAuth";
 import { useRouter } from "@/i18n/navigation";
 import type { AuthRole } from "@/types/domain";
 import { Button } from "@/components/atoms/Button";
+import { ProfilePhotoControl } from "@/components/molecules/ProfilePhotoControl";
 
 type DashboardGateProps = {
   allowed: AuthRole[];
@@ -54,13 +55,16 @@ export function DashboardGate({ allowed, title, children }: DashboardGateProps) 
 
   return (
     <section className="space-y-6">
-      <header>
-        <h1 className="font-serif text-3xl text-teal-800 dark:text-teal-300">
-          {title}
-        </h1>
-        <p className="mt-1 text-sm text-stone-600 dark:text-slate-300">
-          {user?.email} · {role}
-        </p>
+      <header className="flex items-start justify-between gap-4">
+        <div>
+          <h1 className="font-serif text-3xl text-teal-800 dark:text-teal-300">
+            {title}
+          </h1>
+          <p className="mt-1 text-sm text-stone-600 dark:text-slate-300">
+            {user?.email} · {role}
+          </p>
+        </div>
+        <ProfilePhotoControl />
       </header>
       {children}
     </section>

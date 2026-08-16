@@ -57,6 +57,22 @@ export class AdminUserRepository implements IUserRepository {
     return adaptUserProfile(snap.id, snap.data() ?? {});
   }
 
+  async updatePhotoUrl(
+    id: string,
+    photoUrl: string | null,
+  ): Promise<UserProfile> {
+    const ref = (await this.db()).collection(USERS).doc(id);
+    await ref.update({
+      photoUrl,
+      updatedAt: FieldValue.serverTimestamp(),
+    });
+    const snap = await ref.get();
+    if (!snap.exists) {
+      throw new Error(`User not found: ${id}`);
+    }
+    return adaptUserProfile(snap.id, snap.data() ?? {});
+  }
+
   async createSpecialist(
     input: CreateSpecialistProfileInput,
   ): Promise<SpecialistProfile> {

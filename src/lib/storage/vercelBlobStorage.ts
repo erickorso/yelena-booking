@@ -20,6 +20,7 @@ export class VercelBlobFileStorage implements IFileStorage {
       contentType: input.contentType,
       token: process.env.BLOB_READ_WRITE_TOKEN,
       addRandomSuffix: false,
+      allowOverwrite: input.allowOverwrite ?? false,
     });
 
     return {

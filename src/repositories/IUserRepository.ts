@@ -17,6 +17,7 @@ export interface IUserRepository {
   getById(id: string): Promise<UserProfile | null>;
   create(input: CreateUserProfileInput): Promise<UserProfile>;
   updateRole(id: string, role: AuthRole): Promise<UserProfile>;
+  updatePhotoUrl(id: string, photoUrl: string | null): Promise<UserProfile>;
   createSpecialist(
     input: CreateSpecialistProfileInput,
   ): Promise<SpecialistProfile>;

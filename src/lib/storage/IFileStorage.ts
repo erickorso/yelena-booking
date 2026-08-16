@@ -15,6 +15,8 @@ export type UploadObjectInput = {
    * `public` for portfolio demos; use `private` + signed URLs in production EHR.
    */
   access?: "public" | "private";
+  /** Replace existing blob at the same path (e.g. profile avatar). */
+  allowOverwrite?: boolean;
 };
 
 /**

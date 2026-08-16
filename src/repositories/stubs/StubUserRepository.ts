@@ -47,6 +47,23 @@ export class StubUserRepository implements IUserRepository {
     return updated;
   }
 
+  async updatePhotoUrl(
+    id: string,
+    photoUrl: string | null,
+  ): Promise<UserProfile> {
+    const existing = this.users.get(id);
+    if (!existing) {
+      throw new Error(`User not found: ${id}`);
+    }
+    const updated: UserProfile = {
+      ...existing,
+      photoUrl,
+      updatedAt: new Date(),
+    };
+    this.users.set(id, updated);
+    return updated;
+  }
+
   async createSpecialist(
     input: CreateSpecialistProfileInput,
   ): Promise<SpecialistProfile> {

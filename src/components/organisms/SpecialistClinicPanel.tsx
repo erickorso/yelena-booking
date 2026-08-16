@@ -7,7 +7,7 @@ import type { CalendarSlot } from "@/components/molecules/WeekCalendar";
 import { SpecialistScheduleForm } from "@/components/organisms/SpecialistScheduleForm";
 import { GoogleCalendarConnect } from "@/components/organisms/GoogleCalendarConnect";
 import { ClinicAgendaTab } from "@/components/organisms/clinic/ClinicAgendaTab";
-import { ClinicRegisterPatientTab } from "@/components/organisms/clinic/ClinicRegisterPatientTab";
+import { ClinicPatientsTab } from "@/components/organisms/clinic/ClinicPatientsTab";
 import { ClinicTransferTab } from "@/components/organisms/clinic/ClinicTransferTab";
 import { ClinicFilesTab } from "@/components/organisms/clinic/ClinicFilesTab";
 import type {
@@ -157,7 +157,10 @@ export function SpecialistClinicPanel() {
       setRegEmail("");
       setRegPhone("");
       setReloadKey((k) => k + 1);
-      if (data.patient) setPatientId(data.patient.id);
+      if (data.patient) {
+        setPatientId(data.patient.id);
+        setTab("files");
+      }
     } catch (err) {
       const msg = err instanceof Error ? err.message : t("registerError");
       setError(msg);
@@ -256,7 +259,8 @@ export function SpecialistClinicPanel() {
         ) : null}
 
         {tab === "patients" ? (
-          <ClinicRegisterPatientTab
+          <ClinicPatientsTab
+            patients={patients}
             name={regName}
             email={regEmail}
             phone={regPhone}
@@ -266,6 +270,10 @@ export function SpecialistClinicPanel() {
             onEmailChange={setRegEmail}
             onPhoneChange={setRegPhone}
             onSubmit={(e) => void registerPatient(e)}
+            onOpenChart={(id) => {
+              setPatientId(id);
+              setTab("files");
+            }}
           />
         ) : null}
 
@@ -299,7 +307,13 @@ export function SpecialistClinicPanel() {
           />
         ) : null}
 
-        {tab === "files" ? <ClinicFilesTab patientId={patientId} /> : null}
+        {tab === "files" ? (
+          <ClinicFilesTab
+            patients={patients}
+            patientId={patientId}
+            onPatientIdChange={setPatientId}
+          />
+        ) : null}
       </PanelTabs>
     </div>
   );

@@ -9,6 +9,10 @@ import { useAuth } from "@/components/providers/AuthProvider";
 import { useToast } from "@/components/providers/ToastProvider";
 import { getIdToken } from "@/services/authService";
 import type { MedicalFileScope } from "@/types/domain";
+import {
+  MAX_MEDICAL_FILE_BYTES,
+  MAX_MEDICAL_FILE_MB,
+} from "@/lib/storage/medicalUploadPolicy";
 
 type FileRow = {
   id: string;
@@ -65,7 +69,7 @@ export function MedicalFilesPanel({
   const [appointments, setAppointments] = useState<AppointmentOption[]>([]);
   const [pickedPatientId, setPickedPatientId] = useState("");
   const [scope, setScope] = useState<MedicalFileScope>(
-    mode === "specialist_library" ? "specialist_profile" : "patient_general",
+    mode === "specialist_library" ? "specialist_profile" : "appointment",
   );
   const [appointmentId, setAppointmentId] = useState("");
   const [label, setLabel] = useState("");
@@ -194,6 +198,10 @@ export function MedicalFilesPanel({
   async function onUpload(event: React.FormEvent) {
     event.preventDefault();
     if (!user || !file) return;
+    if (file.size > MAX_MEDICAL_FILE_BYTES) {
+      toastError(t("tooLarge", { maxMb: MAX_MEDICAL_FILE_MB }));
+      return;
+    }
     if (mode === "patient_chart" && !targetPatientId) {
       toastError(t("pickPatient"));
       return;
@@ -375,12 +383,21 @@ export function MedicalFilesPanel({
           <input
             type="file"
             accept=".pdf,.jpg,.jpeg,.png,.webp,.doc,.docx,application/pdf,image/*,application/msword,application/vnd.openxmlformats-officedocument.wordprocessingml.document"
-            onChange={(e) => setFile(e.target.files?.[0] ?? null)}
+            onChange={(e) => {
+              const next = e.target.files?.[0] ?? null;
+              if (next && next.size > MAX_MEDICAL_FILE_BYTES) {
+                toastError(t("tooLarge", { maxMb: MAX_MEDICAL_FILE_MB }));
+                e.target.value = "";
+                setFile(null);
+                return;
+              }
+              setFile(next);
+            }}
             className="text-sm file:mr-3 file:rounded-md file:border-0 file:bg-teal-700 file:px-3 file:py-2 file:text-white"
             required
           />
           <span className="text-xs text-stone-500 dark:text-slate-400">
-            {t("formats")}
+            {t("formats", { maxMb: MAX_MEDICAL_FILE_MB })}
           </span>
         </label>
 
@@ -437,9 +454,6 @@ export function MedicalFilesPanel({
             ))}
           </ul>
         )}
-        <p className="text-xs text-stone-500 dark:text-slate-400">
-          {t("appendOnly")}
-        </p>
       </div>
     </section>
   );

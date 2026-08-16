@@ -12,6 +12,7 @@ export type AllowedMedicalContentType =
   (typeof ALLOWED_MEDICAL_CONTENT_TYPES)[number];
 
 export const MAX_MEDICAL_FILE_BYTES = 10 * 1024 * 1024; // 10 MB
+export const MAX_MEDICAL_FILE_MB = 10;
 
 export function isAllowedMedicalContentType(
   value: string,
@@ -33,7 +34,9 @@ export function assertValidMedicalUpload(file: {
     );
   }
   if (file.size <= 0 || file.size > MAX_MEDICAL_FILE_BYTES) {
-    throw new Error(`File must be between 1 byte and ${MAX_MEDICAL_FILE_BYTES} bytes`);
+    throw new Error(
+      `File must be between 1 byte and ${MAX_MEDICAL_FILE_MB} MB`,
+    );
   }
 }
 
