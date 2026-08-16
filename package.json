@@ -11,7 +11,8 @@
     "test": "vitest run",
     "test:watch": "vitest",
     "test:coverage": "vitest run --coverage",
-    "test:e2e": "playwright test",
+    "test:e2e": "playwright test --project=chromium",
+    "screenshots": "playwright test --project=screenshots",
     "format": "prettier --write .",
     "seed": "node --env-file=.env.local scripts/seed.mjs"
   },

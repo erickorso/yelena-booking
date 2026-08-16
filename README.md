@@ -8,6 +8,31 @@ By [Erick Vargas](https://github.com/erickorso) · Live: [yelena-booking.vercel.
 
 > Portfolio demo — not a certified medical device and not for real PHI in production without a compliance review.
 
+![Specialist clinic week grid — book for a patient](docs/screenshots/booking.png)
+
+<table>
+<tr>
+<td width="50%">
+
+**Landing** — brand-first marketing shell (ES/EN).
+
+![Landing](docs/screenshots/landing.png)
+
+</td>
+<td width="50%">
+
+**Directory** — active specialists from SSR/ISR.
+
+![Specialist directory](docs/screenshots/directory.png)
+
+</td>
+</tr>
+</table>
+
+<img src="docs/screenshots/mobile.png" alt="Mobile landing" width="320">
+
+Screenshots are regenerated with `npm run screenshots` (Playwright against the live seed app), so they stay aligned with the UI reviewers see.
+
 ---
 
 ## Product decisions
@@ -214,7 +239,8 @@ Paste [`firestore.rules`](./firestore.rules) into the Firebase console. Google O
 | `npm run typecheck` | `tsc --noEmit` |
 | `npm run lint` | ESLint |
 | `npm test` / `test:coverage` | Vitest (+ gate) |
-| `npm run test:e2e` | Playwright |
+| `npm run test:e2e` | Playwright (chromium smoke) |
+| `npm run screenshots` | Regenerate README images |
 | `npm run seed` | Demo users + claims + docs |
 
 ---
