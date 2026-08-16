@@ -28,6 +28,10 @@
     "storageBody": "Data is stored in Firebase/Firestore and clinical files in private storage (Vercel Blob). Access to clinical documents requires authentication.",
     "rightsTitle": "Your rights",
     "rightsBody": "You may request access, correction, or deletion of account data by contacting the service owner. Clinical documents follow an append-only clinical archive model except where required by law or agreed admin processes.",
+    "retentionTitle": "Retention",
+    "retentionBody": "We keep your account while it is active. Clinical charts, appointments, and documents are retained while the clinic runs the service or for applicable legal periods; after a deletion request we coordinate export or erasure as appropriate.",
+    "exportTitle": "Export and deletion",
+    "exportBody": "To export or request deletion of personal and clinical data, email erickorso@gmail.com with your account email and TE code. We will respond within a reasonable time.",
     "contactTitle": "Contact",
     "contactBody": "Data controller / app developer: erickorso@gmail.com. For privacy questions or rights requests, email that address."
   },

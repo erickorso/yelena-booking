@@ -62,6 +62,26 @@ export class AdminClinicalHistoryRepository {
       ? adaptClinicalHistory(patientId, existing.data() ?? {})
       : emptyClinicalHistory(patientId);
 
+    const nextCustomValues = input.customValues
+      ? {
+          ...previous.customValues,
+          ...sanitizeCustomValues(input.customValues),
+        }
+      : previous.customValues;
+
+    const nextMeta = { ...previous.customValuesMeta };
+    if (input.customValues) {
+      for (const [fieldId, value] of Object.entries(
+        sanitizeCustomValues(input.customValues),
+      )) {
+        if (previous.customValues[fieldId] === value) continue;
+        nextMeta[fieldId] = {
+          updatedAt: new Date(),
+          updatedById,
+        };
+      }
+    }
+
     const payload = {
       patientId,
       birthDate: normalizeBirthDate(input.birthDate ?? null),
@@ -78,12 +98,16 @@ export class AdminClinicalHistoryRepository {
       familyHistory: (input.familyHistory ?? "").trim(),
       habits: (input.habits ?? "").trim(),
       generalNotes: (input.generalNotes ?? "").trim(),
-      customValues: input.customValues
-        ? {
-            ...previous.customValues,
-            ...sanitizeCustomValues(input.customValues),
-          }
-        : previous.customValues,
+      customValues: nextCustomValues,
+      customValuesMeta: Object.fromEntries(
+        Object.entries(nextMeta).map(([id, meta]) => [
+          id,
+          {
+            updatedById: meta.updatedById,
+            updatedAt: meta.updatedAt,
+          },
+        ]),
+      ),
       updatedById,
       updatedAt: FieldValue.serverTimestamp(),
       ...(existing.exists

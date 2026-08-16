@@ -28,6 +28,7 @@ export default defineConfig({
         "src/types/domain/ehr.ts",
         "src/types/domain/user.ts",
         "src/types/domain/roles.ts",
+        "src/lib/auth/requireAuth.ts",
         "src/types/domain/clinicalCustomFields.ts",
       ],
       thresholds: {

@@ -40,6 +40,15 @@ function serialize(history: PatientClinicalHistory) {
     habits: history.habits,
     generalNotes: history.generalNotes,
     customValues: history.customValues,
+    customValuesMeta: Object.fromEntries(
+      Object.entries(history.customValuesMeta).map(([id, meta]) => [
+        id,
+        {
+          updatedById: meta.updatedById,
+          updatedAt: meta.updatedAt.toISOString(),
+        },
+      ]),
+    ),
     createdAt: history.createdAt.toISOString(),
     updatedAt: history.updatedAt.toISOString(),
     updatedById: history.updatedById,

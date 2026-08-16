@@ -28,6 +28,10 @@
     "storageBody": "Los datos se almacenan en Firebase/Firestore y archivos clínicos en almacenamiento privado (Vercel Blob). El acceso a documentos clínicos requiere autenticación.",
     "rightsTitle": "Tus derechos",
     "rightsBody": "Puedes solicitar acceso, rectificación o eliminación de tus datos de cuenta contactando al responsable del servicio. Los documentos clínicos siguen el modelo de archivo clínico (solo-añadir) salvo procesos legales o administrativos acordados.",
+    "retentionTitle": "Conservación",
+    "retentionBody": "Conservamos la cuenta mientras esté activa. Historias clínicas, citas y documentos se mantienen mientras la clínica opere el servicio o durante los plazos legales aplicables; tras una solicitud de baja, coordinamos exportación o borrado según corresponda.",
+    "exportTitle": "Exportación y baja",
+    "exportBody": "Para exportar o solicitar la eliminación de datos personales y clínicos, escribe a erickorso@gmail.com indicando tu email de cuenta y código TE. Responderemos en un plazo razonable.",
     "contactTitle": "Contacto",
     "contactBody": "Responsable del tratamiento / desarrollador de la app: erickorso@gmail.com. Para ejercer derechos o dudas sobre privacidad, escribe a esa dirección."
   },

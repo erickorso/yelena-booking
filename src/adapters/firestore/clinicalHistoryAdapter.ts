@@ -26,6 +26,7 @@ export interface ClinicalHistoryDoc {
   habits?: unknown;
   generalNotes?: unknown;
   customValues?: unknown;
+  customValuesMeta?: unknown;
   createdAt?: unknown;
   updatedAt?: unknown;
   updatedById?: unknown;
@@ -42,6 +43,23 @@ function adaptCustomValues(value: unknown): Record<string, string> {
   const out: Record<string, string> = {};
   for (const [k, v] of Object.entries(value as Record<string, unknown>)) {
     if (typeof v === "string") out[k] = v;
+  }
+  return out;
+}
+
+function adaptCustomValuesMeta(
+  value: unknown,
+): Record<string, { updatedAt: Date; updatedById: string }> {
+  if (!value || typeof value !== "object" || Array.isArray(value)) return {};
+  const out: Record<string, { updatedAt: Date; updatedById: string }> = {};
+  for (const [k, v] of Object.entries(value as Record<string, unknown>)) {
+    if (!v || typeof v !== "object" || Array.isArray(v)) continue;
+    const row = v as { updatedAt?: unknown; updatedById?: unknown };
+    if (typeof row.updatedById !== "string" || !row.updatedById.trim()) continue;
+    out[k] = {
+      updatedById: row.updatedById,
+      updatedAt: toDate(row.updatedAt ?? new Date()),
+    };
   }
   return out;
 }
@@ -101,6 +119,7 @@ export function adaptClinicalHistory(
     habits: textField(data.habits),
     generalNotes: textField(data.generalNotes),
     customValues: adaptCustomValues(data.customValues),
+    customValuesMeta: adaptCustomValuesMeta(data.customValuesMeta),
     createdAt,
     updatedAt,
     updatedById: optionalString(data.updatedById ?? null),

@@ -12,10 +12,10 @@
 - Verify a custom domain in Resend and set `MAIL_FROM` (avoid `onboarding@resend.dev` for real patients).
 
 ## Privacy / RGPD checklist
-- [ ] Privacy policy page kept current (`/privacy`)
-- [ ] Document retention for clinical charts & medical files
-- [ ] Patient export / deletion request path
-- [ ] Access audit for PHI (who viewed/edited charts)
+- [x] Privacy policy page kept current (`/privacy`) — retention + export sections
+- [ ] Document retention for clinical charts & medical files (ops process)
+- [x] Patient export / deletion request path documented on `/privacy`
+- [x] Access audit for PHI field defs + custom value meta (`updatedById`)
 - [ ] Encrypt at rest (Firebase + Blob defaults) documented for clinic
 
 ## Tests

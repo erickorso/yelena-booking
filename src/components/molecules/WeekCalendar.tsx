@@ -487,6 +487,8 @@ export function WeekCalendar({
               <div
                 key={`col-${dayYmd}`}
                 role="presentation"
+                data-calendar-day={dayYmd}
+                data-calendar-past={isPastDay ? "1" : "0"}
                 className={clsx(
                   "relative border-l border-stone-200 dark:border-slate-700",
                   isPastDay
@@ -512,6 +514,8 @@ export function WeekCalendar({
                         <div
                           key={`open-${band.startMin}-${band.endMin}`}
                           aria-hidden
+                          data-slot="available"
+                          data-day={dayYmd}
                           className="pointer-events-none absolute inset-x-0 bg-emerald-200/55 dark:bg-emerald-900/35"
                           style={style}
                         />

@@ -29,6 +29,11 @@ export interface PatientClinicalHistory {
   generalNotes: string;
   /** Values for specialist custom fields, keyed by field def id. */
   customValues: Record<string, string>;
+  /** Who last changed each custom value (field-level audit). */
+  customValuesMeta: Record<
+    string,
+    { updatedAt: Date; updatedById: string }
+  >;
   createdAt: Date;
   updatedAt: Date;
   updatedById: string | null;
@@ -80,6 +85,7 @@ export function emptyClinicalHistory(
     habits: "",
     generalNotes: "",
     customValues: {},
+    customValuesMeta: {},
     createdAt: now,
     updatedAt: now,
     updatedById: null,
