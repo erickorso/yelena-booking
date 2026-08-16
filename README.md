@@ -1,6 +1,6 @@
 # Yelena Booking
 
-[![CI](https://github.com/erickorso/yelena-booking/actions/workflows/ci.yml/badge.svg)](https://github.com/erickorso/yelena-booking/actions/workflows/ci.yml)
+**[CI](https://github.com/erickorso/yelena-booking/actions/workflows/ci.yml)** · repo privado (el badge SVG de Actions no se renderiza sin auth)
 
 **Clinic booking + light EHR** for specialists and patients: public directory, role dashboards, Google Calendar / Meet sync, Resend mail, and per-specialist clinical custom fields — on a free-tier Firebase + Vercel stack.
 
