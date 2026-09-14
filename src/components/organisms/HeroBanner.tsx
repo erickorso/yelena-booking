@@ -78,8 +78,8 @@ export async function HeroBanner() {
         <div className="hero-banner__copy absolute inset-x-4 bottom-4 z-[4] flex max-w-[min(100%,28rem)] flex-col gap-3 sm:inset-x-auto sm:bottom-auto sm:right-[3%] sm:top-1/2 sm:-translate-y-1/2 md:max-w-lg lg:right-[5%] lg:max-w-xl">
           <HeroParticleTitle
             text={t("title")}
-            className="hero-banner__title-canvas h-[7.5rem] w-full sm:h-[9rem] md:h-[10.5rem]"
-            density={1100}
+            className="hero-banner__title-canvas h-[11.25rem] w-full sm:h-[13.5rem] md:h-[15.75rem]"
+            density={1400}
           />
           <p className="hero-banner__subtitle text-base leading-relaxed text-teal-950 drop-shadow-sm sm:text-lg md:text-xl">
             {t("description")}
