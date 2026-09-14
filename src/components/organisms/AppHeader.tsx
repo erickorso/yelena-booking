@@ -22,12 +22,12 @@ export function AppHeader() {
   const showSession = isAuthenticated || isUnverified;
 
   return (
-    <header className="flex items-center justify-between gap-4 border-b border-zinc-200 px-4 py-3 dark:border-slate-700">
+    <header className="sticky top-0 z-40 flex items-center justify-between gap-4 border-b border-teal-900/10 bg-[var(--surface)]/90 px-4 py-3 backdrop-blur-md dark:border-teal-400/10">
       <Link href="/" className="block">
         <p className="font-serif text-xl tracking-tight text-teal-800 dark:text-teal-300">
           {t("name")}
         </p>
-        <p className="text-xs text-stone-600 dark:text-slate-300">{t("tagline")}</p>
+        <p className="text-xs text-[var(--muted)]">{t("tagline")}</p>
       </Link>
       <nav aria-label={t("name")} className="flex flex-wrap items-center gap-2">
         <Link

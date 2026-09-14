@@ -1,7 +1,7 @@
 {
   "App": {
     "name": "Thaydee Elena",
-    "tagline": "Citas médicas e historias clínicas",
+    "tagline": "Citas médicas y historias clínicas",
     "ctaDirectory": "Ver especialistas",
     "ctaLogin": "Entrar",
     "ctaRegister": "Crear cuenta",
@@ -14,7 +14,25 @@
   },
   "Home": {
     "title": "Cuidado, con agenda clara",
-    "description": "Reserva especialistas, gestiona disponibilidad y protege el historial clínico."
+    "description": "Reserva especialistas, gestiona disponibilidad y protege el historial clínico.",
+    "bannerLabel": "Presentación de Thaydee Elena",
+    "bannerAlt": "Banner de Thaydee Elena con laptop y tablet mostrando calendario de citas, personal e historia clínica.",
+    "pillarsTitle": "Todo el flujo clínico, conectado",
+    "pillarsSubtitle": "De la reserva al historial: menos WhatsApp suelto, más control.",
+    "pillars": {
+      "appointments": {
+        "title": "Citas",
+        "body": "Calendario claro, huecos y reservas para pacientes y especialistas."
+      },
+      "staff": {
+        "title": "Personal y turnos",
+        "body": "Equipo, horarios y disponibilidad visibles para organizar el día."
+      },
+      "history": {
+        "title": "Historias de pacientes",
+        "body": "Antecedentes, notas y documentos clínicos con acceso controlado."
+      }
+    }
   },
   "Privacy": {
     "backHome": "← Inicio",

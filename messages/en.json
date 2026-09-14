@@ -1,7 +1,7 @@
 {
   "App": {
     "name": "Thaydee Elena",
-    "tagline": "Medical appointments and clinical records",
+    "tagline": "Medical appointments and clinical histories",
     "ctaDirectory": "Browse specialists",
     "ctaLogin": "Sign in",
     "ctaRegister": "Create account",
@@ -13,8 +13,26 @@
     "skipToContent": "Skip to content"
   },
   "Home": {
-    "title": "Care, scheduled with clarity",
-    "description": "Book specialists, manage availability, and keep clinical history secure."
+    "title": "Care, with a clear schedule",
+    "description": "Book specialists, manage availability, and keep clinical history protected.",
+    "bannerLabel": "Thaydee Elena product overview",
+    "bannerAlt": "Thaydee Elena banner with laptop and tablet showing appointment calendar, staff, and clinical history.",
+    "pillarsTitle": "The full clinical flow, connected",
+    "pillarsSubtitle": "From booking to chart: less scattered chat, more control.",
+    "pillars": {
+      "appointments": {
+        "title": "Appointments",
+        "body": "Clear calendar, slots and bookings for patients and specialists."
+      },
+      "staff": {
+        "title": "Staff & shifts",
+        "body": "Team, schedules and availability visible to run the day."
+      },
+      "history": {
+        "title": "Patient histories",
+        "body": "Background, notes and clinical files with controlled access."
+      }
+    }
   },
   "Privacy": {
     "backHome": "← Home",
