@@ -17,7 +17,7 @@ export async function HeroBanner() {
       aria-label={t("bannerLabel")}
       className="hero-banner relative w-full overflow-hidden border-b border-teal-900/10"
     >
-      <div className="hero-banner__stage relative mx-auto h-[clamp(30vh,42vh,48vh)] w-full min-h-[240px] max-w-[1600px]">
+      <div className="hero-banner__stage relative mx-auto h-[clamp(34vh,46vh,52vh)] w-full min-h-[280px] max-w-[1600px]">
         <Image
           src="/hero/fondo-base.jpg"
           alt=""
@@ -29,7 +29,7 @@ export async function HeroBanner() {
         />
 
         <div
-          className="pointer-events-none absolute inset-0 bg-gradient-to-r from-transparent via-transparent to-white/60 dark:to-teal-950/45"
+          className="pointer-events-none absolute inset-0 bg-gradient-to-r from-transparent via-transparent to-white/25 dark:to-teal-950/30"
           aria-hidden
         />
 
@@ -74,19 +74,19 @@ export async function HeroBanner() {
           />
         </div>
 
-        {/* Capa 1 — particle title + copy */}
-        <div className="hero-banner__copy absolute inset-x-3 bottom-3 z-[4] flex max-w-[min(100%,24rem)] flex-col gap-2 rounded-2xl bg-white/80 p-3 backdrop-blur-sm sm:inset-x-auto sm:bottom-auto sm:right-[3%] sm:top-1/2 sm:-translate-y-1/2 sm:bg-white/50 sm:p-4 sm:backdrop-blur-md md:max-w-md lg:right-[5%]">
+        {/* Capa 1 — particle title + copy (sin card / fondo) */}
+        <div className="hero-banner__copy absolute inset-x-4 bottom-4 z-[4] flex max-w-[min(100%,28rem)] flex-col gap-3 sm:inset-x-auto sm:bottom-auto sm:right-[3%] sm:top-1/2 sm:-translate-y-1/2 md:max-w-lg lg:right-[5%] lg:max-w-xl">
           <HeroParticleTitle
             text={t("title")}
-            className="hero-banner__title-canvas h-[4.75rem] w-full sm:h-[5.5rem] md:h-[6.25rem]"
-            density={780}
+            className="hero-banner__title-canvas h-[7.5rem] w-full sm:h-[9rem] md:h-[10.5rem]"
+            density={1100}
           />
-          <p className="hero-banner__subtitle text-xs leading-relaxed text-teal-900/80 sm:text-sm md:text-base">
+          <p className="hero-banner__subtitle text-base leading-relaxed text-teal-950 drop-shadow-sm sm:text-lg md:text-xl">
             {t("description")}
           </p>
           <Link
             href="/privacy"
-            className="hero-banner__cta inline-flex h-10 w-fit items-center text-sm font-medium text-teal-800 underline underline-offset-4 transition-opacity hover:opacity-80 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-teal-700"
+            className="hero-banner__cta inline-flex h-12 w-fit items-center text-base font-medium text-teal-900 underline underline-offset-4 transition-opacity hover:opacity-80 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-teal-700"
           >
             {tApp("privacyLink")}
           </Link>
