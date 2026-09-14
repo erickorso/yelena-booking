@@ -39,3 +39,90 @@ body {
   background: var(--background);
   color: var(--foreground);
 }
+
+/* —— Hero banner (layered) —— */
+@keyframes hero-float {
+  0%,
+  100% {
+    transform: translateY(0);
+  }
+  50% {
+    transform: translateY(-10px);
+  }
+}
+
+@keyframes hero-enter {
+  from {
+    opacity: 0;
+    transform: translateY(14px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.hero-banner__title,
+.hero-banner__subtitle,
+.hero-banner__cta,
+.hero-banner__prop {
+  animation: hero-enter 0.7s ease-out both;
+}
+
+.hero-banner__title {
+  animation-delay: 0.08s;
+}
+
+.hero-banner__subtitle {
+  animation-delay: 0.28s;
+}
+
+.hero-banner__cta {
+  animation-delay: 0.48s;
+}
+
+.hero-banner__prop {
+  animation-delay: 0.55s;
+}
+
+.hero-banner__laptop {
+  animation: hero-float 5.5s ease-in-out infinite;
+}
+
+.hero-banner__tablet {
+  animation: hero-float 6.4s ease-in-out 0.9s infinite;
+}
+
+@media (max-width: 639px) {
+  .hero-banner__devices {
+    opacity: 0.55;
+    width: 70%;
+  }
+
+  .hero-banner__laptop {
+    width: 85%;
+    left: 5%;
+    bottom: 28%;
+  }
+
+  .hero-banner__tablet {
+    width: 38%;
+    left: 0;
+    bottom: 36%;
+  }
+
+  .hero-banner__copy {
+    max-width: calc(100% - 1.5rem);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .hero-banner__title,
+  .hero-banner__subtitle,
+  .hero-banner__cta,
+  .hero-banner__prop,
+  .hero-banner__laptop,
+  .hero-banner__tablet {
+    animation: none;
+  }
+}

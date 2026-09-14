@@ -1,6 +1,6 @@
-import Image from "next/image";
 import { getTranslations, setRequestLocale } from "next-intl/server";
 import { buttonVariants } from "@/components/atoms/Button";
+import { HeroBanner } from "@/components/organisms/HeroBanner";
 import { MarketingShell } from "@/components/templates/MarketingShell";
 import { Link } from "@/i18n/navigation";
 import { clsx } from "clsx";
@@ -24,50 +24,33 @@ export default async function HomePage({
 
   return (
     <MarketingShell wide>
-      <section aria-label={t("bannerLabel")} className="border-b border-teal-900/10">
-        <div className="relative w-full bg-[#eef3ef]">
-          <Image
-            src="/hero-yelena.jpg"
-            alt={t("bannerAlt")}
-            width={1024}
-            height={434}
-            priority
-            sizes="100vw"
-            className="h-auto w-full object-cover object-center"
-          />
-        </div>
+      <HeroBanner />
 
-        <div className="mx-auto flex w-full max-w-6xl flex-col gap-4 px-4 py-8 sm:flex-row sm:items-center sm:justify-between sm:py-10">
-          <div className="max-w-xl">
-            <h1 className="font-serif text-2xl tracking-tight text-teal-900 dark:text-teal-100 sm:text-3xl">
-              {t("title")}
-            </h1>
-            <p className="mt-2 text-sm leading-relaxed text-[var(--muted)] sm:text-base">
-              {t("description")}
-            </p>
-          </div>
-          <div className="flex flex-wrap gap-3">
-            <Link
-              href="/specialists"
-              className={clsx(buttonVariants({ variant: "primary", size: "lg" }), "h-12")}
-            >
-              {tApp("ctaDirectory")}
-            </Link>
-            <Link
-              href="/register"
-              className={clsx(buttonVariants({ variant: "secondary", size: "lg" }), "h-12")}
-            >
-              {tApp("ctaRegister")}
-            </Link>
-            <Link
-              href="/login"
-              className={clsx(buttonVariants({ variant: "ghost", size: "lg" }), "h-12")}
-            >
-              {tApp("ctaLogin")}
-            </Link>
-          </div>
+      <div className="mx-auto flex w-full max-w-6xl flex-col gap-4 px-4 py-8 sm:flex-row sm:items-center sm:justify-between sm:py-10">
+        <p className="max-w-xl text-sm text-[var(--muted)] sm:text-base">
+          {t("pillarsSubtitle")}
+        </p>
+        <div className="flex flex-wrap gap-3">
+          <Link
+            href="/specialists"
+            className={clsx(buttonVariants({ variant: "primary", size: "lg" }), "h-12")}
+          >
+            {tApp("ctaDirectory")}
+          </Link>
+          <Link
+            href="/register"
+            className={clsx(buttonVariants({ variant: "secondary", size: "lg" }), "h-12")}
+          >
+            {tApp("ctaRegister")}
+          </Link>
+          <Link
+            href="/login"
+            className={clsx(buttonVariants({ variant: "ghost", size: "lg" }), "h-12")}
+          >
+            {tApp("ctaLogin")}
+          </Link>
         </div>
-      </section>
+      </div>
 
       <section className="mx-auto w-full max-w-6xl px-4 py-12 sm:py-16">
         <h2 className="font-serif text-2xl tracking-tight text-teal-900 dark:text-teal-200 sm:text-3xl">
