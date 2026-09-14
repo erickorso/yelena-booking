@@ -27,10 +27,10 @@ export default async function HomePage({
       <section aria-label={t("bannerLabel")} className="border-b border-teal-900/10">
         <div className="relative w-full bg-[#eef3ef]">
           <Image
-            src="/hero-yelena.png"
+            src="/hero-yelena.jpg"
             alt={t("bannerAlt")}
-            width={1920}
-            height={900}
+            width={1024}
+            height={434}
             priority
             sizes="100vw"
             className="h-auto w-full object-cover object-center"
