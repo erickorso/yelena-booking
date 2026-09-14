@@ -88,10 +88,17 @@ body {
   animation: hero-float 6.4s ease-in-out 0.9s infinite;
 }
 
+.hero-device-tilt {
+  transform-style: preserve-3d;
+  transition: transform 0.18s ease-out;
+  cursor: grab;
+}
+
 @media (max-width: 639px) {
   .hero-banner__devices {
     opacity: 0.55;
     width: 70%;
+    pointer-events: none;
   }
 
   .hero-banner__laptop {
@@ -119,5 +126,9 @@ body {
   .hero-banner__laptop,
   .hero-banner__tablet {
     animation: none;
+  }
+
+  .hero-device-tilt {
+    transition: none;
   }
 }

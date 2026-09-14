@@ -2,6 +2,7 @@ import Image from "next/image";
 import { getTranslations } from "next-intl/server";
 import { Link } from "@/i18n/navigation";
 import { HeroDeviceParticles } from "@/components/organisms/HeroDeviceParticles";
+import { HeroDeviceTilt } from "@/components/organisms/HeroDeviceTilt";
 import { HeroParticleTitle } from "@/components/organisms/HeroParticleTitle";
 
 /**
@@ -34,30 +35,31 @@ export async function HeroBanner() {
         />
 
         {/* Capa 2 — devices + ambient particles */}
-        <div
-          className="hero-banner__devices pointer-events-none absolute inset-y-0 left-0 z-[2] w-[58%] sm:w-[55%] lg:w-[52%]"
-          aria-hidden
-        >
-          <HeroDeviceParticles className="absolute inset-0 z-0" count={64} color="15,118,110" />
+        <div className="hero-banner__devices absolute inset-y-0 left-0 z-[2] w-[58%] sm:w-[55%] lg:w-[52%]">
+          <HeroDeviceParticles className="pointer-events-none absolute inset-0 z-0" count={64} color="15,118,110" />
           <div className="hero-banner__laptop absolute bottom-[8%] left-[8%] z-[1] w-[78%] max-w-[520px] sm:left-[10%] sm:w-[72%]">
-            <Image
-              src="/hero/portatil.png"
-              alt=""
-              width={1024}
-              height={571}
-              priority
-              className="h-auto w-full drop-shadow-xl"
-            />
+            <HeroDeviceTilt maxTilt={12}>
+              <Image
+                src="/hero/portatil.png"
+                alt=""
+                width={1024}
+                height={571}
+                priority
+                className="pointer-events-none h-auto w-full drop-shadow-xl"
+              />
+            </HeroDeviceTilt>
           </div>
           <div className="hero-banner__tablet absolute bottom-[18%] left-[2%] z-[2] w-[34%] max-w-[220px] sm:left-[4%] sm:w-[30%]">
-            <Image
-              src="/hero/tablet.png"
-              alt=""
-              width={1024}
-              height={1024}
-              priority
-              className="h-auto w-full drop-shadow-lg"
-            />
+            <HeroDeviceTilt maxTilt={14}>
+              <Image
+                src="/hero/tablet.png"
+                alt=""
+                width={1024}
+                height={1024}
+                priority
+                className="pointer-events-none h-auto w-full drop-shadow-lg"
+              />
+            </HeroDeviceTilt>
           </div>
         </div>
 
