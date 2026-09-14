@@ -5,11 +5,11 @@
   "crons": [
     {
       "path": "/api/cron/outbox",
-      "schedule": "*/5 * * * *"
+      "schedule": "0 8 * * *"
     },
     {
       "path": "/api/cron/reconcile",
-      "schedule": "0 * * * *"
+      "schedule": "0 9 * * *"
     }
   ]
 }
