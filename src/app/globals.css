@@ -62,15 +62,10 @@ body {
   }
 }
 
-.hero-banner__title,
 .hero-banner__subtitle,
 .hero-banner__cta,
 .hero-banner__prop {
   animation: hero-enter 0.7s ease-out both;
-}
-
-.hero-banner__title {
-  animation-delay: 0.08s;
 }
 
 .hero-banner__subtitle {
