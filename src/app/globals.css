@@ -96,25 +96,25 @@ body {
 
 @media (max-width: 639px) {
   .hero-banner__devices {
-    opacity: 0.55;
-    width: 70%;
+    opacity: 0.35;
+    width: 100%;
     pointer-events: none;
   }
 
   .hero-banner__laptop {
-    width: 85%;
-    left: 5%;
-    bottom: 28%;
+    width: 70%;
+    left: 15%;
+    bottom: 4%;
   }
 
   .hero-banner__tablet {
-    width: 38%;
-    left: 0;
-    bottom: 36%;
+    width: 32%;
+    left: 8%;
+    bottom: 12%;
   }
 
   .hero-banner__copy {
-    width: calc(100% - 1.5rem);
+    width: auto;
     max-width: none;
   }
 }

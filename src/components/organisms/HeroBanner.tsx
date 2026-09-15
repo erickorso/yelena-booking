@@ -15,7 +15,7 @@ export async function HeroBanner() {
       aria-label={t("bannerLabel")}
       className="hero-banner relative w-full overflow-hidden"
     >
-      <div className="hero-banner__stage relative mx-auto h-[clamp(36vh,50vh,56vh)] w-full min-h-[300px] max-w-[1600px]">
+      <div className="hero-banner__stage relative mx-auto h-[clamp(40vh,52vh,580px)] w-full min-h-[320px] max-w-[1600px]">
         <Image
           src="/hero/fondo-base.jpg"
           alt=""
@@ -31,7 +31,7 @@ export async function HeroBanner() {
           aria-hidden
         />
 
-        <div className="hero-banner__devices absolute inset-y-0 left-0 z-[2] w-[58%] sm:w-[55%] lg:w-[52%]">
+        <div className="hero-banner__devices absolute inset-y-0 left-0 z-[2] w-[58%] sm:w-[52%] lg:w-[48%]">
           <HeroDeviceParticles className="pointer-events-none absolute inset-0 z-0" count={64} color="15,118,110" />
           <div className="hero-banner__laptop absolute bottom-[8%] left-[8%] z-[1] w-[78%] max-w-[520px] sm:left-[10%] sm:w-[72%]">
             <HeroDeviceTilt maxTilt={12}>
@@ -59,12 +59,9 @@ export async function HeroBanner() {
           </div>
         </div>
 
-        <div className="hero-banner__copy absolute inset-x-4 bottom-3 z-[4] w-[min(100%,50%)] sm:inset-x-auto sm:bottom-auto sm:right-[2%] sm:top-[10%] sm:w-1/2 lg:right-[4%]">
-          <HeroParticleTitle
-            text={t("title")}
-            className="hero-banner__title-canvas h-[14rem] w-full sm:h-[16rem] md:h-[18rem]"
-            density={4800}
-          />
+        {/* Título: full-bleed en mobile; ~48% derecha en desktop; altura completa con padding */}
+        <div className="hero-banner__copy absolute inset-x-3 top-[18%] bottom-[6%] z-[4] sm:inset-y-5 sm:left-auto sm:right-[3%] sm:w-[48%] lg:right-[4%]">
+          <HeroParticleTitle text={t("title")} density={4800} />
         </div>
       </div>
     </section>

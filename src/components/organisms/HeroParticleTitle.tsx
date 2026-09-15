@@ -21,24 +21,25 @@ type Props = {
   formMs?: number;
 };
 
+type TextLayout = {
+  fontSize: number;
+  lineHeight: number;
+  lines: string[];
+  startX: number;
+  startY: number;
+};
+
 const COLORS = ["#134e4a", "#0f766e", "#0d9488", "#115e59", "#0f766e"];
 const POINTER_RADIUS = 120;
 const POINTER_FORCE = 7;
+const PAD = 12;
 
 function easeOutCubic(t: number) {
   return 1 - (1 - t) ** 3;
 }
 
-function fillWrappedText(
-  ctx: CanvasRenderingContext2D,
-  text: string,
-  x: number,
-  y: number,
-  maxWidth: number,
-  lineHeight: number,
-  align: CanvasTextAlign = "left",
-) {
-  const words = text.split(/\s+/);
+function wrapLines(ctx: CanvasRenderingContext2D, text: string, maxWidth: number): string[] {
+  const words = text.replace(/\.$/, "").split(/\s+/).filter(Boolean);
   const lines: string[] = [];
   let line = "";
   for (const word of words) {
@@ -51,11 +52,68 @@ function fillWrappedText(
     }
   }
   if (line) lines.push(line);
+  // restore period on last line if original had it
+  if (text.trim().endsWith(".") && lines.length) {
+    const last = lines[lines.length - 1]!;
+    if (!last.endsWith(".")) lines[lines.length - 1] = `${last}.`;
+  }
+  return lines.length ? lines : [text];
+}
 
-  ctx.textAlign = align;
-  const startY = y - ((lines.length - 1) * lineHeight) / 2;
-  lines.forEach((l, i) => {
-    ctx.fillText(l, x, startY + i * lineHeight);
+/** Escala la fuente hasta que el bloque entero quepa en el canvas (con padding). */
+function fitTextLayout(
+  ctx: CanvasRenderingContext2D,
+  text: string,
+  width: number,
+  height: number,
+): TextLayout {
+  const maxW = Math.max(40, width - PAD * 2);
+  const maxH = Math.max(40, height - PAD * 2);
+  let fontSize = Math.min(maxW * 0.22, maxH * 0.28, 72);
+
+  for (; fontSize >= 16; fontSize -= 1) {
+    ctx.font = `700 ${fontSize}px Georgia, "Times New Roman", serif`;
+    const lineHeight = fontSize * 1.18;
+    const lines = wrapLines(ctx, text, maxW);
+    const blockH = lines.length * lineHeight;
+    const blockW = Math.max(...lines.map((l) => ctx.measureText(l).width), 0);
+    if (blockH <= maxH && blockW <= maxW) {
+      return {
+        fontSize,
+        lineHeight,
+        lines,
+        startX: PAD,
+        startY: PAD + (maxH - blockH) / 2 + fontSize * 0.85,
+      };
+    }
+  }
+
+  ctx.font = `700 16px Georgia, "Times New Roman", serif`;
+  const lineHeight = 16 * 1.18;
+  const lines = wrapLines(ctx, text, maxW);
+  return {
+    fontSize: 16,
+    lineHeight,
+    lines,
+    startX: PAD,
+    startY: PAD + fontSize * 0.85,
+  };
+}
+
+function paintFittedText(
+  ctx: CanvasRenderingContext2D,
+  text: string,
+  width: number,
+  height: number,
+  fillStyle: string,
+) {
+  const layout = fitTextLayout(ctx, text, width, height);
+  ctx.fillStyle = fillStyle;
+  ctx.textAlign = "left";
+  ctx.textBaseline = "alphabetic";
+  ctx.font = `700 ${layout.fontSize}px Georgia, "Times New Roman", serif`;
+  layout.lines.forEach((line, i) => {
+    ctx.fillText(line, layout.startX, layout.startY + i * layout.lineHeight);
   });
 }
 
@@ -72,11 +130,7 @@ function sampleTextPoints(
   if (!octx) return [];
 
   octx.clearRect(0, 0, width, height);
-  octx.fillStyle = "#fff";
-  octx.textBaseline = "middle";
-  const fontSize = Math.min(width * 0.28, height * 0.62, 118);
-  octx.font = `700 ${fontSize}px Georgia, "Times New Roman", serif`;
-  fillWrappedText(octx, text, 8, height / 2, width - 16, fontSize * 1.12, "left");
+  paintFittedText(octx, text, width, height, "#fff");
 
   const { data } = octx.getImageData(0, 0, width, height);
   const pts: { x: number; y: number }[] = [];
@@ -118,7 +172,7 @@ export function HeroParticleTitle({ text, className, density = 700, formMs = 180
 
     const dpr = Math.min(window.devicePixelRatio || 1, 2);
     const isMobile = window.matchMedia("(max-width: 640px)").matches;
-    const maxN = Math.floor(density * (isMobile ? 0.45 : 1));
+    const maxN = Math.floor(density * (isMobile ? 0.55 : 1));
     const step = isMobile ? 2 : 1;
     const radius = isMobile ? 90 : POINTER_RADIUS;
 
@@ -126,16 +180,14 @@ export function HeroParticleTitle({ text, className, density = 700, formMs = 180
       const w = wrap.clientWidth;
       const h = wrap.clientHeight;
       ctx.clearRect(0, 0, w, h);
-      ctx.fillStyle = "#134e4a";
-      ctx.textBaseline = "middle";
-      const fontSize = Math.min(w * 0.28, h * 0.62, 118);
-      ctx.font = `700 ${fontSize}px Georgia, "Times New Roman", serif`;
-      fillWrappedText(ctx, text, 8, h / 2, w - 16, fontSize * 1.12, "left");
+      paintFittedText(ctx, text, w, h, "#134e4a");
     }
 
     function resize() {
       const w = wrap.clientWidth;
       const h = wrap.clientHeight;
+      if (w < 8 || h < 8) return;
+
       canvas.width = Math.floor(w * dpr);
       canvas.height = Math.floor(h * dpr);
       canvas.style.width = `${w}px`;
@@ -157,7 +209,7 @@ export function HeroParticleTitle({ text, className, density = 700, formMs = 180
 
       particles = pool.map((t, i) => {
         const angle = Math.random() * Math.PI * 2;
-        const dist = 60 + Math.random() * Math.max(w, h) * 0.5;
+        const dist = 40 + Math.random() * Math.max(w, h) * 0.4;
         return {
           x: w / 2 + Math.cos(angle) * dist,
           y: h / 2 + Math.sin(angle) * dist,
@@ -281,7 +333,7 @@ export function HeroParticleTitle({ text, className, density = 700, formMs = 180
   }, [text, density, formMs]);
 
   return (
-    <div ref={wrapRef} className={`relative min-h-[12rem] touch-none ${className ?? ""}`}>
+    <div ref={wrapRef} className={`relative h-full min-h-[10rem] w-full touch-none ${className ?? ""}`}>
       <canvas
         ref={canvasRef}
         className="h-full w-full cursor-crosshair touch-none"
