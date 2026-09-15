@@ -114,7 +114,8 @@ body {
   }
 
   .hero-banner__copy {
-    max-width: calc(100% - 1.5rem);
+    width: calc(100% - 1.5rem);
+    max-width: none;
   }
 }
 

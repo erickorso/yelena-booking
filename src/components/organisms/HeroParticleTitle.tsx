@@ -74,7 +74,7 @@ function sampleTextPoints(
   octx.clearRect(0, 0, width, height);
   octx.fillStyle = "#fff";
   octx.textBaseline = "middle";
-  const fontSize = Math.min(width * 0.24, height * 0.57, 102);
+  const fontSize = Math.min(width * 0.28, height * 0.62, 118);
   octx.font = `700 ${fontSize}px Georgia, "Times New Roman", serif`;
   fillWrappedText(octx, text, 8, height / 2, width - 16, fontSize * 1.12, "left");
 
@@ -128,7 +128,7 @@ export function HeroParticleTitle({ text, className, density = 700, formMs = 180
       ctx.clearRect(0, 0, w, h);
       ctx.fillStyle = "#134e4a";
       ctx.textBaseline = "middle";
-      const fontSize = Math.min(w * 0.24, h * 0.57, 102);
+      const fontSize = Math.min(w * 0.28, h * 0.62, 118);
       ctx.font = `700 ${fontSize}px Georgia, "Times New Roman", serif`;
       fillWrappedText(ctx, text, 8, h / 2, w - 16, fontSize * 1.12, "left");
     }
@@ -281,7 +281,7 @@ export function HeroParticleTitle({ text, className, density = 700, formMs = 180
   }, [text, density, formMs]);
 
   return (
-    <div ref={wrapRef} className={`relative min-h-[10.5rem] touch-none ${className ?? ""}`}>
+    <div ref={wrapRef} className={`relative min-h-[12rem] touch-none ${className ?? ""}`}>
       <canvas
         ref={canvasRef}
         className="h-full w-full cursor-crosshair touch-none"

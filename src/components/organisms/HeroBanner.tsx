@@ -16,9 +16,9 @@ export async function HeroBanner() {
   return (
     <section
       aria-label={t("bannerLabel")}
-      className="hero-banner relative w-full overflow-hidden border-b border-teal-900/10"
+      className="hero-banner relative w-full overflow-hidden"
     >
-      <div className="hero-banner__stage relative mx-auto h-[clamp(34vh,46vh,52vh)] w-full min-h-[280px] max-w-[1600px]">
+      <div className="hero-banner__stage relative mx-auto h-[clamp(36vh,50vh,56vh)] w-full min-h-[300px] max-w-[1600px]">
         <Image
           src="/hero/fondo-base.jpg"
           alt=""
@@ -76,22 +76,24 @@ export async function HeroBanner() {
           />
         </div>
 
-        {/* Capa 1 — particle title + copy (sin card / fondo) */}
-        <div className="hero-banner__copy absolute inset-x-4 bottom-4 z-[4] flex max-w-[min(100%,28rem)] flex-col gap-3 sm:inset-x-auto sm:bottom-auto sm:right-[3%] sm:top-1/2 sm:-translate-y-1/2 md:max-w-lg lg:right-[5%] lg:max-w-xl">
+        {/* Capa 1 — particle title (~50% width) + copy más abajo */}
+        <div className="hero-banner__copy absolute inset-x-4 bottom-3 z-[4] flex w-[min(100%,50%)] flex-col gap-2 sm:inset-x-auto sm:bottom-auto sm:right-[2%] sm:top-[8%] sm:w-1/2 lg:right-[4%]">
           <HeroParticleTitle
             text={t("title")}
-            className="hero-banner__title-canvas h-[11.25rem] w-full sm:h-[13.5rem] md:h-[15.75rem]"
-            density={1400}
+            className="hero-banner__title-canvas h-[12rem] w-full sm:h-[14rem] md:h-[16rem]"
+            density={1600}
           />
-          <p className="hero-banner__subtitle text-base leading-relaxed text-teal-950 drop-shadow-sm sm:text-lg md:text-xl">
-            {t("description")}
-          </p>
-          <Link
-            href="/privacy"
-            className="hero-banner__cta inline-flex h-12 w-fit items-center text-base font-medium text-teal-900 underline underline-offset-4 transition-opacity hover:opacity-80 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-teal-700"
-          >
-            {tApp("privacyLink")}
-          </Link>
+          <div className="hero-banner__copy-body mt-6 flex flex-col gap-3 sm:mt-10 md:mt-12">
+            <p className="hero-banner__subtitle text-base leading-relaxed text-teal-950 drop-shadow-sm sm:text-lg md:text-xl">
+              {t("description")}
+            </p>
+            <Link
+              href="/privacy"
+              className="hero-banner__cta inline-flex h-12 w-fit items-center text-base font-medium text-teal-900 underline underline-offset-4 transition-opacity hover:opacity-80 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-teal-700"
+            >
+              {tApp("privacyLink")}
+            </Link>
+          </div>
         </div>
       </div>
     </section>
