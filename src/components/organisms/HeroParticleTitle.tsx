@@ -119,7 +119,7 @@ export function HeroParticleTitle({ text, className, density = 700, formMs = 180
     const dpr = Math.min(window.devicePixelRatio || 1, 2);
     const isMobile = window.matchMedia("(max-width: 640px)").matches;
     const maxN = Math.floor(density * (isMobile ? 0.45 : 1));
-    const step = isMobile ? 4 : 2;
+    const step = isMobile ? 2 : 1;
     const radius = isMobile ? 90 : POINTER_RADIUS;
 
     function paintReduced() {
