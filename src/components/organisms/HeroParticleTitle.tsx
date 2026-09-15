@@ -96,7 +96,7 @@ function fitTextLayout(
     lineHeight,
     lines,
     startX: PAD,
-    startY: PAD + fontSize * 0.85,
+    startY: PAD + 16 * 0.85,
   };
 }
 
