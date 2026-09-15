@@ -62,7 +62,7 @@ export async function HeroBanner() {
 
         {/* Título: mobile sobre la mitad con recepción; desktop derecha */}
         <div className="hero-banner__copy absolute inset-x-3 top-[14%] bottom-[8%] z-[4] sm:inset-y-5 sm:left-auto sm:right-[3%] sm:w-[48%] lg:right-[4%]">
-          <HeroParticleTitle text={t("title")} density={4800} />
+          <HeroParticleTitle text={t("title")} density={4800} formMs={3000} />
         </div>
       </div>
     </section>

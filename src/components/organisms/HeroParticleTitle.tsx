@@ -144,7 +144,7 @@ function sampleTextPoints(
 }
 
 /** Título formado por partículas (estilo Altair), paleta teal Yelena. */
-export function HeroParticleTitle({ text, className, density = 700, formMs = 1800 }: Props) {
+export function HeroParticleTitle({ text, className, density = 700, formMs = 3000 }: Props) {
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const wrapRef = useRef<HTMLDivElement>(null);
 
