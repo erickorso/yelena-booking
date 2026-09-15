@@ -22,7 +22,7 @@ export async function HeroBanner() {
           fill
           priority
           sizes="100vw"
-          className="hero-banner__bg object-cover object-[center_70%]"
+          className="hero-banner__bg object-cover object-[12%_center] sm:object-[center_70%]"
           aria-hidden
         />
 
@@ -31,7 +31,8 @@ export async function HeroBanner() {
           aria-hidden
         />
 
-        <div className="hero-banner__devices absolute inset-y-0 left-0 z-[2] w-[58%] sm:w-[52%] lg:w-[48%]">
+        {/* Devices: ocultos en mobile para dejar ver recepción/personas del fondo */}
+        <div className="hero-banner__devices absolute inset-y-0 left-0 z-[2] hidden w-[58%] sm:block sm:w-[52%] lg:w-[48%]">
           <HeroDeviceParticles className="pointer-events-none absolute inset-0 z-0" count={64} color="15,118,110" />
           <div className="hero-banner__laptop absolute bottom-[8%] left-[8%] z-[1] w-[78%] max-w-[520px] sm:left-[10%] sm:w-[72%]">
             <HeroDeviceTilt maxTilt={12}>
@@ -59,8 +60,8 @@ export async function HeroBanner() {
           </div>
         </div>
 
-        {/* Título: full-bleed en mobile; ~48% derecha en desktop; altura completa con padding */}
-        <div className="hero-banner__copy absolute inset-x-3 top-[18%] bottom-[6%] z-[4] sm:inset-y-5 sm:left-auto sm:right-[3%] sm:w-[48%] lg:right-[4%]">
+        {/* Título: mobile sobre la mitad con recepción; desktop derecha */}
+        <div className="hero-banner__copy absolute inset-x-3 top-[14%] bottom-[8%] z-[4] sm:inset-y-5 sm:left-auto sm:right-[3%] sm:w-[48%] lg:right-[4%]">
           <HeroParticleTitle text={t("title")} density={4800} />
         </div>
       </div>
